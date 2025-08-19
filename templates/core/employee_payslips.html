@@ -5,23 +5,21 @@
   <div class="card-body">
     <h4 class="card-title">My Payslips</h4>
     <table class="table table-bordered">
-      <thead><tr><th>Date</th><th>Payroll Items</th><th>Total</th><th>Created</th></tr></thead>
+      <thead><tr><th>Period</th><th>Gross</th><th>Earnings</th><th>Deductions</th><th>Net</th><th>Status</th><th>Created</th><th>PDF</th></tr></thead>
       <tbody>
         {% for payslip in payslips %}
         <tr>
-          <td>{{ payslip.date }}</td>
-          <td>
-            <ul>
-              {% for item in payslip.get_payroll_items %}
-              <li>{{ item.name }} ({{ item.get_item_type_display }}) - {{ item.amount }}</li>
-              {% endfor %}
-            </ul>
-          </td>
+          <td>{{ payslip.period_start }} - {{ payslip.period_end }}</td>
+          <td>{{ payslip.gross_pay }}</td>
+          <td>{{ payslip.total_earnings }}</td>
+          <td>{{ payslip.total_deductions }}</td>
           <td>{{ payslip.total }}</td>
+          <td>{{ payslip.get_status_display }}</td>
           <td>{{ payslip.created_at|date:'Y-m-d H:i' }}</td>
+          <td>{% if payslip.pdf %}<a href="{{ payslip.pdf.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">PDF</a>{% endif %}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="4">No payslips found.</td></tr>
+        <tr><td colspan="8">No payslips found.</td></tr>
         {% endfor %}
       </tbody>
     </table>

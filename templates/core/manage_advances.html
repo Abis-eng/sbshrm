@@ -1,0 +1,44 @@
+{% extends 'core/base.html' %}
+{% block page_title %}Manage Advance Requests{% endblock %}
+{% block content %}
+<div class="card mt-4">
+  <div class="card-body">
+    <h4 class="card-title">Advance Requests</h4>
+    <table class="table table-bordered">
+      <thead><tr><th>Employee</th><th>Amount</th><th>Installments</th><th>Status</th><th>Requested</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for adv in advances %}
+        <tr>
+          <td>{{ adv.employee }}</td>
+          <td>{{ adv.amount }}</td>
+          <td>{{ adv.desired_installments|default:'-' }}</td>
+          <td>{{ adv.get_status_display }}</td>
+          <td>{{ adv.requested_at|date:'Y-m-d H:i' }}</td>
+          <td>
+            {% if adv.status == 'pending' %}
+            <form method="post" class="d-flex align-items-center" style="gap:8px;">
+              {% csrf_token %}
+              <input type="hidden" name="advance_id" value="{{ adv.id }}" />
+              <input type="number" name="desired_installments" class="form-control" style="width:120px" placeholder="Installments" min="1" />
+              <select name="action" class="form-select" style="width:140px">
+                <option value="approve">Approve</option>
+                <option value="reject">Reject</option>
+              </select>
+              <input name="admin_comment" class="form-control" style="width:220px" placeholder="Comment" />
+              <button class="btn btn-primary">Submit</button>
+            </form>
+            {% else %}
+              <em>No action</em>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">No advance requests.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+

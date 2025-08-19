@@ -44,6 +44,10 @@
         </select>
       </div>
       <div class="mb-3">
+        <label class="form-label">Monthly Salary</label>
+        <input type="number" class="form-control" step="0.01" name="salary" value="{{ employee.salary|default:'0.00' }}">
+      </div>
+      <div class="mb-3">
         <label class="form-label">Role</label>
         <select class="form-select" name="role">
           <option value="">Select Role</option>
@@ -55,6 +59,23 @@
       <div class="mb-3">
         <label class="form-label">Date of Joining</label>
         <input type="date" class="form-control" name="date_of_joining" value="{{ employee.date_of_joining|date:'Y-m-d' }}">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Machine ID (ZKT)</label>
+        <input type="number" class="form-control" name="machine_id" value="{{ employee.machine_id|default:'' }}" placeholder="Enter ZKT Machine User ID">
+        <small class="form-text text-muted">Enter the User ID from ZKT attendance machine</small>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Fingerprint ID</label>
+        <input type="number" class="form-control" name="fingerprint_id" value="{{ employee.fingerprint_id|default:'' }}" placeholder="Enter Fingerprint ID">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Face ID</label>
+        <input type="number" class="form-control" name="face_id" value="{{ employee.face_id|default:'' }}" placeholder="Enter Face Recognition ID">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Card ID</label>
+        <input type="text" class="form-control" name="card_id" value="{{ employee.card_id|default:'' }}" placeholder="Enter Card ID">
       </div>
       <button type="submit" class="btn btn-primary">Save Changes</button>
       <a href="{% url 'employee_list' %}" class="btn btn-secondary">Cancel</a>

@@ -1,0 +1,150 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Manage Attendance Machines{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box">
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Manage Attendance Machines</li>
+                    </ol>
+                </div>
+                <h4 class="page-title">Manage Attendance Machines</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="header-title">Add New Machine</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="text-danger">{{ form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.ip_address.id_for_label }}" class="form-label">{{ form.ip_address.label }}</label>
+                            {{ form.ip_address }}
+                            {% if form.ip_address.errors %}
+                                <div class="text-danger">{{ form.ip_address.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.port.id_for_label }}" class="form-label">{{ form.port.label }}</label>
+                            {{ form.port }}
+                            {% if form.port.errors %}
+                                <div class="text-danger">{{ form.port.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.location.id_for_label }}" class="form-label">{{ form.location.label }}</label>
+                            {{ form.location }}
+                            {% if form.location.errors %}
+                                <div class="text-danger">{{ form.location.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    {{ form.is_active.label }}
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add Machine</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="header-title">Registered Machines</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-centered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>IP Address</th>
+                                    <th>Port</th>
+                                    <th>Location</th>
+                                    <th>Status</th>
+                                    <th>Last Sync</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for machine in machines %}
+                                <tr>
+                                    <td>{{ machine.name }}</td>
+                                    <td>{{ machine.ip_address }}</td>
+                                    <td>{{ machine.port }}</td>
+                                    <td>{{ machine.location|default:"-" }}</td>
+                                    <td>
+                                        {% if machine.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if machine.last_sync %}
+                                            {{ machine.last_sync|date:"Y-m-d H:i" }}
+                                        {% else %}
+                                            Never
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'edit_attendance_machine' machine.id %}" class="btn btn-sm btn-primary">Edit</a>
+                                        <a href="{% url 'delete_attendance_machine' machine.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this machine?')">Delete</a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center">No machines registered.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h4 class="header-title">Machine Operations</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Test Connection</h5>
+                            <p>Test the connection to your ZKT machine to ensure it's working properly.</p>
+                            <a href="{% url 'test_zkt_connection' %}" class="btn btn-info">Test Connection</a>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Sync Data</h5>
+                            <p>Sync attendance data from the ZKT machine to the system.</p>
+                            <a href="{% url 'sync_zkt_machine' %}" class="btn btn-success">Sync Data</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

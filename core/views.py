@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test, permission_required
 from django.contrib import messages
-from .models import Employee, Department, Designation, Attendance, Ticket, Client, Holiday, Leave
+from .models import Employee, Department, Designation, Attendance, AttendanceLog, AttendanceMachine, Ticket, Client, Holiday, Leave
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.contrib.auth.hashers import make_password
@@ -11,8 +11,11 @@ from django.db.models import Q, Max
 from .models import OnlineUser
 from django.views.decorators.http import require_POST
 from django.utils import timezone
+from datetime import datetime
 from django.db.models import Count
 from .models import PayrollItem, Payslip, Employee
+from .models import TaxSlab, Loan
+from .models import AdvanceRequest
 from django import forms
 from django.db.models import Sum
 from .forms import ClientForm, UserAdminForm, ProjectForm
@@ -49,10 +52,18 @@ from .models import Expense
 from django.forms import inlineformset_factory
 from .models import Estimate, EstimateItem
 from .forms import EstimateForm, EstimateItemForm
-from .forms import InvoiceForm, InvoiceItemForm
+from .forms import InvoiceForm, InvoiceItemForm, EmployeeMachineForm, ManualAttendanceForm, AttendanceMachineForm, AttendanceFilterForm
+from .forms import PayrollItemForm, PayslipCreateForm, PayslipEditForm, TaxSlabForm, LoanForm, AdvanceRequestForm, AdvanceReviewForm
 from .models import Invoice, InvoiceItem
 from django.http import HttpResponse
 from django.contrib.admin.views.decorators import staff_member_required
+from .zkt_service import zkt_service
+from django.core.files.base import ContentFile
+from django.core.mail import EmailMessage
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import mm
 
 
 def login_view(request):
@@ -167,22 +178,34 @@ def add_employee(request):
         date_of_joining = request.POST.get('date_of_joining')
         if not date_of_joining:
             date_of_joining = None
+        machine_id = request.POST.get('machine_id')
+        fingerprint_id = request.POST.get('fingerprint_id')
+        face_id = request.POST.get('face_id')
+        card_id = request.POST.get('card_id')
+        
         if User.objects.filter(username=username).exists():
             error = 'Username already exists. Please choose another.'
             return render(request, 'core/add_employee.html', {'departments': departments, 'designations': designations, 'error': error})
+        
         user = User.objects.create(
             username=username,
             password=make_password(password),
             first_name=first_name,
             last_name=last_name,
         )
+        salary = request.POST.get('salary') or None
         employee = Employee.objects.create(
             user=user,
             department_id=department_id,
             designation_id=designation_id,
+            salary=salary if salary else None,
             phone=phone,
             address=address,
             date_of_joining=date_of_joining,
+            machine_id=machine_id if machine_id else None,
+            fingerprint_id=fingerprint_id if fingerprint_id else None,
+            face_id=face_id if face_id else None,
+            card_id=card_id if card_id else None,
         )
         return render(request, 'core/employee_created.html', {'username': username, 'password': password})
     return render(request, 'core/add_employee.html', {'departments': departments, 'designations': designations, 'error': error})
@@ -265,7 +288,13 @@ def my_designation(request):
 def employee_dashboard(request):
     from django.db.models import Count, Sum
     # Attendance stats for graph
-    attendance_stats = Attendance.objects.filter(user=request.user).values('status').annotate(count=Count('id'))
+    try:
+        employee = request.user.employee
+        attendance_stats = Attendance.objects.filter(employee=employee).values('status').annotate(count=Count('id'))
+    except Exception:
+        # If user doesn't have an employee record, return empty stats
+        attendance_stats = []
+    
     # Department bar chart: all departments and their employee counts
     dept_counts = Department.objects.annotate(emp_count=Count('employee')).values('name', 'emp_count')
     desig_counts = Designation.objects.annotate(emp_count=Count('employee')).values('name', 'emp_count')
@@ -311,6 +340,54 @@ def chat_user_list(request):
 def my_tickets(request):
     tickets = Ticket.objects.filter(created_by=request.user).order_by('-created_at')
     return render(request, 'core/my_tickets.html', {'tickets': tickets})
+
+@login_required
+def my_advances(request):
+    try:
+        employee = request.user.employee
+    except Exception:
+        return HttpResponse('Not an employee', status=403)
+    advances = AdvanceRequest.objects.filter(employee=employee).order_by('-requested_at')
+    if request.method == 'POST':
+        form = AdvanceRequestForm(request.POST)
+        if form.is_valid():
+            advance = form.save(commit=False)
+            advance.employee = employee
+            advance.save()
+            return redirect('my_advances')
+    else:
+        form = AdvanceRequestForm()
+    return render(request, 'core/my_advances.html', {'advances': advances, 'form': form})
+
+@user_passes_test(is_admin)
+def manage_advances(request):
+    advances = AdvanceRequest.objects.select_related('employee__user').order_by('-requested_at')
+    if request.method == 'POST':
+        advance_id = request.POST.get('advance_id')
+        action = request.POST.get('action')
+        admin_comment = request.POST.get('admin_comment', '')
+        adv = get_object_or_404(AdvanceRequest, id=advance_id)
+        if action == 'approve':
+            adv.status = AdvanceRequest.STATUS_APPROVED
+            # Create a Loan record
+            installments = int(request.POST.get('desired_installments') or (adv.desired_installments or 1))
+            monthly_installment = float(adv.amount) / max(1, installments)
+            Loan.objects.create(
+                employee=adv.employee,
+                principal_amount=adv.amount,
+                monthly_installment=monthly_installment,
+                balance=adv.amount,
+                start_date=timezone.now().date(),
+                is_active=True,
+            )
+        elif action == 'reject':
+            adv.status = AdvanceRequest.STATUS_REJECTED
+        adv.reviewed_by = request.user
+        adv.reviewed_at = timezone.now()
+        adv.admin_comment = admin_comment
+        adv.save()
+        return redirect('manage_advances')
+    return render(request, 'core/manage_advances.html', {'advances': advances})
 
 @login_required
 def submit_ticket(request):
@@ -359,60 +436,228 @@ def my_attendance(request):
             return HttpResponse('You are restricted from accessing attendance.', status=403)
     except Exception:
         return HttpResponse('You are restricted from accessing attendance.', status=403)
+    
     today = timezone.now().date()
-    records = Attendance.objects.filter(user=request.user).order_by('-date')
-    today_record = Attendance.objects.filter(user=request.user, date=today).first()
+    records = Attendance.objects.filter(employee=employee).order_by('-date')
+    today_record = Attendance.objects.filter(employee=employee, date=today).first()
+    
+    # Get today's attendance logs
+    try:
+        today_logs = AttendanceLog.objects.filter(
+            employee=employee,
+            timestamp__date=today
+        ).order_by('timestamp')
+    except Exception:
+        today_logs = []
+    
     if request.method == 'POST':
-        if not today_record:
-            check_in = timezone.now().time()
-            Attendance.objects.create(user=request.user, date=today, check_in=check_in, status='present')
-        elif today_record and not today_record.check_out:
-            today_record.check_out = timezone.now().time()
-            today_record.save()
+        attendance_type = request.POST.get('attendance_type')
+        if attendance_type in ['check_in', 'check_out', 'break_start', 'break_end']:
+            try:
+                # Create manual attendance log
+                AttendanceLog.objects.create(
+                    employee=employee,
+                    attendance_type=attendance_type,
+                    source='manual',
+                    timestamp=timezone.now()
+                )
+                
+                # Process attendance logs to update attendance record
+                try:
+                    zkt_service.process_attendance_logs()
+                except Exception as e:
+                    # Log error but don't fail the request
+                    print(f"Error processing attendance logs: {e}")
+                
+                messages.success(request, f'{attendance_type.replace("_", " ").title()} recorded successfully!')
+            except Exception as e:
+                messages.error(request, f'Error recording attendance: {str(e)}')
         return redirect('my_attendance')
-    return render(request, 'core/my_attendance.html', {'records': records, 'today_record': today_record})
+    
+    return render(request, 'core/my_attendance.html', {
+        'records': records, 
+        'today_record': today_record,
+        'today_logs': today_logs
+    })
 
 @user_passes_test(is_admin)
 def all_attendance(request):
-    from datetime import datetime
-    users = User.objects.filter(is_superuser=False)
-    user_id = request.GET.get('user_id')
-    month = request.GET.get('month')
-    year = request.GET.get('year')
-    records = Attendance.objects.select_related('user').order_by('-date')
-    if user_id:
-        records = records.filter(user_id=user_id)
-    if month and year:
-        records = records.filter(date__month=month, date__year=year)
-    # Prepare hours worked per day for the graph
-    from collections import OrderedDict
-    import calendar
-    hours_per_day = OrderedDict()
-    has_hours_data = False
-    if user_id and month and year:
-        days_in_month = calendar.monthrange(int(year), int(month))[1]
-        for day in range(1, days_in_month+1):
-            hours_per_day[day] = 0
-        for rec in records:
-            if rec.check_in and rec.check_out and rec.date.month == int(month) and rec.date.year == int(year):
-                delta = datetime.combine(rec.date, rec.check_out) - datetime.combine(rec.date, rec.check_in)
-                hours = round(delta.total_seconds() / 3600, 2)
-                hours_per_day[rec.date.day] = hours
-        has_hours_data = any(v > 0 for v in hours_per_day.values())
-    else:
-        hours_per_day = None
+    employees = Employee.objects.all()
+    form = AttendanceFilterForm(request.GET)
+    
+    records = Attendance.objects.select_related('employee__user').order_by('-date')
+    
+    if form.is_valid():
+        if form.cleaned_data.get('employee'):
+            records = records.filter(employee=form.cleaned_data['employee'])
+        if form.cleaned_data.get('start_date'):
+            records = records.filter(date__gte=form.cleaned_data['start_date'])
+        if form.cleaned_data.get('end_date'):
+            records = records.filter(date__lte=form.cleaned_data['end_date'])
+        if form.cleaned_data.get('status'):
+            records = records.filter(status=form.cleaned_data['status'])
+    
     # For graph: attendance count by status
     status_counts = Attendance.objects.values('status').annotate(count=Count('id'))
+    
     return render(request, 'core/all_attendance.html', {
         'records': records,
         'status_counts': list(status_counts),
-        'users': users,
-        'selected_user_id': user_id,
-        'selected_month': month,
-        'selected_year': year,
-        'hours_per_day': hours_per_day,
-        'has_hours_data': has_hours_data,
+        'employees': employees,
+        'form': form,
     })
+
+@user_passes_test(is_admin)
+def attendance_logs(request):
+    """View attendance logs with filtering"""
+    form = AttendanceFilterForm(request.GET)
+    logs = AttendanceLog.objects.select_related('employee__user').order_by('-timestamp')
+    
+    if form.is_valid():
+        if form.cleaned_data.get('employee'):
+            logs = logs.filter(employee=form.cleaned_data['employee'])
+        if form.cleaned_data.get('start_date'):
+            logs = logs.filter(timestamp__date__gte=form.cleaned_data['start_date'])
+        if form.cleaned_data.get('end_date'):
+            logs = logs.filter(timestamp__date__lte=form.cleaned_data['end_date'])
+        if form.cleaned_data.get('source'):
+            logs = logs.filter(source=form.cleaned_data['source'])
+    
+    return render(request, 'core/attendance_logs.html', {
+        'logs': logs,
+        'form': form,
+    })
+
+@user_passes_test(is_admin)
+def sync_zkt_machine(request):
+    """Sync attendance data from ZKT machine"""
+    if request.method == 'POST':
+        try:
+            start_date = request.POST.get('start_date')
+            end_date = request.POST.get('end_date')
+            
+            if start_date:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            if end_date:
+                end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            
+            synced_count = zkt_service.sync_attendance(start_date, end_date)
+            zkt_service.process_attendance_logs()
+            
+            messages.success(request, f'Successfully synced {synced_count} attendance records from ZKT machine!')
+        except Exception as e:
+            messages.error(request, f'Error syncing with ZKT machine: {str(e)}')
+    
+    return redirect('all_attendance')
+
+@user_passes_test(is_admin)
+def manage_attendance_machines(request):
+    """Manage attendance machines"""
+    machines = AttendanceMachine.objects.all()
+    
+    if request.method == 'POST':
+        form = AttendanceMachineForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Attendance machine added successfully!')
+            return redirect('manage_attendance_machines')
+    else:
+        form = AttendanceMachineForm()
+    
+    return render(request, 'core/manage_attendance_machines.html', {
+        'machines': machines,
+        'form': form,
+    })
+
+@user_passes_test(is_admin)
+def edit_attendance_machine(request, machine_id):
+    """Edit attendance machine"""
+    machine = get_object_or_404(AttendanceMachine, id=machine_id)
+    
+    if request.method == 'POST':
+        form = AttendanceMachineForm(request.POST, instance=machine)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Attendance machine updated successfully!')
+            return redirect('manage_attendance_machines')
+    else:
+        form = AttendanceMachineForm(instance=machine)
+    
+    return render(request, 'core/edit_attendance_machine.html', {
+        'machine': machine,
+        'form': form,
+    })
+
+@user_passes_test(is_admin)
+def delete_attendance_machine(request, machine_id):
+    """Delete attendance machine"""
+    machine = get_object_or_404(AttendanceMachine, id=machine_id)
+    machine.delete()
+    messages.success(request, 'Attendance machine deleted successfully!')
+    return redirect('manage_attendance_machines')
+
+@user_passes_test(is_admin)
+def manage_employee_machine_ids(request):
+    """Manage employee machine IDs"""
+    employees = Employee.objects.all()
+    
+    if request.method == 'POST':
+        employee_id = request.POST.get('employee_id')
+        employee = get_object_or_404(Employee, id=employee_id)
+        form = EmployeeMachineForm(request.POST, instance=employee)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Machine IDs updated for {employee.user.get_full_name() or employee.user.username}!')
+            return redirect('manage_employee_machine_ids')
+    else:
+        form = EmployeeMachineForm()
+    
+    return render(request, 'core/manage_employee_machine_ids.html', {
+        'employees': employees,
+        'form': form,
+    })
+
+@user_passes_test(is_admin)
+def manual_attendance_entry(request):
+    """Manual attendance entry"""
+    if request.method == 'POST':
+        form = ManualAttendanceForm(request.POST)
+        if form.is_valid():
+            # Create attendance log
+            AttendanceLog.objects.create(
+                employee=form.cleaned_data['employee'],
+                attendance_type=form.cleaned_data['attendance_type'],
+                source='manual',
+                timestamp=form.cleaned_data['timestamp'],
+                notes=form.cleaned_data['notes']
+            )
+            
+            # Process attendance logs
+            zkt_service.process_attendance_logs()
+            
+            messages.success(request, 'Manual attendance entry recorded successfully!')
+            return redirect('manual_attendance_entry')
+    else:
+        form = ManualAttendanceForm()
+    
+    return render(request, 'core/manual_attendance_entry.html', {
+        'form': form,
+    })
+
+@user_passes_test(is_admin)
+def test_zkt_connection(request):
+    """Test ZKT machine connection"""
+    try:
+        if zkt_service.connect():
+            users = zkt_service.get_users()
+            zkt_service.disconnect()
+            messages.success(request, f'Successfully connected to ZKT machine! Found {len(users)} users.')
+        else:
+            messages.error(request, 'Failed to connect to ZKT machine. Please check IP address and port.')
+    except Exception as e:
+        messages.error(request, f'Error testing ZKT connection: {str(e)}')
+    
+    return redirect('manage_attendance_machines')
 
 class HolidayForm(ModelForm):
     class Meta:
@@ -514,16 +759,28 @@ def edit_employee(request, employee_id):
         department_id = request.POST.get('department')
         designation_id = request.POST.get('designation')
         date_of_joining = request.POST.get('date_of_joining')
+        machine_id = request.POST.get('machine_id')
+        fingerprint_id = request.POST.get('fingerprint_id')
+        face_id = request.POST.get('face_id')
+        card_id = request.POST.get('card_id')
+        
         if not date_of_joining:
             date_of_joining = None
+            
         employee.user.first_name = first_name
         employee.user.last_name = last_name
         employee.user.save()
+        salary = request.POST.get('salary') or None
         employee.phone = phone
         employee.address = address
         employee.department_id = department_id
         employee.designation_id = designation_id
+        employee.salary = salary if salary else None
         employee.date_of_joining = date_of_joining
+        employee.machine_id = machine_id if machine_id else None
+        employee.fingerprint_id = fingerprint_id if fingerprint_id else None
+        employee.face_id = face_id if face_id else None
+        employee.card_id = card_id if card_id else None
         employee.save()
         return redirect('employee_list')
     return render(request, 'core/edit_employee.html', {
@@ -562,28 +819,18 @@ def delete_employee(request, employee_id):
 @user_passes_test(is_admin)
 def change_employee_role(request, employee_id):
     employee = Employee.objects.get(id=employee_id)
-    role_id = request.POST.get('role_id')
-    employee.role_id = role_id if role_id else None
-    employee.save()
+    # Role system is not implemented yet
+    messages.info(request, 'Role system is not implemented yet.')
     return redirect('employee_list')
 
 # Remove all permission matrix and old permission logic
 
 @user_passes_test(is_admin)
 def admin_roles(request):
-    roles = Role.objects.all()
-    # For each role, get a summary of permissions
-    role_permissions = {}
-    for role in roles:
-        perms = Permission.objects.filter(role=role)
-        if perms.exists():
-            perm_summary = ', '.join(sorted(set([f"{p.module}:{p.action}" for p in perms if p.allowed])))
-        else:
-            perm_summary = 'No permissions'
-        role_permissions[role.id] = perm_summary
+    # Role and Permission models are not implemented yet
     return render(request, 'core/admin_roles.html', {
-        'roles': roles,
-        'role_permissions': role_permissions,
+        'roles': [],
+        'role_permissions': {},
     })
 
 @user_passes_test(is_admin)
@@ -1265,53 +1512,18 @@ def delete_invoice(request, invoice_id):
 @login_required
 def permissions(request):
     is_admin = request.user.is_superuser
-    from .models import EmployeePermission, Employee
+    from .models import Employee
     if is_admin:
         employees = Employee.objects.select_related('user').all()
     else:
         employees = Employee.objects.select_related('user').filter(user=request.user)
-    modules = [
-        'dashboard', 'tickets', 'employees', 'attendance', 'departments',
-        'designations', 'holidays', 'leaves', 'my_tasks', 'chat'
-    ]
-    actions = ['view', 'edit', 'delete']
-    permissions = {}
-    for employee in employees:
-        permissions[employee.id] = {}
-        for module in modules:
-            permissions[employee.id][module] = {}
-            for action in actions:
-                perm, _ = EmployeePermission.objects.get_or_create(
-                    employee=employee, module=module, action=action,
-                    defaults={'allowed': False, 'locked': False}
-                )
-                permissions[employee.id][module][action] = perm
-    if request.method == 'POST' and is_admin:
-        # First, handle locking/unlocking
-        for key, value in request.POST.items():
-            if key.startswith('toggle_lock_'):
-                _, emp_id, module, action = key.split('_', 3)
-                perm = EmployeePermission.objects.get(
-                    employee_id=emp_id, module=module, action=action
-                )
-                perm.locked = not perm.locked
-                perm.save()
-                return redirect('permissions')
-        # Now, handle allowed checkboxes robustly
-        for employee in employees:
-            for module in modules:
-                for action in actions:
-                    perm = permissions[employee.id][module][action]
-                    checkbox_name = f"perm_{employee.id}_{module}_{action}"
-                    # If present in POST, set allowed True, else False
-                    perm.allowed = (checkbox_name in request.POST)
-                    perm.save()
-        return redirect('permissions')
+    
+    # EmployeePermission model is not implemented yet
     return render(request, 'core/permissions.html', {
         'employees': employees,
-        'modules': modules,
-        'actions': actions,
-        'permissions': permissions,
+        'modules': [],
+        'actions': [],
+        'permissions': {},
         'is_admin': is_admin,
     })
 
@@ -1339,3 +1551,277 @@ def permissions_management(request):
         'employees': employees,
         'features': features,
     })
+
+# ===================== PAYROLL =====================
+
+def _render_payslip_pdf_to_bytes(payslip, items, context_extra=None):
+    base_salary = 0
+    unpaid_leave_deduction = 0
+    if context_extra:
+        base_salary = context_extra.get('base_salary', 0)
+        unpaid_leave_deduction = context_extra.get('unpaid_leave_deduction', 0)
+        tax_amount = context_extra.get('tax_amount', 0)
+        loan_installment_total = context_extra.get('loan_installment_total', 0)
+        late_deduction = context_extra.get('late_deduction', 0)
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    y = height - 20 * mm
+
+    def draw_line(text, offset_mm=7, bold=False):
+        nonlocal y
+        if bold:
+            c.setFont('Helvetica-Bold', 11)
+        else:
+            c.setFont('Helvetica', 10)
+        c.drawString(20 * mm, y, str(text))
+        y -= offset_mm * mm
+
+    # Header
+    c.setFont('Helvetica-Bold', 14)
+    c.drawCentredString(width / 2, height - 15 * mm, 'Salary Payslip')
+    c.setFont('Helvetica', 10)
+    draw_line(f"Employee: {payslip.employee.user.get_full_name() or payslip.employee.user.username}")
+    draw_line(f"Designation: {payslip.employee.designation}")
+    draw_line(f"Period: {payslip.period_start} - {payslip.period_end}")
+    draw_line(f"Date of Payment: {payslip.date}")
+    draw_line(f"Payslip No.: {payslip.id}")
+
+    # Earnings
+    y -= 4 * mm
+    draw_line('Earnings', bold=True)
+    draw_line(f"Base Salary: {base_salary}")
+    for item in items:
+        if item.item_type == PayrollItem.EARNING:
+            draw_line(f"{item.name}: {item.amount}")
+    draw_line(f"Total Earnings: {payslip.total_earnings + base_salary}", bold=True)
+
+    # Deductions
+    y -= 4 * mm
+    draw_line('Deductions', bold=True)
+    if unpaid_leave_deduction:
+        draw_line(f"Unpaid Leaves: {unpaid_leave_deduction}")
+    if 'late_deduction' in locals() and late_deduction:
+        draw_line(f"Late Policy Deduction: {late_deduction}")
+    for item in items:
+        if item.item_type == PayrollItem.DEDUCTION:
+            draw_line(f"{item.name}: {item.amount}")
+    draw_line(f"Total Deductions: {payslip.total_deductions}", bold=True)
+
+    # Summary
+    y -= 4 * mm
+    draw_line('Summary', bold=True)
+    draw_line(f"Gross Pay: {payslip.gross_pay}")
+    draw_line(f"Net Pay: {payslip.total}")
+    # Optional extras
+    # tax_amount and loan_installment_total already set above when context provided
+
+    if tax_amount or loan_installment_total:
+        y -= 4 * mm
+        draw_line('Additional Deductions', bold=True)
+        if tax_amount:
+            draw_line(f"Income Tax: {tax_amount}")
+        if loan_installment_total:
+            draw_line(f"Loan Repayment: {loan_installment_total}")
+
+    draw_line(f"Status: {payslip.get_status_display()}")
+
+    c.showPage()
+    c.save()
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+    return pdf_bytes
+
+@user_passes_test(is_admin)
+def payroll_items(request):
+    items = PayrollItem.objects.select_related('employee__user').order_by('-date')
+    if request.method == 'POST':
+        form = PayrollItemForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('payroll_items')
+    else:
+        form = PayrollItemForm()
+    return render(request, 'core/payroll_items.html', {'items': items, 'form': form})
+
+@user_passes_test(is_admin)
+def edit_payroll_item(request, item_id):
+    item = get_object_or_404(PayrollItem, id=item_id)
+    if request.method == 'POST':
+        form = PayrollItemForm(request.POST, instance=item)
+        if form.is_valid():
+            form.save()
+            return redirect('payroll_items')
+    else:
+        form = PayrollItemForm(instance=item)
+    return render(request, 'core/edit_payroll_item.html', {'form': form})
+
+@user_passes_test(is_admin)
+def delete_payroll_item(request, item_id):
+    item = get_object_or_404(PayrollItem, id=item_id)
+    if request.method == 'POST':
+        item.delete()
+        return redirect('payroll_items')
+    return HttpResponse(status=405)
+
+@user_passes_test(is_admin)
+def admin_payslips(request):
+    payslips = Payslip.objects.select_related('employee__user').order_by('-created_at')
+    if request.method == 'POST':
+        form = PayslipCreateForm(request.POST)
+        if form.is_valid():
+            employee = form.cleaned_data['employee']
+            period_start = form.cleaned_data['period_start']
+            period_end = form.cleaned_data['period_end']
+            send_email = form.cleaned_data['send_email']
+            form_base_salary = form.cleaned_data.get('base_salary')
+
+            # Sum payroll items for the period, including recurring items that overlap period
+            period_items = PayrollItem.objects.filter(employee=employee).filter(
+                (
+                    Q(is_recurring=False) & Q(date__gte=period_start, date__lte=period_end)
+                ) | (
+                    Q(is_recurring=True) & (
+                        (Q(start_date__lte=period_end) | Q(start_date__isnull=True)) & (Q(end_date__gte=period_start) | Q(end_date__isnull=True))
+                    )
+                )
+            )
+            total_earnings = period_items.filter(item_type=PayrollItem.EARNING).aggregate(s=Sum('amount'))['s'] or 0
+            total_deductions = period_items.filter(item_type=PayrollItem.DEDUCTION).aggregate(s=Sum('amount'))['s'] or 0
+
+            base_salary = form_base_salary if form_base_salary is not None else (employee.salary or 0)
+
+            # Late policy: 3 lates = 1 day salary deduction
+            late_days = Attendance.objects.filter(employee=employee, date__gte=period_start, date__lte=period_end, is_late=True).count()
+            late_day_equivalents = late_days // 3
+            late_deduction = 0
+            if base_salary and late_day_equivalents:
+                late_deduction = round((float(base_salary) / 30.0) * late_day_equivalents, 2)
+                total_deductions += late_deduction
+
+            # Unpaid leave deduction from attendance
+            absent_days = Attendance.objects.filter(employee=employee, date__gte=period_start, date__lte=period_end, status='absent').count()
+            unpaid_leave_deduction = 0
+            if base_salary and absent_days:
+                unpaid_leave_deduction = round((base_salary / 30) * absent_days, 2)
+                total_deductions += unpaid_leave_deduction
+
+            # Tax Slab
+            taxable_income = float(base_salary) + float(total_earnings)
+            slab = TaxSlab.objects.order_by('min_income').filter(min_income__lte=taxable_income).filter(
+                Q(max_income__gte=taxable_income) | Q(max_income__isnull=True)
+            ).first()
+            tax_amount = 0
+            if slab:
+                tax_amount = round((taxable_income * float(slab.rate_percent) / 100.0) + float(slab.fixed_deduction), 2)
+                if tax_amount > 0:
+                    total_deductions += tax_amount
+
+            # Loan repayments
+            loan_installment_total = 0
+            active_loans = Loan.objects.filter(employee=employee, is_active=True)
+            for loan in active_loans:
+                if float(loan.balance) > 0 and float(loan.monthly_installment) > 0:
+                    installment = float(loan.monthly_installment)
+                    if installment > float(loan.balance):
+                        installment = float(loan.balance)
+                    loan_installment_total += installment
+            if loan_installment_total:
+                total_deductions += loan_installment_total
+
+            gross_pay = float(base_salary) + float(total_earnings)
+            net_total = gross_pay - float(total_deductions)
+
+            payslip = Payslip.objects.create(
+                employee=employee,
+                date=timezone.now().date(),
+                period_start=period_start,
+                period_end=period_end,
+                gross_pay=gross_pay,
+                total_earnings=total_earnings,
+                total_deductions=total_deductions,
+                total=net_total,
+                created_by=request.user,
+                status=Payslip.STATUS_PROCESSED,
+            )
+
+            # Generate PDF
+            pdf_bytes = _render_payslip_pdf_to_bytes(
+                payslip,
+                period_items,
+                context_extra={
+                    'base_salary': base_salary,
+                    'unpaid_leave_deduction': unpaid_leave_deduction,
+                    'late_deduction': late_deduction,
+                    'tax_amount': tax_amount,
+                    'loan_installment_total': loan_installment_total,
+                }
+            )
+            filename = f"payslip_{employee.user.username}_{period_start}_{period_end}.pdf"
+            payslip.pdf.save(filename, ContentFile(pdf_bytes))
+            payslip.save()
+
+            # Optional email delivery
+            if send_email and employee.user.email:
+                try:
+                    email = EmailMessage(
+                        subject=f"Payslip {period_start} - {period_end}",
+                        body="Please find your payslip attached.",
+                        to=[employee.user.email],
+                    )
+                    email.attach(filename, pdf_bytes, 'application/pdf')
+                    email.send(fail_silently=True)
+                except Exception:
+                    pass
+
+            return redirect('admin_payslips')
+    else:
+        form = PayslipCreateForm()
+    return render(request, 'core/admin_payslips.html', {'payslips': payslips, 'form': form})
+
+@user_passes_test(is_admin)
+def edit_payslip(request, payslip_id):
+    payslip = get_object_or_404(Payslip, id=payslip_id)
+    if request.method == 'POST':
+        form = PayslipEditForm(request.POST, instance=payslip)
+        if form.is_valid():
+            form.save()
+            return redirect('admin_payslips')
+    else:
+        form = PayslipEditForm(instance=payslip)
+    return render(request, 'core/edit_payslip.html', {'form': form})
+
+@user_passes_test(is_admin)
+def delete_payslip(request, payslip_id):
+    payslip = get_object_or_404(Payslip, id=payslip_id)
+    if request.method == 'POST':
+        payslip.delete()
+        return redirect('admin_payslips')
+    return render(request, 'core/delete_payslip.html', {'payslip': payslip})
+
+@login_required
+def my_payslips(request):
+    try:
+        employee = request.user.employee
+    except Exception:
+        return HttpResponse('Not an employee', status=403)
+    payslips = Payslip.objects.filter(employee=employee).order_by('-created_at')
+    return render(request, 'core/employee_payslips.html', {'payslips': payslips})
+
+@user_passes_test(is_admin)
+def tax_slabs(request):
+    slabs = TaxSlab.objects.all().order_by('min_income')
+    form = TaxSlabForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        return redirect('tax_slabs')
+    return render(request, 'core/tax_slabs.html', {'slabs': slabs, 'form': form})
+
+@user_passes_test(is_admin)
+def loans(request):
+    loans_qs = Loan.objects.select_related('employee__user').all()
+    form = LoanForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        loan = form.save()
+        return redirect('loans')
+    return render(request, 'core/loans.html', {'loans': loans_qs, 'form': form})

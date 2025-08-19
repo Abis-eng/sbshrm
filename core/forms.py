@@ -1,7 +1,9 @@
 from django import forms
-from .models import Client, Project, Employee, Department, Task, BudgetCategory, Budget, BudgetExpense, BudgetRevenue, Asset, CompanySettings, LocalizationSettings, InvoiceSettings, SalarySettings, ThemeSettings, Tax, Expense, Estimate, EstimateItem, Invoice, InvoiceItem
+from django.forms import ModelForm
+from .models import *
 from django.contrib.auth.models import User
 from django.utils.html import format_html
+from django.utils import timezone
 
 class ClientForm(forms.ModelForm):
     class Meta:
@@ -243,3 +245,168 @@ class InvoiceItemForm(forms.ModelForm):
     class Meta:
         model = InvoiceItem
         fields = ['item', 'description', 'unit_cost', 'quantity', 'amount'] 
+
+class EmployeeMachineForm(ModelForm):
+    """Form for managing employee machine IDs"""
+    class Meta:
+        model = Employee
+        fields = ['machine_id', 'fingerprint_id', 'face_id', 'card_id']
+        widgets = {
+            'machine_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter Machine ID'}),
+            'fingerprint_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter Fingerprint ID'}),
+            'face_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter Face ID'}),
+            'card_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter Card ID'}),
+        }
+
+class ManualAttendanceForm(forms.Form):
+    """Form for manual attendance entry"""
+    ATTENDANCE_TYPE_CHOICES = [
+        ('check_in', 'Check In'),
+        ('check_out', 'Check Out'),
+        ('break_start', 'Break Start'),
+        ('break_end', 'Break End'),
+    ]
+    
+    employee = forms.ModelChoiceField(
+        queryset=Employee.objects.all(),
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Employee"
+    )
+    attendance_type = forms.ChoiceField(
+        choices=ATTENDANCE_TYPE_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Attendance Type"
+    )
+    timestamp = forms.DateTimeField(
+        widget=forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
+        label="Timestamp",
+        initial=timezone.now
+    )
+    notes = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        required=False,
+        label="Notes"
+    )
+
+class AttendanceMachineForm(ModelForm):
+    """Form for managing attendance machines"""
+    class Meta:
+        model = AttendanceMachine
+        fields = ['name', 'ip_address', 'port', 'location', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'ip_address': forms.TextInput(attrs={'class': 'form-control'}),
+            'port': forms.NumberInput(attrs={'class': 'form-control'}),
+            'location': forms.TextInput(attrs={'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+class AttendanceFilterForm(forms.Form):
+    """Form for filtering attendance records"""
+    employee = forms.ModelChoiceField(
+        queryset=Employee.objects.all(),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Employee"
+    )
+    start_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        label="Start Date"
+    )
+    end_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        label="End Date"
+    )
+    status = forms.ChoiceField(
+        choices=[('', 'All')] + Attendance.STATUS_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Status"
+    )
+    source = forms.ChoiceField(
+        choices=[('', 'All')] + AttendanceLog.SOURCE_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label="Source"
+    ) 
+
+class PayrollItemForm(forms.ModelForm):
+    date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
+    class Meta:
+        model = PayrollItem
+        fields = ['employee', 'date', 'name', 'item_type', 'category', 'amount', 'description', 'is_recurring', 'start_date', 'end_date']
+        widgets = {
+            'employee': forms.Select(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'item_type': forms.Select(attrs={'class': 'form-select'}),
+            'category': forms.Select(attrs={'class': 'form-select'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'is_recurring': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        }
+
+class PayslipCreateForm(forms.Form):
+    employee = forms.ModelChoiceField(queryset=Employee.objects.select_related('user').all(), widget=forms.Select(attrs={'class': 'form-control'}))
+    period_start = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
+    period_end = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
+    base_salary = forms.DecimalField(required=False, min_value=0, decimal_places=2, max_digits=10, widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}), help_text='Leave blank to use employee profile salary')
+    send_email = forms.BooleanField(required=False, initial=False, widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}), label='Email payslip to employee')
+
+class PayslipEditForm(forms.ModelForm):
+    period_start = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}), required=False)
+    period_end = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}), required=False)
+    class Meta:
+        model = Payslip
+        fields = ['date', 'period_start', 'period_end', 'status']
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+class TaxSlabForm(forms.ModelForm):
+    class Meta:
+        model = TaxSlab
+        fields = ['name', 'min_income', 'max_income', 'rate_percent', 'fixed_deduction']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'min_income': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'max_income': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'rate_percent': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'fixed_deduction': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        }
+
+class LoanForm(forms.ModelForm):
+    class Meta:
+        model = Loan
+        fields = ['employee', 'principal_amount', 'monthly_installment', 'balance', 'start_date', 'end_date', 'is_active']
+        widgets = {
+            'employee': forms.Select(attrs={'class': 'form-control'}),
+            'principal_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'monthly_installment': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'balance': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        }
+
+class AdvanceRequestForm(forms.ModelForm):
+    class Meta:
+        model = AdvanceRequest
+        fields = ['amount', 'reason', 'desired_installments']
+        widgets = {
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'desired_installments': forms.NumberInput(attrs={'class': 'form-control', 'step': '1', 'min': '1'}),
+        }
+
+class AdvanceReviewForm(forms.ModelForm):
+    action = forms.ChoiceField(choices=[('approve', 'Approve'), ('reject', 'Reject')], widget=forms.Select(attrs={'class': 'form-select'}))
+    class Meta:
+        model = AdvanceRequest
+        fields = ['admin_comment']
+        widgets = {
+            'admin_comment': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }

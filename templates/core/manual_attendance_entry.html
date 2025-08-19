@@ -1,0 +1,79 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Manual Attendance Entry{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box">
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'all_attendance' %}">All Attendance</a></li>
+                        <li class="breadcrumb-item active">Manual Attendance Entry</li>
+                    </ol>
+                </div>
+                <h4 class="page-title">Manual Attendance Entry</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="header-title">Enter Manual Attendance</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.employee.id_for_label }}" class="form-label">{{ form.employee.label }}</label>
+                                    {{ form.employee }}
+                                    {% if form.employee.errors %}
+                                        <div class="text-danger">{{ form.employee.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.attendance_type.id_for_label }}" class="form-label">{{ form.attendance_type.label }}</label>
+                                    {{ form.attendance_type }}
+                                    {% if form.attendance_type.errors %}
+                                        <div class="text-danger">{{ form.attendance_type.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="{{ form.timestamp.id_for_label }}" class="form-label">{{ form.timestamp.label }}</label>
+                                    {{ form.timestamp }}
+                                    {% if form.timestamp.errors %}
+                                        <div class="text-danger">{{ form.timestamp.errors }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.notes.id_for_label }}" class="form-label">{{ form.notes.label }}</label>
+                            {{ form.notes }}
+                            {% if form.notes.errors %}
+                                <div class="text-danger">{{ form.notes.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="text-end">
+                            <a href="{% url 'all_attendance' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Record Attendance</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

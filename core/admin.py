@@ -1,4 +1,4 @@
-from .models import Department, Employee, Designation, Holiday, Leave, BudgetCategory, Budget, BudgetExpense, BudgetRevenue, Asset, CompanySettings, LocalizationSettings, InvoiceSettings, SalarySettings, ThemeSettings, Tax, Expense, Estimate, EstimateItem, Invoice, InvoiceItem
+from .models import Department, Employee, Designation, Holiday, Leave, BudgetCategory, Budget, BudgetExpense, BudgetRevenue, Asset, CompanySettings, LocalizationSettings, InvoiceSettings, SalarySettings, ThemeSettings, Tax, Expense, Estimate, EstimateItem, Invoice, InvoiceItem, Attendance, AttendanceLog, AttendanceMachine
 from django.contrib import admin
 
 # Register your models here.
@@ -26,3 +26,24 @@ admin.site.register(Estimate)
 admin.site.register(EstimateItem)
 admin.site.register(Invoice)
 admin.site.register(InvoiceItem)
+
+# Attendance models
+@admin.register(Attendance)
+class AttendanceAdmin(admin.ModelAdmin):
+    list_display = ['employee', 'date', 'status', 'check_in', 'check_out', 'total_work_hours', 'is_late']
+    list_filter = ['status', 'date', 'is_late', 'employee__department']
+    search_fields = ['employee__user__username', 'employee__user__first_name', 'employee__user__last_name']
+    date_hierarchy = 'date'
+
+@admin.register(AttendanceLog)
+class AttendanceLogAdmin(admin.ModelAdmin):
+    list_display = ['employee', 'attendance_type', 'source', 'timestamp', 'machine_id']
+    list_filter = ['attendance_type', 'source', 'timestamp', 'employee__department']
+    search_fields = ['employee__user__username', 'machine_id', 'notes']
+    date_hierarchy = 'timestamp'
+
+@admin.register(AttendanceMachine)
+class AttendanceMachineAdmin(admin.ModelAdmin):
+    list_display = ['name', 'ip_address', 'port', 'location', 'is_active', 'last_sync']
+    list_filter = ['is_active', 'location']
+    search_fields = ['name', 'ip_address', 'location']

@@ -1,0 +1,103 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Attendance Logs{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box">
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'all_attendance' %}">All Attendance</a></li>
+                        <li class="breadcrumb-item active">Attendance Logs</li>
+                    </ol>
+                </div>
+                <h4 class="page-title">Attendance Logs</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="header-title">Attendance Logs</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Filter Form -->
+                    <form method="get" class="row g-3 mb-4">
+                        <div class="col-md-2">
+                            {{ form.employee.label_tag }}
+                            {{ form.employee }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form.start_date.label_tag }}
+                            {{ form.start_date }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form.end_date.label_tag }}
+                            {{ form.end_date }}
+                        </div>
+                        <div class="col-md-2">
+                            {{ form.source.label_tag }}
+                            {{ form.source }}
+                        </div>
+                        <div class="col-md-2">
+                            <label>&nbsp;</label><br>
+                            <button type="submit" class="btn btn-primary">Filter</button>
+                            <a href="{% url 'attendance_logs' %}" class="btn btn-secondary">Clear</a>
+                        </div>
+                    </form>
+
+                    <!-- Logs Table -->
+                    <div class="table-responsive">
+                        <table class="table table-centered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Type</th>
+                                    <th>Source</th>
+                                    <th>Timestamp</th>
+                                    <th>Machine ID</th>
+                                    <th>Location</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in logs %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ log.employee.user.get_full_name|default:log.employee.user.username }}</strong><br>
+                                        <small class="text-muted">{{ log.employee.department.name|default:"No Department" }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if log.attendance_type == 'check_in' %}success{% elif log.attendance_type == 'check_out' %}info{% elif log.attendance_type == 'break_start' %}warning{% else %}secondary{% endif %}">
+                                            {{ log.get_attendance_type_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if log.source == 'machine' %}primary{% elif log.source == 'manual' %}secondary{% else %}info{% endif %}">
+                                            {{ log.get_source_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+                                    <td>{{ log.machine_id|default:"-" }}</td>
+                                    <td>{{ log.location|default:"-" }}</td>
+                                    <td>{{ log.notes|default:"-" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center">No attendance logs found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

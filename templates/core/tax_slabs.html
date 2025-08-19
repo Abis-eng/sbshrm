@@ -1,0 +1,38 @@
+{% extends 'core/base.html' %}
+{% block page_title %}Tax Slabs{% endblock %}
+{% block content %}
+<div class="card mt-4">
+  <div class="card-body">
+    <h4 class="card-title">Tax Slabs</h4>
+    <form method="post" class="mb-3">
+      {% csrf_token %}
+      <div class="row g-2">
+        <div class="col-md-2">{{ form.name }}</div>
+        <div class="col-md-2">{{ form.min_income }}</div>
+        <div class="col-md-2">{{ form.max_income }}</div>
+        <div class="col-md-2">{{ form.rate_percent }}</div>
+        <div class="col-md-2">{{ form.fixed_deduction }}</div>
+        <div class="col-md-2"><button class="btn btn-primary w-100">Add Slab</button></div>
+      </div>
+    </form>
+    <table class="table table-bordered">
+      <thead><tr><th>Name</th><th>Min Income</th><th>Max Income</th><th>Rate %</th><th>Fixed Deduction</th></tr></thead>
+      <tbody>
+        {% for slab in slabs %}
+        <tr>
+          <td>{{ slab.name }}</td>
+          <td>{{ slab.min_income }}</td>
+          <td>{{ slab.max_income|default:'∞' }}</td>
+          <td>{{ slab.rate_percent }}</td>
+          <td>{{ slab.fixed_deduction }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">No tax slabs.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  </div>
+{% endblock %}
+
+

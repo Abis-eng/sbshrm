@@ -57,4 +57,16 @@ urlpatterns = [
     path('sales/invoices/edit/<int:invoice_id>/', views.edit_invoice, name='edit_invoice'),
     path('sales/invoices/delete/<int:invoice_id>/', views.delete_invoice, name='delete_invoice'),
     path('permissions/', views.permissions_management, name='permissions_management'),
+    # Payroll
+    path('payroll/items/', views.payroll_items, name='payroll_items'),
+    path('payroll/items/<int:item_id>/edit/', views.edit_payroll_item, name='edit_payroll_item'),
+    path('payroll/items/<int:item_id>/delete/', views.delete_payroll_item, name='delete_payroll_item'),
+    path('payroll/payslips/', views.admin_payslips, name='admin_payslips'),
+    path('payroll/payslips/<int:payslip_id>/edit/', views.edit_payslip, name='edit_payslip'),
+    path('payroll/payslips/<int:payslip_id>/delete/', views.delete_payslip, name='delete_payslip'),
+    path('my-payslips/', views.my_payslips, name='my_payslips'),
+    path('payroll/tax-slabs/', views.tax_slabs, name='tax_slabs'),
+    path('payroll/loans/', views.loans, name='loans'),
+    path('my-advances/', views.my_advances, name='my_advances'),
+    path('manage-advances/', views.manage_advances, name='manage_advances'),
 ] 

@@ -1,0 +1,36 @@
+{% extends 'core/base.html' %}
+{% block page_title %}My Advance Requests{% endblock %}
+{% block content %}
+<div class="card mt-4">
+  <div class="card-body">
+    <h4 class="card-title">Request an Advance</h4>
+    <form method="post" class="mb-3">
+      {% csrf_token %}
+      <div class="row g-2">
+        <div class="col-md-2">{{ form.amount }}</div>
+        <div class="col-md-2">{{ form.desired_installments }}</div>
+        <div class="col">{{ form.reason }}</div>
+        <div class="col-md-2"><button class="btn btn-primary w-100">Submit</button></div>
+      </div>
+    </form>
+
+    <h5>Your Requests</h5>
+    <table class="table table-bordered">
+      <thead><tr><th>Amount</th><th>Installments</th><th>Status</th><th>Requested</th><th>Admin Comment</th></tr></thead>
+      <tbody>
+        {% for adv in advances %}
+        <tr>
+          <td>{{ adv.amount }}</td>
+          <td>{{ adv.desired_installments|default:'-' }}</td>
+          <td>{{ adv.get_status_display }}</td>
+          <td>{{ adv.requested_at|date:'Y-m-d H:i' }}</td>
+          <td>{{ adv.admin_comment }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5">No advance requests yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,37 +1,212 @@
 {% extends 'core/base.html' %}
-{% block page_title %}My Attendance{% endblock %}
+
+{% block title %}My Attendance{% endblock %}
+
 {% block content %}
-  <div class="card mt-4">
-    <div class="card-body">
-      <h4 class="card-title">My Attendance</h4>
-      {% if not today_record %}
-        <form method="post">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-success mb-3">Mark Attendance (Check In)</button>
-        </form>
-      {% elif today_record and not today_record.check_out %}
-        <form method="post">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-warning mb-3">Check Out</button>
-        </form>
-      {% else %}
-        <div class="alert alert-info mb-3">Attendance marked for today. (Checked in and out)</div>
-      {% endif %}
-      <table class="table table-bordered">
-        <thead><tr><th>Date</th><th>Status</th><th>Check In</th><th>Check Out</th></tr></thead>
-        <tbody>
-          {% for record in records %}
-          <tr>
-            <td>{{ record.date }}</td>
-            <td>{{ record.get_status_display }}</td>
-            <td>{{ record.check_in|default:'-' }}</td>
-            <td>{{ record.check_out|default:'-' }}</td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="4">No attendance records found.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box">
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="{% url 'employee_dashboard' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item active">My Attendance</li>
+                    </ol>
+                </div>
+                <h4 class="page-title">My Attendance</h4>
+            </div>
+        </div>
     </div>
-  </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="header-title">Today's Attendance</h4>
+                </div>
+                <div class="card-body">
+                    {% if today_record %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Today's Summary</h5>
+                                <table class="table table-borderless">
+                                    <tr>
+                                        <td><strong>Date:</strong></td>
+                                        <td>{{ today_record.date }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Status:</strong></td>
+                                        <td><span class="badge bg-{% if today_record.status == 'present' %}success{% elif today_record.status == 'late' %}warning{% else %}danger{% endif %}">{{ today_record.get_status_display }}</span></td>
+                                    </tr>
+                                    {% if today_record.check_in %}
+                                    <tr>
+                                        <td><strong>Check In:</strong></td>
+                                        <td>{{ today_record.check_in|time:"H:i" }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    {% if today_record.check_out %}
+                                    <tr>
+                                        <td><strong>Check Out:</strong></td>
+                                        <td>{{ today_record.check_out|time:"H:i" }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    {% if today_record.total_work_hours %}
+                                    <tr>
+                                        <td><strong>Total Hours:</strong></td>
+                                        <td>{{ today_record.total_work_hours }} hours</td>
+                                    </tr>
+                                    {% endif %}
+                                    {% if today_record.is_late %}
+                                    <tr>
+                                        <td><strong>Late by:</strong></td>
+                                        <td>{{ today_record.late_minutes }} minutes</td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Manual Attendance Entry</h5>
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <div class="mb-3">
+                                        <label class="form-label">Select Action:</label>
+                                        <select name="attendance_type" class="form-select" required>
+                                            <option value="">Choose...</option>
+                                            {% if not today_record.check_in %}
+                                            <option value="check_in">Check In</option>
+                                            {% endif %}
+                                            {% if today_record.check_in and not today_record.check_out %}
+                                            <option value="check_out">Check Out</option>
+                                            {% endif %}
+                                            <option value="break_start">Break Start</option>
+                                            <option value="break_end">Break End</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Record Attendance</button>
+                                </form>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <h5>No attendance record for today</h5>
+                            <p>You can mark your attendance using the form below or through the ZKT machine.</p>
+                            <form method="post">
+                                {% csrf_token %}
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <select name="attendance_type" class="form-select" required>
+                                            <option value="">Choose action...</option>
+                                            <option value="check_in">Check In</option>
+                                            <option value="break_start">Break Start</option>
+                                            <option value="break_end">Break End</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <button type="submit" class="btn btn-primary">Record Attendance</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if today_logs %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="header-title">Today's Attendance Logs</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-centered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Type</th>
+                                    <th>Source</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in today_logs %}
+                                <tr>
+                                    <td>{{ log.timestamp|time:"H:i:s" }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if log.attendance_type == 'check_in' %}success{% elif log.attendance_type == 'check_out' %}info{% else %}warning{% endif %}">
+                                            {{ log.get_attendance_type_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if log.source == 'machine' %}primary{% else %}secondary{% endif %}">
+                                            {{ log.get_source_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ log.notes|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="header-title">Attendance History</h4>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-centered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Total Hours</th>
+                                    <th>Late</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in records %}
+                                <tr>
+                                    <td>{{ record.date }}</td>
+                                    <td>
+                                        <span class="badge bg-{% if record.status == 'present' %}success{% elif record.status == 'late' %}warning{% elif record.status == 'absent' %}danger{% else %}info{% endif %}">
+                                            {{ record.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ record.check_in|time:"H:i"|default:"-" }}</td>
+                                    <td>{{ record.check_out|time:"H:i"|default:"-" }}</td>
+                                    <td>{{ record.total_work_hours|default:"-" }} {% if record.total_work_hours %}hrs{% endif %}</td>
+                                    <td>
+                                        {% if record.is_late %}
+                                            <span class="text-danger">{{ record.late_minutes }} min</span>
+                                        {% else %}
+                                            <span class="text-success">On time</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No attendance records found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %} 

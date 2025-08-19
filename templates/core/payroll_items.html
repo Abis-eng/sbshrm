@@ -6,16 +6,31 @@
     <h4 class="card-title">Payroll Items (Admin)</h4>
     <form method="post" class="mb-4">
       {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit" class="btn btn-primary">Add Payroll Item</button>
+      <div class="row g-2">
+        <div class="col-md-2">{{ form.employee }}</div>
+        <div class="col-md-2">{{ form.date }}</div>
+        <div class="col-md-2">{{ form.name }}</div>
+        <div class="col-md-2">{{ form.item_type }}</div>
+        <div class="col-md-2">{{ form.category }}</div>
+        <div class="col-md-1">{{ form.amount }}</div>
+        <div class="col-md-1"><button type="submit" class="btn btn-primary w-100">Add</button></div>
+      </div>
+      <div class="row mt-2">
+        <div class="col-md-3">{{ form.is_recurring }} <label class="form-check-label">Recurring</label></div>
+        <div class="col-md-2">{{ form.start_date }}</div>
+        <div class="col-md-2">{{ form.end_date }}</div>
+        <div class="col">{{ form.description }}</div>
+      </div>
     </form>
     <table class="table table-bordered">
-      <thead><tr><th>Name</th><th>Type</th><th>Amount</th><th>Description</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>Type</th><th>Category</th><th>Recurring</th><th>Amount</th><th>Description</th><th>Actions</th></tr></thead>
       <tbody>
         {% for item in items %}
         <tr>
           <td>{{ item.name }}</td>
           <td>{{ item.get_item_type_display }}</td>
+          <td>{{ item.get_category_display }}</td>
+          <td>{{ item.is_recurring|yesno:"Yes,No" }}</td>
           <td>{{ item.amount }}</td>
           <td>{{ item.description }}</td>
           <td>
