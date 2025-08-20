@@ -1,0 +1,15 @@
+stages:
+  - deploy
+
+deploy_to_server:
+  stage: deploy
+  tags:
+    - deploy
+  script:
+    - echo "Deploying HRM project to new folder..."
+    - mkdir -p /var/www/hrmsys4sbs_new
+    - rsync -av ./ /var/www/hrmsys4sbs_new
+    - cd /var/www/hrmsys4sbs_new
+    - systemctl restart hrmsys4sbs_new.service || echo "No service to restart"
+  only:
+    - main
