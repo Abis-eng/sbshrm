@@ -6,10 +6,10 @@ deploy_to_server:
   tags:
     - deploy
   script:
-    - echo "Deploying HRM project to new folder..."
+    - echo "Deploying HRM project safely..."
     - mkdir -p /var/www/hrmsys4sbs_new
-    - rsync -av ./ /var/www/hrmsys4sbs_new
-    - cd /var/www/hrmsys4sbs_new
-    - systemctl restart hrmsys4sbs.service || echo "No service to restart"
+    - sudo chown -R gitlab-runner:gitlab-runner /var/www/hrmsys4sbs_new
+    - sudo chmod -R 755 /var/www/hrmsys4sbs_new
+    - rsync -av --ignore-errors ./ /var/www/hrmsys4sbs_new
   only:
     - main
