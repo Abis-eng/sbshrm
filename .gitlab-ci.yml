@@ -10,6 +10,6 @@ deploy_to_server:
     - mkdir -p /var/www/hrmsys4sbs_new
     - rsync -av ./ /var/www/hrmsys4sbs_new
     - cd /var/www/hrmsys4sbs_new
-    - systemctl restart hrmsys4sbs_new.service || echo "No service to restart"
+    - systemctl restart hrmsys4sbs.service || echo "No service to restart"
   only:
     - main
