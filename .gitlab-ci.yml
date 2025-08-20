@@ -6,10 +6,21 @@ deploy_to_server:
   tags:
     - deploy
   script:
-    - echo "Deploying HRM project safely..."
+    - echo "Starting safe deploy..."
+    # Backup old deployment
+    - if [ -d /var/www/hrmsys4sbs_new ]; then cp -r /var/www/hrmsys4sbs_new /var/www/hrmsys4sbs_backup_$(date +%F_%T); fi
+    # Make sure folder exists & permissions
     - mkdir -p /var/www/hrmsys4sbs_new
     - sudo chown -R gitlab-runner:gitlab-runner /var/www/hrmsys4sbs_new
     - sudo chmod -R 755 /var/www/hrmsys4sbs_new
+    # Rsync code
     - rsync -av --ignore-errors ./ /var/www/hrmsys4sbs_new
+    # Setup virtualenv & dependencies
+    - python3 -m venv /var/www/hrmsys4sbs_new/venv
+    - source /var/www/hrmsys4sbs_new/venv/bin/activate
+    - pip install --upgrade pip
+    - pip install -r requirements.txt
+    # Restart service
+    - sudo systemctl restart hrmsys4sbs.service
   only:
     - main
