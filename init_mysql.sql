@@ -1,0 +1,1 @@
+CREATE DATABASE IF NOT EXISTS hrm CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\nCREATE USER IF NOT EXISTS 'hrm'@'localhost' IDENTIFIED BY 'StrongPass!';\nGRANT ALL PRIVILEGES ON hrm.* TO 'hrm'@'localhost';\nFLUSH PRIVILEGES;\n
