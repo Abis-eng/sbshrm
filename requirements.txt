@@ -30,3 +30,12 @@ django-environ==0.11.2
 # ZKT Machine SDK
 pyzk==0.9.0
 reportlab==4.2.5
+
+# Background tasks and channels redis
+celery==5.5.3
+redis==4.6.0
+channels-redis==4.1.0
+
+# Field encryption
+django-cryptography==1.1
+python-dateutil==2.8.2
