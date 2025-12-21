@@ -556,6 +556,7 @@ def submit_ticket(request):
         subject = request.POST.get('subject', '')
         description = request.POST.get('description')
         priority = request.POST.get('priority', 'medium')
+        assigned_to_id = request.POST.get('assigned_to')
         end_date_str = request.POST.get('end_date', '')
         
         from datetime import datetime
@@ -567,13 +568,23 @@ def submit_ticket(request):
             except:
                 pass
         
-        # Employees submit to admin automatically (no assignment needed)
+        # Get assigned user
+        assigned_to = None
+        if assigned_to_id:
+            try:
+                assigned_to = User.objects.get(id=assigned_to_id)
+            except User.DoesNotExist:
+                messages.error(request, 'Selected recipient not found.')
+                return redirect('submit_ticket')
+        
+        # Create ticket with assigned user
         ticket = Ticket.objects.create(
             title=title,
             subject=subject,
             description=description,
             priority=priority,
             created_by=request.user,
+            assigned_to=assigned_to,
             end_date=end_date,
             status='new'  # New tickets start as 'new'
         )
@@ -590,20 +601,44 @@ def submit_ticket(request):
                     uploaded_by=request.user
                 )
         
-        # Create notification for all admins
-        admin_users = User.objects.filter(is_superuser=True)
-        for admin in admin_users:
+        # Create notification for assigned user or all admins if not assigned
+        if assigned_to:
             create_notification(
-                recipient=admin,
+                recipient=assigned_to,
                 sender=request.user,
                 notification_type='ticket',
                 title=f'New ticket: {ticket.tk_id} - {title}',
                 message=description[:200],
                 link=f'/ticket/{ticket.id}/'
             )
-        messages.success(request, f'Ticket {ticket.tk_id} created successfully! Admin will be notified.')
+            messages.success(request, f'Ticket {ticket.tk_id} created and sent to {assigned_to.get_full_name() or assigned_to.username}!')
+        else:
+            # If no assignment, notify all admins
+            admin_users = User.objects.filter(is_superuser=True)
+            for admin in admin_users:
+                create_notification(
+                    recipient=admin,
+                    sender=request.user,
+                    notification_type='ticket',
+                    title=f'New ticket: {ticket.tk_id} - {title}',
+                    message=description[:200],
+                    link=f'/ticket/{ticket.id}/'
+                )
+            messages.success(request, f'Ticket {ticket.tk_id} created successfully! Admin will be notified.')
         return redirect('ticket_detail', ticket_id=ticket.id)
-    return render(request, 'core/submit_ticket.html')
+    
+    # Get users for dropdown
+    if request.user.is_superuser:
+        employees = User.objects.filter(is_superuser=False, employee__isnull=False).select_related('employee')
+        admins = []
+    else:
+        employees = []
+        admins = User.objects.filter(is_superuser=True)
+    
+    return render(request, 'core/submit_ticket.html', {
+        'employees': employees,
+        'admins': admins,
+    })
 
 @user_passes_test(is_admin)
 def all_tickets(request):

@@ -4,14 +4,14 @@
 {% block title %}Submit Ticket - HRM System{% endblock %}
 
 {% block page_title %}
-<div class="d-flex justify-content-between align-items-center">
-    <div>
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="flex-grow-1">
         <h1 class="h3 mb-1 fw-bold"><i class="fas fa-plus-circle me-2"></i>Submit New Ticket</h1>
-        <p class="text-muted mb-0">Create a new support ticket</p>
+        <p class="text-muted mb-0 small">Create a new support ticket</p>
     </div>
     <div>
-        <a href="{% url 'my_tickets' %}" class="btn btn-light">
-            <i class="fas fa-arrow-left me-2"></i>Back to Tickets
+        <a href="{% url 'my_tickets' %}" class="btn btn-sm btn-light">
+            <i class="fas fa-arrow-left me-1"></i>Back to Tickets
         </a>
     </div>
 </div>
@@ -91,6 +91,35 @@
                         </label>
                         <input type="text" class="form-control" id="subject" name="subject" 
                                placeholder="Enter subject or category" value="{{ request.POST.subject }}">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="assigned_to" class="form-label">
+                            <i class="fas fa-user-check me-2"></i>Send To <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="assigned_to" name="assigned_to" required>
+                            <option value="">Select recipient...</option>
+                            {% if request.user.is_superuser %}
+                            <!-- Admin can send to employees -->
+                            <optgroup label="Employees">
+                                {% for employee in employees %}
+                                <option value="{{ employee.id }}" {% if request.POST.assigned_to == employee.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ employee.get_full_name|default:employee.username }}
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                            {% else %}
+                            <!-- Employee can send to admin -->
+                            <optgroup label="Administrators">
+                                {% for admin in admins %}
+                                <option value="{{ admin.id }}" {% if request.POST.assigned_to == admin.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ admin.get_full_name|default:admin.username }} (Admin)
+                                </option>
+                                {% endfor %}
+                            </optgroup>
+                            {% endif %}
+                        </select>
+                        <small class="text-muted">Select who should receive this ticket</small>
                     </div>
                     
                     <div class="mb-4">
