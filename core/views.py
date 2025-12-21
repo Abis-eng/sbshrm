@@ -1565,13 +1565,27 @@ def delete_client(request, client_id):
         return redirect('client_list')
     return render(request, 'core/delete_client.html', {'client': client})
 
-@user_passes_test(is_admin)
+@login_required
 def project_list(request):
-    projects = Project.objects.select_related('client', 'manager__department', 'manager__designation').all()
+    if request.user.is_superuser:
+        # Admin sees all projects
+        projects = Project.objects.select_related('client', 'manager__department', 'manager__designation').prefetch_related('tasks').all()
+    else:
+        # Employees see projects where they are manager or have tasks
+        try:
+            employee = request.user.employee
+            projects = Project.objects.filter(
+                Q(manager=employee) | Q(tasks__assigned_to=employee)
+            ).select_related('client', 'manager__department', 'manager__designation').prefetch_related('tasks').distinct()
+        except:
+            projects = Project.objects.none()
     return render(request, 'core/project_list.html', {'projects': projects})
 
-@user_passes_test(is_admin)
+@login_required
 def add_project(request):
+    if not request.user.is_superuser:
+        messages.error(request, 'Only administrators can add projects.')
+        return redirect('project_list')
     if request.method == 'POST':
         form = ProjectForm(request.POST)
         if form.is_valid():
@@ -1581,8 +1595,12 @@ def add_project(request):
         form = ProjectForm()
     return render(request, 'core/add_project.html', {'form': form})
 
-@user_passes_test(is_admin)
+@login_required
 def edit_project(request, project_id):
+    project = get_object_or_404(Project, id=project_id)
+    if not request.user.is_superuser and not (project.manager and project.manager.user == request.user):
+        messages.error(request, 'You do not have permission to edit this project.')
+        return redirect('project_list')
     project = get_object_or_404(Project, id=project_id)
     if request.method == 'POST':
         form = ProjectForm(request.POST, instance=project)
@@ -1593,8 +1611,11 @@ def edit_project(request, project_id):
         form = ProjectForm(instance=project)
     return render(request, 'core/edit_project.html', {'form': form, 'project': project})
 
-@user_passes_test(is_admin)
+@login_required
 def delete_project(request, project_id):
+    if not request.user.is_superuser:
+        messages.error(request, 'Only administrators can delete projects.')
+        return redirect('project_list')
     project = get_object_or_404(Project, id=project_id)
     project.delete()
     return redirect('project_list')
@@ -1666,6 +1687,16 @@ def my_tasks(request):
 @login_required
 def project_detail(request, project_id):
     project = get_object_or_404(Project, id=project_id)
+    # Check if user has access to this project
+    if not request.user.is_superuser:
+        try:
+            employee = request.user.employee
+            if project.manager != employee and not project.tasks.filter(assigned_to=employee).exists():
+                messages.error(request, 'You do not have access to this project.')
+                return redirect('project_list')
+        except:
+            messages.error(request, 'You do not have access to this project.')
+            return redirect('project_list')
     # Only project manager or admin can assign tasks
     can_assign = request.user.is_superuser or (project.manager and project.manager.user == request.user)
     departments = Department.objects.prefetch_related('employee_set__designation').all()
