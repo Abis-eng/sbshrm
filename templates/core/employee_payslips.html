@@ -1,28 +1,242 @@
 {% extends 'core/base.html' %}
 {% block page_title %}My Payslips{% endblock %}
 {% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">My Payslips</h4>
-    <table class="table table-bordered">
-      <thead><tr><th>Period</th><th>Gross</th><th>Earnings</th><th>Deductions</th><th>Net</th><th>Status</th><th>Created</th><th>PDF</th></tr></thead>
-      <tbody>
-        {% for payslip in payslips %}
-        <tr>
-          <td>{{ payslip.period_start }} - {{ payslip.period_end }}</td>
-          <td>{{ payslip.gross_pay }}</td>
-          <td>{{ payslip.total_earnings }}</td>
-          <td>{{ payslip.total_deductions }}</td>
-          <td>{{ payslip.total }}</td>
-          <td>{{ payslip.get_status_display }}</td>
-          <td>{{ payslip.created_at|date:'Y-m-d H:i' }}</td>
-          <td>{% if payslip.pdf %}<a href="{{ payslip.pdf.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">PDF</a>{% endif %}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="8">No payslips found.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<style>
+    body {
+        background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+        min-height: 100vh;
+    }
+    .page-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+        border-radius: 20px;
+        padding: 30px;
+        color: #fff;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(16, 185, 129, 0.3);
+    }
+    .stats-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border: 2px solid #d1fae5;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.2);
+        border-color: #10b981;
+    }
+    .stats-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin-bottom: 15px;
+    }
+    .stats-icon.primary {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: #fff;
+    }
+    .stats-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #334155;
+        margin: 10px 0;
+    }
+    .stats-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    .payslip-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border-left: 4px solid #10b981;
+        border: 2px solid #d1fae5;
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+    }
+    .payslip-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.2);
+        border-color: #10b981;
+    }
+    .payslip-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #d1fae5;
+    }
+    .payslip-period {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #10b981;
+        margin: 0;
+    }
+    .payslip-amount {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #10b981;
+    }
+    .payslip-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+    .info-item {
+        display: flex;
+        align-items: center;
+        color: #64748b;
+    }
+    .info-item i {
+        margin-right: 10px;
+        color: #10b981;
+        width: 20px;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 6px 15px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .status-processed {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .btn-pdf {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: #fff;
+        border-radius: 50px;
+        padding: 10px 25px;
+        font-weight: 600;
+        border: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+    .btn-pdf:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        color: #fff;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="page-header">
+        <h2><i class="fas fa-receipt me-2"></i>My Payslips</h2>
+        <p class="subtitle mb-0 mt-2">View your salary payslips</p>
+    </div>
+
+    <!-- Statistics -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon primary">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <div class="stats-value">{{ payslips|length }}</div>
+                <div class="stats-label">Total Payslips</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <div class="stats-value">
+                    {% with total=0 %}
+                        {% for payslip in payslips %}
+                            {{ payslip.total|add:total }}
+                        {% endfor %}
+                    {% endwith %}
+                </div>
+                <div class="stats-label">Total Earnings</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon primary" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stats-value">
+                    {% for payslip in payslips %}
+                        {% if payslip.status == 'processed' %}
+                            {{ forloop.counter }}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="stats-label">Processed</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payslips List -->
+    <div id="payslipsList">
+        {% if payslips %}
+            {% for payslip in payslips %}
+            <div class="payslip-card">
+                <div class="payslip-header">
+                    <div>
+                        <h3 class="payslip-period">
+                            <i class="fas fa-calendar-alt me-2"></i>{{ payslip.period_start|date:"M d, Y" }} - {{ payslip.period_end|date:"M d, Y" }}
+                        </h3>
+                        <p class="text-muted mb-0">
+                            <i class="fas fa-clock me-2"></i>Created: {{ payslip.created_at|date:"M d, Y H:i" }}
+                        </p>
+                    </div>
+                    <div class="text-end">
+                        <div class="payslip-amount">${{ payslip.total }}</div>
+                        <span class="status-badge status-{{ payslip.status }}">{{ payslip.get_status_display }}</span>
+                    </div>
+                </div>
+                <div class="payslip-info">
+                    <div class="info-item">
+                        <i class="fas fa-dollar-sign"></i>
+                        <span><strong>Gross Pay:</strong> ${{ payslip.gross_pay }}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-arrow-up"></i>
+                        <span><strong>Earnings:</strong> ${{ payslip.total_earnings }}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-arrow-down"></i>
+                        <span><strong>Deductions:</strong> ${{ payslip.total_deductions }}</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span><strong>Payment Date:</strong> {{ payslip.date|date:"M d, Y" }}</span>
+                    </div>
+                </div>
+                {% if payslip.pdf %}
+                <div class="mt-3">
+                    <a href="{{ payslip.pdf.url }}" target="_blank" class="btn btn-pdf">
+                        <i class="fas fa-file-pdf me-2"></i>Download PDF
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="payslip-card text-center py-5">
+                <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No Payslips Found</h4>
+                <p class="text-muted">Your payslips will appear here once they are generated</p>
+            </div>
+        {% endif %}
+    </div>
 </div>
-{% endblock %} 
+{% endblock %}
