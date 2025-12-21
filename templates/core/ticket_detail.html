@@ -365,5 +365,40 @@
         }
     }, 5000);
 </script>
+
+<!-- Attachments Section -->
+{% if files %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card" style="border: none; border-radius: 15px; box-shadow: 0 2px 15px rgba(0,0,0,0.08);">
+            <div class="card-header bg-light" style="border-radius: 15px 15px 0 0;">
+                <h5 class="mb-0"><i class="fas fa-paperclip me-2"></i>Ticket Attachments</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {% for file in files %}
+                    <div class="col-md-4">
+                        <div class="card border">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-file fa-2x text-primary me-3"></i>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ file.file_name|truncatechars:30 }}</h6>
+                                        <small class="text-muted">{{ file.file_size|filesizeformat }}</small>
+                                    </div>
+                                    <a href="{{ file.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-download"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
