@@ -322,11 +322,11 @@
                     </div>
                     
                     <!-- Reply Form -->
-                    <form method="post" enctype="multipart/form-data" class="reply-form">
+                    <form method="post" enctype="multipart/form-data" class="reply-form" id="replyForm">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="reply">
                         <div class="mb-3">
-                            <textarea name="message" class="form-control" rows="3" placeholder="Type your reply here..." required></textarea>
+                            <textarea name="message" id="replyMessage" class="form-control" rows="3" placeholder="Type your reply here..." required></textarea>
                         </div>
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -336,7 +336,7 @@
                                 <input type="file" name="attachment" id="attachment" class="d-none" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt">
                                 <span id="fileName" class="ms-2 text-muted small"></span>
                             </div>
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary" id="submitReply">
                                 <i class="fas fa-paper-plane me-2"></i>Send Reply
                             </button>
                         </div>
@@ -350,20 +350,58 @@
 <script>
     // Auto-scroll to bottom
     const chatMessages = document.getElementById('chatMessages');
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    if (chatMessages) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
     
     // File name display
-    document.getElementById('attachment').addEventListener('change', function(e) {
-        const fileName = e.target.files[0]?.name || '';
-        document.getElementById('fileName').textContent = fileName;
-    });
+    const attachmentInput = document.getElementById('attachment');
+    if (attachmentInput) {
+        attachmentInput.addEventListener('change', function(e) {
+            const fileName = e.target.files[0]?.name || '';
+            const fileNameSpan = document.getElementById('fileName');
+            if (fileNameSpan) {
+                fileNameSpan.textContent = fileName;
+            }
+        });
+    }
     
-    // Auto-refresh every 5 seconds
-    setInterval(function() {
+    // Form submission handler
+    const replyForm = document.getElementById('replyForm');
+    if (replyForm) {
+        replyForm.addEventListener('submit', function(e) {
+            const message = document.getElementById('replyMessage');
+            if (message && !message.value.trim()) {
+                e.preventDefault();
+                alert('Please enter a message before sending.');
+                return false;
+            }
+            // Show loading state
+            const submitBtn = document.getElementById('submitReply');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
+            }
+        });
+    }
+    
+    // Auto-refresh every 10 seconds (increased from 5 to reduce server load)
+    let refreshInterval = setInterval(function() {
         if (document.visibilityState === 'visible') {
-            location.reload();
+            // Only refresh if form is not being filled
+            const message = document.getElementById('replyMessage');
+            if (message && !message.value.trim()) {
+                location.reload();
+            }
         }
-    }, 5000);
+    }, 10000);
+    
+    // Clear interval when page is hidden
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            clearInterval(refreshInterval);
+        }
+    });
 </script>
 
 <!-- Attachments Section -->

@@ -704,61 +704,66 @@ def ticket_detail(request, ticket_id):
         if action == 'reply':
             message = request.POST.get('message', '').strip()
             if message:
-                reply = TicketReply.objects.create(
-                    ticket=ticket,
-                    message=message,
-                    created_by=request.user,
-                    reply_to_id=request.POST.get('reply_to') or None
-                )
-                
-                # Handle file attachment (if field exists)
-                if request.FILES.get('attachment'):
-                    try:
-                        reply.attachment = request.FILES['attachment']
-                        reply.save()
-                    except Exception as e:
-                        # If attachment field doesn't exist, skip it
-                        print(f"Error saving attachment: {e}")
-                
-                # Mark ticket as read for replier
-                reply.is_read = True
-                reply.save()
-                
-                # Create notification
-                if request.user.is_superuser:
-                    # Admin replied - notify ticket creator
-                    if ticket.created_by != request.user:
-                        create_notification(
-                            recipient=ticket.created_by,
-                            sender=request.user,
-                            notification_type='ticket',
-                            title=f'Reply on ticket {ticket.tk_id}',
-                            message=message[:200],
-                            link=f'/ticket/{ticket.id}/'
-                        )
-                else:
-                    # Employee replied - notify assigned admin or all admins
-                    if ticket.assigned_to:
-                        create_notification(
-                            recipient=ticket.assigned_to,
-                            sender=request.user,
-                            notification_type='ticket',
-                            title=f'Reply on ticket {ticket.tk_id}',
-                            message=message[:200],
-                            link=f'/ticket/{ticket.id}/'
-                        )
-                    else:
-                        for admin in User.objects.filter(is_superuser=True):
-                            create_notification(
-                                recipient=admin,
+                try:
+                    reply = TicketReply.objects.create(
+                        ticket=ticket,
+                        message=message,
+                        created_by=request.user,
+                        reply_to_id=request.POST.get('reply_to') or None
+                    )
+                    
+                    # Handle file attachment
+                    if request.FILES.get('attachment'):
+                        try:
+                            reply.attachment = request.FILES['attachment']
+                            reply.save()
+                        except Exception as e:
+                            print(f"Error saving attachment: {e}")
+                    
+                    # Mark reply as read for replier
+                    reply.is_read = True
+                    reply.save()
+                    
+                    # Create notification
+                    if request.user.is_superuser:
+                        # Admin replied - notify ticket creator
+                        if ticket.created_by != request.user:
+                            Notification.objects.create(
+                                recipient=ticket.created_by,
                                 sender=request.user,
                                 notification_type='ticket',
                                 title=f'Reply on ticket {ticket.tk_id}',
                                 message=message[:200],
                                 link=f'/ticket/{ticket.id}/'
                             )
-                
-                messages.success(request, 'Reply added successfully!')
+                    else:
+                        # Employee replied - notify assigned admin or all admins
+                        if ticket.assigned_to and ticket.assigned_to != request.user:
+                            Notification.objects.create(
+                                recipient=ticket.assigned_to,
+                                sender=request.user,
+                                notification_type='ticket',
+                                title=f'Reply on ticket {ticket.tk_id}',
+                                message=message[:200],
+                                link=f'/ticket/{ticket.id}/'
+                            )
+                        elif not ticket.assigned_to:
+                            # Notify all admins if no one is assigned
+                            for admin in User.objects.filter(is_superuser=True):
+                                if admin != request.user:
+                                    Notification.objects.create(
+                                        recipient=admin,
+                                        sender=request.user,
+                                        notification_type='ticket',
+                                        title=f'Reply on ticket {ticket.tk_id}',
+                                        message=message[:200],
+                                        link=f'/ticket/{ticket.id}/'
+                                    )
+                    
+                    messages.success(request, 'Reply added successfully!')
+                except Exception as e:
+                    messages.error(request, f'Error adding reply: {str(e)}')
+                    print(f"Error creating reply: {e}")
             else:
                 messages.error(request, 'Message cannot be empty.')
         
