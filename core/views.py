@@ -275,7 +275,7 @@ def add_employee(request):
 class DepartmentForm(ModelForm):
     class Meta:
         model = Department
-        fields = ['name']
+        fields = ['name', 'description']
 
 @user_passes_test(is_admin)
 def manage_departments(request):
@@ -321,6 +321,63 @@ def delete_department(request, department_id):
 def delete_designation(request, designation_id):
     Designation.objects.filter(id=designation_id).delete()
     return redirect('manage_designations')
+
+@user_passes_test(is_admin)
+def edit_department(request, department_id):
+    department = get_object_or_404(Department, id=department_id)
+    if request.method == 'POST':
+        form = DepartmentForm(request.POST, instance=department)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Department "{department.name}" updated successfully!')
+            return redirect('manage_departments')
+    else:
+        form = DepartmentForm(instance=department)
+    return render(request, 'core/edit_department.html', {'form': form, 'department': department})
+
+@user_passes_test(is_admin)
+def edit_designation(request, designation_id):
+    designation = get_object_or_404(Designation, id=designation_id)
+    if request.method == 'POST':
+        form = DesignationForm(request.POST, instance=designation)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Designation "{designation.name}" updated successfully!')
+            return redirect('manage_designations')
+    else:
+        form = DesignationForm(instance=designation)
+    return render(request, 'core/edit_designation.html', {'form': form, 'designation': designation})
+
+@user_passes_test(is_admin)
+def edit_holiday(request, holiday_id):
+    holiday = get_object_or_404(Holiday, id=holiday_id)
+    if request.method == 'POST':
+        form = HolidayForm(request.POST, instance=holiday)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Holiday "{holiday.name}" updated successfully!')
+            return redirect('manage_holidays')
+    else:
+        form = HolidayForm(instance=holiday)
+    return render(request, 'core/edit_holiday.html', {'form': form, 'holiday': holiday})
+
+@user_passes_test(is_admin)
+def department_employees(request, department_id):
+    department = get_object_or_404(Department, id=department_id)
+    employees = Employee.objects.filter(department=department).select_related('user', 'designation')
+    return render(request, 'core/department_employees.html', {
+        'department': department,
+        'employees': employees
+    })
+
+@user_passes_test(is_admin)
+def designation_employees(request, designation_id):
+    designation = get_object_or_404(Designation, id=designation_id)
+    employees = Employee.objects.filter(designation=designation).select_related('user', 'department')
+    return render(request, 'core/designation_employees.html', {
+        'designation': designation,
+        'employees': employees
+    })
 
 @permission_required('core.view_department', raise_exception=True)
 @login_required

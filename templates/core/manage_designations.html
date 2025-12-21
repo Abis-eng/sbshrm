@@ -35,6 +35,7 @@
     .desig-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 8px 25px rgba(139, 92, 246, 0.2);
+        cursor: pointer;
     }
     .desig-header {
         background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
@@ -106,9 +107,20 @@
                     <div class="desig-count">{{ desig.employee_set.count }}</div>
                     <div class="text-muted">Employees</div>
                 </div>
-                <div class="d-flex justify-content-center">
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    <a href="{% url 'designation_employees' desig.id %}" 
+                       class="btn btn-sm btn-primary" 
+                       title="View Employees">
+                        <i class="fas fa-users me-1"></i>View Employees
+                    </a>
+                    <a href="{% url 'edit_designation' desig.id %}" 
+                       class="btn btn-sm btn-warning" 
+                       title="Edit Designation">
+                        <i class="fas fa-edit me-1"></i>Edit
+                    </a>
                     <a href="{% url 'delete_designation' desig.id %}" 
                        class="btn btn-sm btn-danger" 
+                       title="Delete Designation"
                        onclick="return confirm('Are you sure you want to delete {{ desig.name }}? This will affect all employees with this designation.');">
                         <i class="fas fa-trash me-1"></i>Delete
                     </a>
