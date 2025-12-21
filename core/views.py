@@ -198,15 +198,20 @@ def dashboard(request):
 def employee_list(request):
     if request.user.is_superuser:
         employees = Employee.objects.all()
+        departments = Department.objects.all()
+        designations = Designation.objects.all()
     else:
         # Employees can only see their own information
         try:
             employee = request.user.employee
             employees = Employee.objects.filter(id=employee.id)
+            # Don't show department/designation filters for employees
+            departments = Department.objects.none()
+            designations = Designation.objects.none()
         except Exception:
             employees = Employee.objects.none()
-    departments = Department.objects.all()
-    designations = Designation.objects.all()
+            departments = Department.objects.none()
+            designations = Designation.objects.none()
     return render(request, 'core/employee_list.html', {'employees': employees, 'departments': departments, 'designations': designations})
 
 @login_required
