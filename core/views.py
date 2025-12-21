@@ -199,8 +199,12 @@ def employee_list(request):
     if request.user.is_superuser:
         employees = Employee.objects.all()
     else:
-        # Employees can see all employees but with limited actions
-        employees = Employee.objects.all()
+        # Employees can only see their own information
+        try:
+            employee = request.user.employee
+            employees = Employee.objects.filter(id=employee.id)
+        except Exception:
+            employees = Employee.objects.none()
     departments = Department.objects.all()
     designations = Designation.objects.all()
     return render(request, 'core/employee_list.html', {'employees': employees, 'departments': departments, 'designations': designations})
@@ -409,7 +413,6 @@ def designation_employees(request, designation_id):
         'employees': employees
     })
 
-@permission_required('core.view_department', raise_exception=True)
 @login_required
 def my_department(request):
     try:
@@ -419,7 +422,13 @@ def my_department(request):
         department = employee.department
     except Exception:
         department = None
-    return render(request, 'core/my_department.html', {'department': department})
+    # Get all departments with employee counts for graph
+    from django.db.models import Count
+    dept_counts = Department.objects.annotate(emp_count=Count('employee')).values('name', 'emp_count')
+    return render(request, 'core/my_department.html', {
+        'department': department,
+        'dept_counts': list(dept_counts)
+    })
 
 @login_required
 def my_designation(request):
@@ -430,7 +439,13 @@ def my_designation(request):
         designation = employee.designation
     except Exception:
         designation = None
-    return render(request, 'core/my_designation.html', {'designation': designation})
+    # Get all designations with employee counts for graph
+    from django.db.models import Count
+    desig_counts = Designation.objects.annotate(emp_count=Count('employee')).values('name', 'emp_count')
+    return render(request, 'core/my_designation.html', {
+        'designation': designation,
+        'desig_counts': list(desig_counts)
+    })
 
 @login_required
 def employee_dashboard(request):
