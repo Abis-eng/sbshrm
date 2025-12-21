@@ -391,7 +391,7 @@ def edit_holiday(request, holiday_id):
         form = HolidayForm(instance=holiday)
     return render(request, 'core/edit_holiday.html', {'form': form, 'holiday': holiday})
 
-@user_passes_test(is_admin)
+@login_required
 def department_employees(request, department_id):
     department = get_object_or_404(Department, id=department_id)
     employees = Employee.objects.filter(department=department).select_related('user', 'designation')
