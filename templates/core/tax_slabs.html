@@ -181,12 +181,13 @@
                 </div>
                 <div class="stats-value">
                     {% if slabs %}
-                        {% for slab in slabs %}
-                            {% if slab.max_income %}
-                                {{ slab.max_income }}
-                                {% break %}
+                        {% with last_slab=slabs|last %}
+                            {% if last_slab.max_income %}
+                                {{ last_slab.max_income }}
+                            {% else %}
+                                ∞
                             {% endif %}
-                        {% endfor %}
+                        {% endwith %}
                     {% else %}
                         0
                     {% endif %}
