@@ -144,8 +144,6 @@
                 <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
                 <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
                 <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
-                <option value="{{ value }}" {% if priority_filter == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
             </select>
         </div>
         <div class="col-md-2">
