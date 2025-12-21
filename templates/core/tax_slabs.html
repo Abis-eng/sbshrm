@@ -164,7 +164,9 @@
                 </div>
                 <div class="stats-value">
                     {% if slabs %}
-                        {{ slabs|first|attr:"min_income" }}
+                        {% with first_slab=slabs|first %}
+                            {{ first_slab.min_income }}
+                        {% endwith %}
                     {% else %}
                         0
                     {% endif %}
@@ -182,8 +184,7 @@
                         {% for slab in slabs %}
                             {% if slab.max_income %}
                                 {{ slab.max_income }}
-                            {% else %}
-                                ∞
+                                {% break %}
                             {% endif %}
                         {% endfor %}
                     {% else %}
