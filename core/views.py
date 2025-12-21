@@ -425,9 +425,11 @@ def my_department(request):
     # Get all departments with employee counts for graph
     from django.db.models import Count
     dept_counts = Department.objects.annotate(emp_count=Count('employee')).values('name', 'emp_count')
+    total_employees = Employee.objects.count()
     return render(request, 'core/my_department.html', {
         'department': department,
-        'dept_counts': list(dept_counts)
+        'dept_counts': list(dept_counts),
+        'total_employees': total_employees
     })
 
 @login_required
@@ -442,9 +444,11 @@ def my_designation(request):
     # Get all designations with employee counts for graph
     from django.db.models import Count
     desig_counts = Designation.objects.annotate(emp_count=Count('employee')).values('name', 'emp_count')
+    total_employees = Employee.objects.count()
     return render(request, 'core/my_designation.html', {
         'designation': designation,
-        'desig_counts': list(desig_counts)
+        'desig_counts': list(desig_counts),
+        'total_employees': total_employees
     })
 
 @login_required

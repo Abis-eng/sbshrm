@@ -153,9 +153,7 @@
                 </div>
             </div>
             <div class="stat-box" style="background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);">
-                <div class="stat-number">
-                    {% for desig in desig_counts %}{{ desig.emp_count|add:0 }}{% endfor %}
-                </div>
+                <div class="stat-number">{{ total_employees }}</div>
                 <div class="stat-label">
                     <i class="fas fa-users me-2"></i>Total Employees
                 </div>
