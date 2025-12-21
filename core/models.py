@@ -855,6 +855,21 @@ class AssetIssue(models.Model):
     def __str__(self):
         return f"Issue for {self.asset.name} by {self.raised_by.username}"
 
+# Ticket File (for ticket attachments)
+class TicketFile(models.Model):
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='files')
+    file = models.FileField(upload_to='tickets/files/')
+    file_name = models.CharField(max_length=255)
+    file_size = models.IntegerField(help_text="File size in bytes")
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.file_name
+
 # Ticket Reply
 class TicketReply(models.Model):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='replies')
