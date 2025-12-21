@@ -699,14 +699,24 @@ def manage_advances(request):
                 is_active=True,
             )
             # Create notification for employee
-            create_notification(
-                recipient=adv.employee.user,
-                sender=request.user,
-                notification_type='system',
-                title='Advance request approved',
-                message=f'Your advance request of {adv.amount} has been approved for {approved_amount}.',
-                link=f'/my-advances/'
-            )
+            if approved_amount != float(adv.amount):
+                create_notification(
+                    recipient=adv.employee.user,
+                    sender=request.user,
+                    notification_type='system',
+                    title='Advance request approved',
+                    message=f'Your advance request of ${adv.amount} has been approved for ${approved_amount:.2f}.',
+                    link=f'/my-advances/'
+                )
+            else:
+                create_notification(
+                    recipient=adv.employee.user,
+                    sender=request.user,
+                    notification_type='system',
+                    title='Advance request approved',
+                    message=f'Your advance request of ${adv.amount} has been approved.',
+                    link=f'/my-advances/'
+                )
         elif action == 'reject':
             adv.status = AdvanceRequest.STATUS_REJECTED
             # Create notification for employee
