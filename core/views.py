@@ -666,14 +666,25 @@ def manage_advances(request):
         if action == 'approve':
             adv.status = AdvanceRequest.STATUS_APPROVED
             # Get approved amount from admin (default to requested amount if not provided)
-            approved_amount = request.POST.get('approved_amount')
-            if approved_amount:
-                approved_amount = float(approved_amount)
+            approved_amount_str = request.POST.get('approved_amount')
+            if approved_amount_str:
+                try:
+                    approved_amount = float(approved_amount_str)
+                except (ValueError, TypeError):
+                    approved_amount = float(adv.amount)
             else:
                 approved_amount = float(adv.amount)
             
             # Get and save installments
-            installments = int(request.POST.get('desired_installments') or (adv.desired_installments or 1))
+            installments_str = request.POST.get('desired_installments')
+            if installments_str:
+                try:
+                    installments = int(installments_str)
+                except (ValueError, TypeError):
+                    installments = adv.desired_installments or 1
+            else:
+                installments = adv.desired_installments or 1
+            
             adv.desired_installments = installments
             adv.save()
             

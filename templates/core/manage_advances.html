@@ -320,5 +320,34 @@
             }
         });
     });
+    
+    // Calculate monthly payment dynamically for each advance
+    document.addEventListener('DOMContentLoaded', function() {
+        const advanceCards = document.querySelectorAll('.advance-card');
+        advanceCards.forEach(card => {
+            const installmentsInput = card.querySelector('.installments-input');
+            const approvedAmountInput = card.querySelector('.approved-amount-input');
+            const monthlyDisplay = card.querySelector('.monthly-display');
+            
+            if (installmentsInput && approvedAmountInput && monthlyDisplay) {
+                function calculateMonthly() {
+                    const amount = parseFloat(approvedAmountInput.value) || parseFloat(approvedAmountInput.getAttribute('value')) || 0;
+                    const installments = parseInt(installmentsInput.value) || 1;
+                    if (amount > 0 && installments > 0) {
+                        const monthly = amount / installments;
+                        monthlyDisplay.textContent = '$' + monthly.toFixed(2);
+                    } else {
+                        monthlyDisplay.textContent = '$0.00';
+                    }
+                }
+                
+                installmentsInput.addEventListener('input', calculateMonthly);
+                installmentsInput.addEventListener('change', calculateMonthly);
+                approvedAmountInput.addEventListener('input', calculateMonthly);
+                approvedAmountInput.addEventListener('change', calculateMonthly);
+                calculateMonthly(); // Initial calculation
+            }
+        });
+    });
 </script>
 {% endblock %}
