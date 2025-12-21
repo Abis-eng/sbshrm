@@ -1,15 +1,551 @@
 {% extends 'core/base.html' %}
-{% block page_title %}Assign Task{% endblock %}
+{% block page_title %}Assign Task - {{ project.name }}{% endblock %}
 {% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Assign Task for Project: {{ project.name }}</h4>
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit" class="btn btn-primary">Assign Task</button>
-      <a href="{% url 'project_list' %}" class="btn btn-secondary">Cancel</a>
-    </form>
-  </div>
+<style>
+    body {
+        background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+        min-height: 100vh;
+    }
+    .page-header {
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%);
+        border-radius: 20px;
+        padding: 30px;
+        color: #fff;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(20, 184, 166, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: pulse 3s ease-in-out infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+    .page-header h2 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 2rem;
+        position: relative;
+        z-index: 1;
+    }
+    .page-header .subtitle {
+        font-size: 0.95rem;
+        opacity: 0.9;
+        margin-top: 5px;
+        position: relative;
+        z-index: 1;
+    }
+    .form-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+        border: 2px solid #e6fffa;
+    }
+    .form-section {
+        margin-bottom: 40px;
+        padding-bottom: 30px;
+        border-bottom: 2px solid #f1f5f9;
+    }
+    .form-section:last-of-type {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    .form-section-title {
+        color: #14b8a6;
+        font-weight: 700;
+        font-size: 1.4rem;
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 3px solid #e6fffa;
+        display: flex;
+        align-items: center;
+    }
+    .form-section-title i {
+        margin-right: 12px;
+        font-size: 1.5rem;
+    }
+    .form-label {
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 10px;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+    }
+    .form-label i {
+        margin-right: 8px;
+        color: #14b8a6;
+        font-size: 0.9rem;
+    }
+    .form-label .required {
+        color: #ef4444;
+        margin-left: 5px;
+    }
+    .form-control, .form-select {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 14px 20px;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+        background: #fff;
+        width: 100%;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #14b8a6;
+        box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1);
+        background: #f0fdfa;
+        outline: none;
+    }
+    .input-group-icon {
+        position: relative;
+    }
+    .input-group-icon .form-control,
+    .input-group-icon .form-select {
+        padding-left: 50px;
+    }
+    .input-group-icon i {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #64748b;
+        z-index: 1;
+        pointer-events: none;
+        font-size: 1.1rem;
+    }
+    .input-group-icon .form-control:focus ~ i,
+    .input-group-icon .form-select:focus ~ i {
+        color: #14b8a6;
+    }
+    textarea.form-control {
+        min-height: 120px;
+        resize: vertical;
+    }
+    .priority-select-wrapper {
+        position: relative;
+    }
+    .priority-badge {
+        display: inline-block;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-left: 10px;
+    }
+    .priority-low {
+        background: #e0e7ff;
+        color: #3730a3;
+    }
+    .priority-medium {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .priority-high {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .file-upload-wrapper {
+        position: relative;
+        overflow: hidden;
+        display: inline-block;
+        width: 100%;
+    }
+    .file-upload-wrapper input[type="file"] {
+        position: absolute;
+        left: -9999px;
+    }
+    .file-upload-label {
+        display: block;
+        padding: 20px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #f0fdfa 100%);
+        border: 3px dashed #14b8a6;
+        border-radius: 15px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        color: #14b8a6;
+        font-weight: 600;
+    }
+    .file-upload-label:hover {
+        background: #e6fffa;
+        border-color: #0d9488;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(20, 184, 166, 0.2);
+    }
+    .file-upload-label i {
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 10px;
+    }
+    .file-name-display {
+        margin-top: 10px;
+        padding: 10px 15px;
+        background: #e6fffa;
+        border-radius: 10px;
+        color: #14b8a6;
+        font-weight: 600;
+        display: none;
+    }
+    .btn-submit {
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        color: #fff;
+        border-radius: 50px;
+        padding: 15px 60px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        border: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    .btn-submit::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+    .btn-submit:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+    .btn-submit:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(20, 184, 166, 0.4);
+        color: #fff;
+    }
+    .btn-submit:active {
+        transform: translateY(-1px);
+    }
+    .btn-submit i {
+        position: relative;
+        z-index: 1;
+    }
+    .btn-submit span {
+        position: relative;
+        z-index: 1;
+    }
+    .btn-cancel {
+        background: #64748b;
+        color: #fff;
+        border-radius: 50px;
+        padding: 15px 50px;
+        font-weight: 600;
+        font-size: 1rem;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    .btn-cancel:hover {
+        background: #475569;
+        color: #fff;
+    }
+    .form-help-text {
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+    }
+    .form-help-text i {
+        margin-right: 6px;
+        color: #14b8a6;
+    }
+    .project-info-badge {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 20px;
+        padding: 8px 20px;
+        margin-top: 10px;
+        font-size: 0.9rem;
+    }
+    .alert-danger {
+        background: #fee2e2;
+        border: 2px solid #fca5a5;
+        border-radius: 12px;
+        padding: 20px;
+        color: #991b1b;
+        margin-bottom: 25px;
+    }
+    .alert-danger ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+    .select-wrapper {
+        position: relative;
+    }
+    .select-wrapper::after {
+        content: '\f078';
+        font-family: 'Font Awesome 5 Free';
+        font-weight: 900;
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #64748b;
+        pointer-events: none;
+        z-index: 2;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-user-plus me-2"></i>Assign New Task</h2>
+                <p class="subtitle mb-0 mt-2">Create and assign a task for project: <strong>{{ project.name }}</strong></p>
+                <div class="project-info-badge">
+                    <i class="fas fa-project-diagram me-2"></i>Project: {{ project.name }}
+                    {% if project.manager %}
+                    <span class="ms-3"><i class="fas fa-user-tie me-1"></i>Manager: {{ project.manager.user.get_full_name|default:project.manager.user.username }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            <a href="{% url 'project_detail' project.id %}" class="btn btn-cancel">
+                <i class="fas fa-arrow-left me-2"></i>Back to Project
+            </a>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="form-card">
+                <form method="post" enctype="multipart/form-data" id="assignTaskForm">
+                    {% csrf_token %}
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <strong><i class="fas fa-exclamation-triangle me-2"></i>Please fix the following errors:</strong>
+                        <ul class="mt-2">
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                    <li>{{ field.label }}: {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <!-- Task Assignment Section -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-user-check"></i> Task Assignment
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-12">
+                                <label class="form-label" for="{{ form.assigned_to.id_for_label }}">
+                                    <i class="fas fa-user"></i> Assign To <span class="required">*</span>
+                                </label>
+                                <div class="input-group-icon select-wrapper">
+                                    {{ form.assigned_to }}
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="form-help-text">
+                                    <i class="fas fa-info-circle"></i> Select the employee who will be responsible for this task
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Task Details Section -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-clipboard-list"></i> Task Details
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-12">
+                                <label class="form-label" for="{{ form.title.id_for_label }}">
+                                    <i class="fas fa-heading"></i> Task Title <span class="required">*</span>
+                                </label>
+                                <div class="input-group-icon">
+                                    {{ form.title }}
+                                    <i class="fas fa-heading"></i>
+                                </div>
+                                <div class="form-help-text">
+                                    <i class="fas fa-lightbulb"></i> Enter a clear and descriptive title for the task
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label" for="{{ form.description.id_for_label }}">
+                                    <i class="fas fa-align-left"></i> Description
+                                </label>
+                                {{ form.description }}
+                                <div class="form-help-text">
+                                    <i class="fas fa-info-circle"></i> Provide detailed information about what needs to be done
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Task Schedule & Priority Section -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-calendar-check"></i> Schedule & Priority
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ form.deadline.id_for_label }}">
+                                    <i class="fas fa-calendar-alt"></i> Deadline
+                                </label>
+                                <div class="input-group-icon">
+                                    {{ form.deadline }}
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
+                                <div class="form-help-text">
+                                    <i class="fas fa-clock"></i> Set a deadline for task completion (optional)
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ form.priority.id_for_label }}">
+                                    <i class="fas fa-exclamation-circle"></i> Priority
+                                </label>
+                                <div class="input-group-icon priority-select-wrapper">
+                                    {{ form.priority }}
+                                    <i class="fas fa-exclamation-circle"></i>
+                                </div>
+                                <div class="form-help-text">
+                                    <i class="fas fa-info-circle"></i> Set the priority level: Low, Medium, or High
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Information Section -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-paperclip"></i> Additional Information
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-12">
+                                <label class="form-label" for="{{ form.attachment.id_for_label }}">
+                                    <i class="fas fa-paperclip"></i> Attachment
+                                </label>
+                                <div class="file-upload-wrapper">
+                                    {{ form.attachment }}
+                                    <label for="{{ form.attachment.id_for_label }}" class="file-upload-label">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                        <span>Choose File or Drag & Drop</span>
+                                        <small class="d-block mt-2" style="font-size: 0.85rem; opacity: 0.8;">Supported formats: PDF, DOC, DOCX, Images</small>
+                                    </label>
+                                    <div class="file-name-display" id="fileNameDisplay">
+                                        <i class="fas fa-file me-2"></i><span id="fileName"></span>
+                                    </div>
+                                </div>
+                                <div class="form-help-text">
+                                    <i class="fas fa-info-circle"></i> Attach relevant files, documents, or images (optional)
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label" for="{{ form.comment.id_for_label }}">
+                                    <i class="fas fa-comment-dots"></i> Additional Comments
+                                </label>
+                                {{ form.comment }}
+                                <div class="form-help-text">
+                                    <i class="fas fa-info-circle"></i> Add any additional notes, instructions, or special requirements
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Buttons -->
+                    <div class="text-center mt-5 pt-4" style="border-top: 3px solid #e6fffa;">
+                        <button type="submit" class="btn btn-submit me-3">
+                            <i class="fas fa-paper-plane me-2"></i><span>Assign Task</span>
+                        </button>
+                        <a href="{% url 'project_detail' project.id %}" class="btn btn-cancel">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
-{% endblock %} 
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // File upload display
+        const fileInput = document.getElementById('{{ form.attachment.id_for_label }}');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const fileNameSpan = document.getElementById('fileName');
+        
+        if (fileInput) {
+            fileInput.addEventListener('change', function(e) {
+                if (this.files && this.files.length > 0) {
+                    fileNameSpan.textContent = this.files[0].name;
+                    fileNameDisplay.style.display = 'block';
+                } else {
+                    fileNameDisplay.style.display = 'none';
+                }
+            });
+        }
+        
+        // Priority badge display
+        const prioritySelect = document.getElementById('{{ form.priority.id_for_label }}');
+        if (prioritySelect) {
+            function updatePriorityBadge() {
+                const selectedValue = prioritySelect.value;
+                const existingBadge = prioritySelect.parentElement.querySelector('.priority-badge');
+                if (existingBadge) {
+                    existingBadge.remove();
+                }
+                
+                if (selectedValue) {
+                    const badge = document.createElement('span');
+                    badge.className = 'priority-badge priority-' + selectedValue;
+                    badge.textContent = selectedValue.charAt(0).toUpperCase() + selectedValue.slice(1);
+                    prioritySelect.parentElement.appendChild(badge);
+                }
+            }
+            
+            prioritySelect.addEventListener('change', updatePriorityBadge);
+            updatePriorityBadge(); // Initial call
+        }
+        
+        // Form validation enhancement
+        const form = document.getElementById('assignTaskForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const assignedTo = document.getElementById('{{ form.assigned_to.id_for_label }}');
+                const title = document.getElementById('{{ form.title.id_for_label }}');
+                
+                if (!assignedTo.value) {
+                    e.preventDefault();
+                    alert('Please select an employee to assign the task to.');
+                    assignedTo.focus();
+                    return false;
+                }
+                
+                if (!title.value.trim()) {
+                    e.preventDefault();
+                    alert('Please enter a task title.');
+                    title.focus();
+                    return false;
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -58,16 +58,16 @@ class ProjectForm(forms.ModelForm):
 
 class TaskForm(forms.ModelForm):
     deadline = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}), required=False)
-    priority = forms.ChoiceField(choices=Task.PRIORITY_CHOICES, widget=forms.Select(attrs={'class': 'form-control'}), required=False)
-    attachment = forms.FileField(widget=forms.ClearableFileInput(attrs={'class': 'form-control'}), required=False)
-    comment = forms.CharField(widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2}), required=False)
+    priority = forms.ChoiceField(choices=Task.PRIORITY_CHOICES, widget=forms.Select(attrs={'class': 'form-control form-select'}), required=False)
+    attachment = forms.FileField(widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'style': 'display: none;'}), required=False)
+    comment = forms.CharField(widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Add any additional notes or instructions...'}), required=False)
     class Meta:
         model = Task
         fields = ['assigned_to', 'title', 'description', 'deadline', 'priority', 'attachment', 'comment']
         widgets = {
-            'title': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'assigned_to': forms.Select(attrs={'class': 'form-control'}),
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter task title...'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': 'Provide detailed description of the task...'}),
+            'assigned_to': forms.Select(attrs={'class': 'form-control form-select'}),
         }
     def __init__(self, *args, **kwargs):
         project = kwargs.pop('project', None)
