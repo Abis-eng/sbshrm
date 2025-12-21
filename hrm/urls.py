@@ -37,6 +37,7 @@ urlpatterns = [
     path('submit-ticket/', views.submit_ticket, name='submit_ticket'),  # employee
     path('all-tickets/', views.all_tickets, name='all_tickets'),  # admin
     path('ticket/<int:ticket_id>/', views.ticket_detail, name='ticket_detail'),  # ticket detail with chat
+    path('edit-ticket/<int:ticket_id>/', views.edit_ticket, name='edit_ticket'),  # admin edit ticket
     path('update-ticket/<int:ticket_id>/', views.update_ticket_status, name='update_ticket'),  # admin
     path('my-attendance/', views.my_attendance, name='my_attendance'),  # employee
     path('all-attendance/', views.all_attendance, name='all_attendance'),  # admin

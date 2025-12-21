@@ -742,6 +742,55 @@ def ticket_detail(request, ticket_id):
     })
 
 @user_passes_test(is_admin)
+def edit_ticket(request, ticket_id):
+    from .models import TicketReply
+    from datetime import datetime
+    ticket = get_object_or_404(Ticket, id=ticket_id)
+    employees = User.objects.filter(is_superuser=False, employee__isnull=False).select_related('employee')
+    
+    if request.method == 'POST':
+        ticket.title = request.POST.get('title', ticket.title)
+        ticket.subject = request.POST.get('subject', ticket.subject)
+        ticket.description = request.POST.get('description', ticket.description)
+        ticket.status = request.POST.get('status', ticket.status)
+        ticket.priority = request.POST.get('priority', ticket.priority)
+        
+        if request.POST.get('assigned_to'):
+            ticket.assigned_to_id = request.POST.get('assigned_to')
+        else:
+            ticket.assigned_to = None
+        
+        end_date_str = request.POST.get('end_date', '')
+        if end_date_str:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+                ticket.end_date = timezone.make_aware(end_date)
+            except:
+                pass
+        else:
+            ticket.end_date = None
+        
+        ticket.save()
+        
+        # Handle file attachments
+        if request.FILES.getlist('attachments'):
+            for file in request.FILES.getlist('attachments'):
+                TicketReply.objects.create(
+                    ticket=ticket,
+                    message='[File Attachment]',
+                    created_by=request.user,
+                    attachment=file
+                )
+        
+        messages.success(request, f'Ticket {ticket.tk_id} updated successfully!')
+        return redirect('ticket_detail', ticket_id=ticket.id)
+    
+    return render(request, 'core/edit_ticket.html', {
+        'ticket': ticket,
+        'employees': employees,
+    })
+
+@user_passes_test(is_admin)
 def update_ticket_status(request, ticket_id):
     ticket = get_object_or_404(Ticket, id=ticket_id)
     if request.method == 'POST':
@@ -757,9 +806,11 @@ def update_ticket_status(request, ticket_id):
 
 @login_required
 def delete_ticket(request, ticket_id):
-    ticket = Ticket.objects.get(id=ticket_id)
+    ticket = get_object_or_404(Ticket, id=ticket_id)
     if request.user.is_superuser or ticket.created_by == request.user:
+        ticket_id_str = ticket.tk_id
         ticket.delete()
+        messages.success(request, f'Ticket {ticket_id_str} deleted successfully!')
         if request.user.is_superuser:
             return redirect('all_tickets')
         else:

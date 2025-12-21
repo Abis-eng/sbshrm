@@ -45,10 +45,23 @@
         box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         transition: all 0.3s;
         margin-bottom: 1rem;
+        background: white;
+        overflow: hidden;
     }
     .ticket-card:hover {
-        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
-        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+        transform: translateY(-3px);
+    }
+    .ticket-card .card-body {
+        padding: 1.5rem;
+    }
+    .action-buttons .btn {
+        border-radius: 8px;
+        padding: 0.4rem 0.8rem;
+        transition: all 0.3s;
+    }
+    .action-buttons .btn:hover {
+        transform: scale(1.05);
     }
     .ticket-id {
         font-weight: 700;
@@ -72,7 +85,15 @@
         border-radius: 15px;
         padding: 1.5rem;
         margin-bottom: 2rem;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        border: 1px solid #e9ecef;
+    }
+    .stats-card {
+        cursor: pointer;
+    }
+    .stats-card:hover .number {
+        transform: scale(1.1);
+        transition: transform 0.3s;
     }
 </style>
 
@@ -197,10 +218,19 @@
                             </span>
                         </div>
                     </div>
-                    <div class="ms-3">
-                        <a href="{% url 'ticket_detail' ticket.id %}" class="btn btn-sm btn-primary">
-                            <i class="fas fa-eye me-1"></i>View
-                        </a>
+                    <div class="ms-3 action-buttons">
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'ticket_detail' ticket.id %}" class="btn btn-sm btn-primary" title="View Ticket">
+                                <i class="fas fa-eye me-1"></i>View
+                            </a>
+                            <a href="{% url 'edit_ticket' ticket.id %}" class="btn btn-sm btn-warning" title="Edit Ticket">
+                                <i class="fas fa-edit me-1"></i>Edit
+                            </a>
+                            <a href="{% url 'delete_ticket' ticket.id %}" class="btn btn-sm btn-danger" 
+                               onclick="return confirm('Are you sure you want to delete ticket {{ ticket.tk_id }}? This action cannot be undone.');" title="Delete Ticket">
+                                <i class="fas fa-trash me-1"></i>Delete
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

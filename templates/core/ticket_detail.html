@@ -33,6 +33,22 @@
         padding: 2rem;
         margin-bottom: 2rem;
         box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    .ticket-header-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: pulse 3s ease-in-out infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 0.8; }
     }
     .ticket-info-grid {
         display: grid;
@@ -63,6 +79,7 @@
         height: 600px;
         display: flex;
         flex-direction: column;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
     }
     .chat-messages {
         flex: 1;
@@ -197,16 +214,21 @@
     <!-- Admin Actions -->
     {% if request.user.is_superuser %}
     <div class="col-12 mb-4">
-        <div class="card">
-            <div class="card-header bg-light">
-                <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Ticket Management</h5>
+        <div class="card" style="border: none; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+            <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px 15px 0 0;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Ticket Management</h5>
+                    <a href="{% url 'edit_ticket' ticket.id %}" class="btn btn-sm btn-light">
+                        <i class="fas fa-edit me-1"></i>Full Edit
+                    </a>
+                </div>
             </div>
             <div class="card-body">
                 <form method="post" class="row g-3">
                     {% csrf_token %}
                     <div class="col-md-3">
-                        <label class="form-label">Status</label>
-                        <select name="status" class="form-select" onchange="this.form.submit()">
+                        <label class="form-label fw-bold">Status</label>
+                        <select name="status" class="form-select" onchange="this.form.submit()" style="border-radius: 10px;">
                             <option value="new" {% if ticket.status == 'new' %}selected{% endif %}>New</option>
                             <option value="open" {% if ticket.status == 'open' %}selected{% endif %}>Open</option>
                             <option value="reopen" {% if ticket.status == 'reopen' %}selected{% endif %}>Reopen</option>
@@ -219,8 +241,8 @@
                         <input type="hidden" name="action" value="update_status">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">Priority</label>
-                        <select name="priority" class="form-select" onchange="this.form.submit()">
+                        <label class="form-label fw-bold">Priority</label>
+                        <select name="priority" class="form-select" onchange="this.form.submit()" style="border-radius: 10px;">
                             <option value="low" {% if ticket.priority == 'low' %}selected{% endif %}>Low</option>
                             <option value="medium" {% if ticket.priority == 'medium' %}selected{% endif %}>Medium</option>
                             <option value="high" {% if ticket.priority == 'high' %}selected{% endif %}>High</option>
@@ -228,8 +250,8 @@
                         <input type="hidden" name="action" value="update_priority">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label">Assign To</label>
-                        <select name="assigned_to" class="form-select" onchange="this.form.submit()">
+                        <label class="form-label fw-bold">Assign To</label>
+                        <select name="assigned_to" class="form-select" onchange="this.form.submit()" style="border-radius: 10px;">
                             <option value="">Unassigned</option>
                             {% for employee in employees %}
                             <option value="{{ employee.id }}" {% if ticket.assigned_to == employee %}selected{% endif %}>
@@ -238,6 +260,12 @@
                             {% endfor %}
                         </select>
                         <input type="hidden" name="action" value="assign">
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <a href="{% url 'delete_ticket' ticket.id %}" class="btn btn-danger w-100" 
+                           onclick="return confirm('Are you sure you want to delete ticket {{ ticket.tk_id }}? This action cannot be undone.');">
+                            <i class="fas fa-trash me-1"></i>Delete
+                        </a>
                     </div>
                 </form>
             </div>
