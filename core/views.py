@@ -669,8 +669,6 @@ def manage_advances(request):
                 message=f'Your advance request of {adv.amount} has been rejected. {admin_comment[:100]}',
                 link=f'/my-advances/'
             )
-        elif action == 'reject':
-            adv.status = AdvanceRequest.STATUS_REJECTED
         adv.reviewed_by = request.user
         adv.reviewed_at = timezone.now()
         adv.admin_comment = admin_comment
