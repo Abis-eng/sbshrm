@@ -838,14 +838,16 @@ def edit_ticket(request, ticket_id):
         
         ticket.save()
         
-        # Handle file attachments
+        # Handle file attachments - use TicketFile model
+        from .models import TicketFile
         if request.FILES.getlist('attachments'):
             for file in request.FILES.getlist('attachments'):
-                TicketReply.objects.create(
+                TicketFile.objects.create(
                     ticket=ticket,
-                    message='[File Attachment]',
-                    created_by=request.user,
-                    attachment=file
+                    file=file,
+                    file_name=file.name,
+                    file_size=file.size,
+                    uploaded_by=request.user
                 )
         
         messages.success(request, f'Ticket {ticket.tk_id} updated successfully!')
