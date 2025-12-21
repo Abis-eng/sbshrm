@@ -402,9 +402,20 @@ def chat_user_list(request):
 @login_required
 def my_tickets(request):
     from django.db.models import Q, Count
-    tickets = Ticket.objects.filter(
+    base_query = Ticket.objects.filter(
         Q(created_by=request.user) | Q(assigned_to=request.user)
-    ).select_related('created_by', 'assigned_to').annotate(
+    )
+    
+    # Filter by type: all, sent, received
+    filter_type = request.GET.get('filter', 'all')
+    if filter_type == 'sent':
+        tickets = base_query.filter(created_by=request.user)
+    elif filter_type == 'received':
+        tickets = base_query.filter(assigned_to=request.user)
+    else:
+        tickets = base_query
+    
+    tickets = tickets.select_related('created_by', 'assigned_to').annotate(
         reply_count=Count('replies')
     ).order_by('-created_at')
     
@@ -425,12 +436,15 @@ def my_tickets(request):
         )
     
     # Statistics
+    base_stats = Ticket.objects.filter(Q(created_by=request.user) | Q(assigned_to=request.user))
     stats = {
-        'total': Ticket.objects.filter(Q(created_by=request.user) | Q(assigned_to=request.user)).count(),
-        'new': Ticket.objects.filter(Q(created_by=request.user) | Q(assigned_to=request.user), status='new').count(),
-        'open': Ticket.objects.filter(Q(created_by=request.user) | Q(assigned_to=request.user), status='open').count(),
-        'in_progress': Ticket.objects.filter(Q(created_by=request.user) | Q(assigned_to=request.user), status='in_progress').count(),
-        'closed': Ticket.objects.filter(Q(created_by=request.user) | Q(assigned_to=request.user), status='closed').count(),
+        'total': base_stats.count(),
+        'new': base_stats.filter(status='new').count(),
+        'open': base_stats.filter(status='open').count(),
+        'in_progress': base_stats.filter(status='in_progress').count(),
+        'closed': base_stats.filter(status='closed').count(),
+        'sent': Ticket.objects.filter(created_by=request.user).count(),
+        'received': Ticket.objects.filter(assigned_to=request.user).count(),
     }
     
     return render(request, 'core/my_tickets.html', {
@@ -439,6 +453,7 @@ def my_tickets(request):
         'status_filter': status_filter,
         'priority_filter': priority_filter,
         'search_query': search_query,
+        'filter_type': filter_type,
     })
 
 @login_required

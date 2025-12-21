@@ -10,7 +10,18 @@
         <p class="text-muted mb-0">View and manage your support tickets</p>
     </div>
     <div>
-        <a href="{% url 'submit_ticket' %}" class="btn btn-primary">
+        <div class="btn-group" role="group">
+            <a href="{% url 'my_tickets' %}" class="btn btn-{% if filter_type == 'all' %}primary{% else %}outline-primary{% endif %}">
+                <i class="fas fa-list me-2"></i>All Tickets
+            </a>
+            <a href="{% url 'my_tickets' %}?filter=sent" class="btn btn-{% if filter_type == 'sent' %}primary{% else %}outline-primary{% endif %}">
+                <i class="fas fa-paper-plane me-2"></i>Sent ({{ stats.sent }})
+            </a>
+            <a href="{% url 'my_tickets' %}?filter=received" class="btn btn-{% if filter_type == 'received' %}primary{% else %}outline-primary{% endif %}">
+                <i class="fas fa-inbox me-2"></i>Received ({{ stats.received }})
+            </a>
+        </div>
+        <a href="{% url 'submit_ticket' %}" class="btn btn-primary ms-2">
             <i class="fas fa-plus me-2"></i>Submit New Ticket
         </a>
     </div>
@@ -138,8 +149,6 @@
                 <option value="low" {% if priority_filter == 'low' %}selected{% endif %}>Low</option>
                 <option value="medium" {% if priority_filter == 'medium' %}selected{% endif %}>Medium</option>
                 <option value="high" {% if priority_filter == 'high' %}selected{% endif %}>High</option>
-                <option value="{{ value }}" {% if priority_filter == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
             </select>
         </div>
         <div class="col-md-1">
