@@ -1,88 +1,235 @@
 {% extends 'core/base.html' %}
 {% load crispy_forms_tags %}
-{% block page_title %}Settings{% endblock %}
+{% block page_title %}Theme Settings{% endblock %}
 {% block content %}
-<div class="row">
-  <div class="col-md-3">
-    <div class="list-group" style="border-radius:20px;overflow:hidden;">
-      <a href="{% url 'settings_main' %}" class="list-group-item list-group-item-action {% if active_section == 'company' %}active{% endif %}">
-        <i class="fas fa-building me-2"></i>Company Settings
-      </a>
-      <a href="{% url 'settings_localization' %}" class="list-group-item list-group-item-action {% if active_section == 'localization' %}active{% endif %}">
-        <i class="fas fa-globe me-2"></i>Localization
-      </a>
-      <a href="{% url 'settings_invoice' %}" class="list-group-item list-group-item-action {% if active_section == 'invoice' %}active{% endif %}">
-        <i class="fas fa-file-invoice me-2"></i>Invoice Settings
-      </a>
-      <a href="{% url 'settings_salary' %}" class="list-group-item list-group-item-action {% if active_section == 'salary' %}active{% endif %}">
-        <i class="fas fa-money-check-alt me-2"></i>Salary Settings
-      </a>
-      <a href="{% url 'settings_theme' %}" class="list-group-item list-group-item-action {% if active_section == 'theme' %}active{% endif %}">
-        <i class="fas fa-paint-brush me-2"></i>Theme Settings
-      </a>
-      <a href="#" class="list-group-item list-group-item-action disabled"><i class="fas fa-clipboard-list me-2"></i>App Logs</a>
+<style>
+    .settings-sidebar {
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        border-radius: 15px;
+        padding: 0;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(20, 184, 166, 0.2);
+    }
+    .settings-sidebar .list-group-item {
+        border: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        background: transparent;
+        color: rgba(255, 255, 255, 0.9);
+        padding: 15px 20px;
+        transition: all 0.3s ease;
+    }
+    .settings-sidebar .list-group-item:last-child {
+        border-bottom: none;
+    }
+    .settings-sidebar .list-group-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        transform: translateX(5px);
+    }
+    .settings-sidebar .list-group-item.active {
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
+        font-weight: 600;
+        border-left: 4px solid #fff;
+    }
+    .settings-sidebar .list-group-item.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .settings-card {
+        background: #fff;
+        border-radius: 15px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: none;
+        overflow: hidden;
+    }
+    .settings-card-header {
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        color: #fff;
+        padding: 25px 30px;
+        border: none;
+    }
+    .settings-card-header h4 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.5rem;
+    }
+    .settings-card-body {
+        padding: 30px;
+    }
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 10px 15px;
+        transition: all 0.3s ease;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #14b8a6;
+        box-shadow: 0 0 0 0.2rem rgba(20, 184, 166, 0.25);
+    }
+    .form-label {
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 8px;
+    }
+    .btn-save {
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        color: #fff;
+        font-weight: 600;
+        font-size: 16px;
+        border-radius: 30px;
+        padding: 12px 50px;
+        border: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);
+    }
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(20, 184, 166, 0.4);
+        color: #fff;
+    }
+    .logo-preview {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 15px;
+        background: #f8f9fa;
+        text-align: center;
+    }
+    .logo-preview img {
+        border-radius: 8px;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 mb-4">
+            <div class="settings-sidebar">
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'settings_main' %}" class="list-group-item list-group-item-action {% if active_section == 'company' %}active{% endif %}">
+                        <i class="fas fa-building me-2"></i>Company Settings
+                    </a>
+                    <a href="{% url 'settings_localization' %}" class="list-group-item list-group-item-action {% if active_section == 'localization' %}active{% endif %}">
+                        <i class="fas fa-globe me-2"></i>Localization
+                    </a>
+                    <a href="{% url 'settings_invoice' %}" class="list-group-item list-group-item-action {% if active_section == 'invoice' %}active{% endif %}">
+                        <i class="fas fa-file-invoice me-2"></i>Invoice Settings
+                    </a>
+                    <a href="{% url 'settings_salary' %}" class="list-group-item list-group-item-action {% if active_section == 'salary' %}active{% endif %}">
+                        <i class="fas fa-money-check-alt me-2"></i>Salary Settings
+                    </a>
+                    <a href="{% url 'settings_theme' %}" class="list-group-item list-group-item-action {% if active_section == 'theme' %}active{% endif %}">
+                        <i class="fas fa-paint-brush me-2"></i>Theme Settings
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action disabled">
+                        <i class="fas fa-clipboard-list me-2"></i>App Logs
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9">
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <h4><i class="fas fa-paint-brush me-2"></i>Theme Settings</h4>
+                </div>
+                <div class="settings-card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="row g-4">
+                            <div class="col-md-12">
+                                <label class="form-label">Application Name</label>
+                                {{ form.app_name }}
+                            </div>
+                            
+                            <!-- Logo Light -->
+                            <div class="col-md-6">
+                                <label class="form-label">Logo Light</label>
+                                {{ form.logo_light }}
+                                <small class="form-text text-muted">Recommended image size is 40px x 40px</small>
+                            </div>
+                            <div class="col-md-6">
+                                {% if settings_obj.logo_light %}
+                                <div class="logo-preview">
+                                    <p class="mb-2"><strong>Current Logo Light:</strong></p>
+                                    <img src="{{ settings_obj.logo_light.url }}" alt="logo light" style="max-width:80px;max-height:80px;">
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Logo Dark -->
+                            <div class="col-md-6">
+                                <label class="form-label">Logo Dark</label>
+                                {{ form.logo_dark }}
+                                <small class="form-text text-muted">Recommended image size is 40px x 40px</small>
+                            </div>
+                            <div class="col-md-6">
+                                {% if settings_obj.logo_dark %}
+                                <div class="logo-preview">
+                                    <p class="mb-2"><strong>Current Logo Dark:</strong></p>
+                                    <img src="{{ settings_obj.logo_dark.url }}" alt="logo dark" style="max-width:80px;max-height:80px;">
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Favicon -->
+                            <div class="col-md-6">
+                                <label class="form-label">Favicon</label>
+                                {{ form.favicon }}
+                                <small class="form-text text-muted">Recommended image size is 16px x 16px</small>
+                            </div>
+                            <div class="col-md-6">
+                                {% if settings_obj.favicon %}
+                                <div class="logo-preview">
+                                    <p class="mb-2"><strong>Current Favicon:</strong></p>
+                                    <img src="{{ settings_obj.favicon.url }}" alt="Favicon" style="max-width:48px;max-height:48px;">
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label class="form-label">Layout</label>
+                                {{ form.layout }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Color Scheme</label>
+                                {{ form.color_scheme }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Layout Width</label>
+                                {{ form.layout_width }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Layout Position</label>
+                                {{ form.layout_position }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Topbar Color</label>
+                                {{ form.topbar_color }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Sidebar Size</label>
+                                {{ form.sidebar_size }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Sidebar View</label>
+                                {{ form.sidebar_view }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Sidebar Color</label>
+                                {{ form.sidebar_color }}
+                            </div>
+                        </div>
+                        <div class="text-center mt-5">
+                            <button type="submit" class="btn btn-save">
+                                <i class="fas fa-save me-2"></i>Save Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-  <div class="col-md-9">
-    <div class="card">
-      <div class="card-body">
-        <form method="post" enctype="multipart/form-data">
-          {% csrf_token %}
-          <div class="mb-3">
-            {{ form.app_name|as_crispy_field }}
-          </div>
-          <div class="row mb-3 align-items-center">
-            <div class="col-md-6">
-              <label class="form-label">Logo Light</label>
-              {{ form.logo_light|as_crispy_field }}
-              <div class="form-text">Recommended image size is 40px x 40px</div>
-            </div>
-            <div class="col-md-6">
-              {% if settings_obj.logo_light %}
-                <img src="{{ settings_obj.logo_light.url }}" alt="logo light" style="max-width:60px;max-height:60px;border-radius:8px;border:1px solid #eee;">
-              {% endif %}
-            </div>
-          </div>
-          <div class="row mb-3 align-items-center">
-            <div class="col-md-6">
-              <label class="form-label">Logo Dark</label>
-              {{ form.logo_dark|as_crispy_field }}
-              <div class="form-text">Recommended image size is 40px x 40px</div>
-            </div>
-            <div class="col-md-6">
-              {% if settings_obj.logo_dark %}
-                <img src="{{ settings_obj.logo_dark.url }}" alt="logo dark" style="max-width:60px;max-height:60px;border-radius:8px;border:1px solid #eee;">
-              {% endif %}
-            </div>
-          </div>
-          <div class="row mb-3 align-items-center">
-            <div class="col-md-6">
-              <label class="form-label">Favicon</label>
-              {{ form.favicon|as_crispy_field }}
-              <div class="form-text">Recommended image size is 16px x 16px</div>
-            </div>
-            <div class="col-md-6">
-              {% if settings_obj.favicon %}
-                <img src="{{ settings_obj.favicon.url }}" alt="Favicon img" style="max-width:32px;max-height:32px;border-radius:8px;border:1px solid #eee;">
-              {% endif %}
-            </div>
-          </div>
-          <div class="row g-3">
-            <div class="col-md-6">{{ form.layout|as_crispy_field }}</div>
-            <div class="col-md-6">{{ form.color_scheme|as_crispy_field }}</div>
-            <div class="col-md-6">{{ form.layout_width|as_crispy_field }}</div>
-            <div class="col-md-6">{{ form.layout_position|as_crispy_field }}</div>
-            <div class="col-md-6">{{ form.topbar_color|as_crispy_field }}</div>
-            <div class="col-md-6">{{ form.sidebar_size|as_crispy_field }}</div>
-            <div class="col-md-6">{{ form.sidebar_view|as_crispy_field }}</div>
-            <div class="col-md-6">{{ form.sidebar_color|as_crispy_field }}</div>
-          </div>
-          <div class="text-center mt-4">
-            <button type="submit" class="btn" style="background:#ffa64d;color:#fff;font-weight:bold;font-size:18px;border-radius:30px;padding:8px 40px;">Save</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
 </div>
-{% endblock %} 
+{% endblock %}
