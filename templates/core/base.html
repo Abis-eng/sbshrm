@@ -191,6 +191,9 @@
                                     <li class="nav-item"><a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_designations' %}{% else %}{% url 'my_designation' %}{% endif %}"><i class="fas fa-id-badge me-2"></i>Designations</a></li>
                                     <li class="nav-item"><a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_holidays' %}{% else %}{% url 'holidays' %}{% endif %}"><i class="fas fa-umbrella-beach me-2"></i>Holidays</a></li>
                                     <li class="nav-item"><a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_leaves' %}{% else %}{% url 'my_leaves' %}{% endif %}"><i class="fas fa-plane-departure me-2"></i>Leaves</a></li>
+                                    {% if not user.is_superuser %}
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'my_advances' %}"><i class="fas fa-money-bill-wave me-2"></i>Request Advance</a></li>
+                                    {% endif %}
                                 </ul>
                             </div>
                         </li>

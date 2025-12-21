@@ -228,14 +228,18 @@
                     {% endif %}
                     <div class="mt-3">
                         {% if employee.department %}
-                        <span class="employee-badge badge-dept">
-                            <i class="fas fa-building me-1"></i>{{ employee.department.name }}
-                        </span>
+                        <a href="{% url 'department_employees' employee.department.id %}" class="text-decoration-none">
+                            <span class="employee-badge badge-dept" style="cursor: pointer;" title="Click to view all employees in {{ employee.department.name }}">
+                                <i class="fas fa-building me-1"></i>{{ employee.department.name }}
+                            </span>
+                        </a>
                         {% endif %}
                         {% if employee.designation %}
-                        <span class="employee-badge badge-designation">
-                            <i class="fas fa-id-badge me-1"></i>{{ employee.designation.name }}
-                        </span>
+                        <a href="{% url 'designation_employees' employee.designation.id %}" class="text-decoration-none">
+                            <span class="employee-badge badge-designation" style="cursor: pointer;" title="Click to view all employees with {{ employee.designation.name }}">
+                                <i class="fas fa-id-badge me-1"></i>{{ employee.designation.name }}
+                            </span>
+                        </a>
                         {% endif %}
                     </div>
                 </div>
