@@ -235,7 +235,8 @@
                             <label class="form-label small fw-bold">Approved Amount</label>
                             <div class="input-group">
                                 <span class="input-group-text" style="border-radius: 10px 0 0 10px;">$</span>
-                                <input type="number" name="approved_amount" class="form-control" 
+                                <input type="number" name="approved_amount" id="approved_amount_{{ adv.id }}" 
+                                       class="form-control approved-amount-input" 
                                        value="{{ adv.amount }}" step="0.01" min="0"
                                        placeholder="{{ adv.amount }}" 
                                        style="border-radius: 0 10px 10px 0; border: 2px solid #e9ecef;">
@@ -245,13 +246,13 @@
                         <div class="col-md-2">
                             <label class="form-label small fw-bold">Installments</label>
                             <input type="number" name="desired_installments" id="installments_{{ adv.id }}" 
-                                   class="form-control" 
+                                   class="form-control installments-input" 
                                    value="{{ adv.desired_installments|default:1 }}" min="1" 
                                    style="border-radius: 10px; border: 2px solid #e9ecef;">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold">Monthly Payment</label>
-                            <div class="form-control" id="monthly_{{ adv.id }}" 
+                            <div class="form-control monthly-display" id="monthly_{{ adv.id }}" 
                                  style="border-radius: 10px; border: 2px solid #e9ecef; background: #f8f9fa; font-weight: 600; text-align: center;">
                                 $0.00
                             </div>
@@ -276,25 +277,6 @@
                             </button>
                         </div>
                     </div>
-                    <script>
-                        // Calculate monthly payment dynamically
-                        (function() {
-                            const installmentsInput = document.getElementById('installments_{{ adv.id }}');
-                            const approvedAmountInput = document.querySelector('input[name="approved_amount"]');
-                            const monthlyDisplay = document.getElementById('monthly_{{ adv.id }}');
-                            
-                            function calculateMonthly() {
-                                const amount = parseFloat(approvedAmountInput.value) || {{ adv.amount }};
-                                const installments = parseInt(installmentsInput.value) || 1;
-                                const monthly = amount / installments;
-                                monthlyDisplay.textContent = '$' + monthly.toFixed(2);
-                            }
-                            
-                            installmentsInput.addEventListener('input', calculateMonthly);
-                            approvedAmountInput.addEventListener('input', calculateMonthly);
-                            calculateMonthly(); // Initial calculation
-                        })();
-                    </script>
                 </div>
                 {% else %}
                 <div class="mt-2">
