@@ -232,30 +232,69 @@
                     <div class="row g-2 align-items-end">
                         <input type="hidden" name="advance_id" value="{{ adv.id }}">
                         <div class="col-md-2">
+                            <label class="form-label small fw-bold">Approved Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text" style="border-radius: 10px 0 0 10px;">$</span>
+                                <input type="number" name="approved_amount" class="form-control" 
+                                       value="{{ adv.amount }}" step="0.01" min="0"
+                                       placeholder="{{ adv.amount }}" 
+                                       style="border-radius: 0 10px 10px 0; border: 2px solid #e9ecef;">
+                            </div>
+                            <small class="text-muted">Requested: ${{ adv.amount }}</small>
+                        </div>
+                        <div class="col-md-2">
                             <label class="form-label small fw-bold">Installments</label>
-                            <input type="number" name="desired_installments" class="form-control" 
+                            <input type="number" name="desired_installments" id="installments_{{ adv.id }}" 
+                                   class="form-control" 
                                    value="{{ adv.desired_installments|default:1 }}" min="1" 
                                    style="border-radius: 10px; border: 2px solid #e9ecef;">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">Monthly Payment</label>
+                            <div class="form-control" id="monthly_{{ adv.id }}" 
+                                 style="border-radius: 10px; border: 2px solid #e9ecef; background: #f8f9fa; font-weight: 600; text-align: center;">
+                                $0.00
+                            </div>
+                        </div>
+                        <div class="col-md-2">
                             <label class="form-label small fw-bold">Action</label>
                             <select name="action" class="form-select" style="border-radius: 10px; border: 2px solid #e9ecef;">
                                 <option value="approve">Approve</option>
                                 <option value="reject">Reject</option>
                             </select>
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-md-3">
                             <label class="form-label small fw-bold">Comment</label>
                             <input type="text" name="admin_comment" class="form-control" 
                                    placeholder="Optional comment" 
                                    style="border-radius: 10px; border: 2px solid #e9ecef;">
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-md-1">
+                            <label class="form-label small fw-bold">&nbsp;</label>
                             <button type="submit" class="btn btn-primary w-100" style="border-radius: 10px;">
                                 <i class="fas fa-check me-1"></i>Submit
                             </button>
                         </div>
                     </div>
+                    <script>
+                        // Calculate monthly payment dynamically
+                        (function() {
+                            const installmentsInput = document.getElementById('installments_{{ adv.id }}');
+                            const approvedAmountInput = document.querySelector('input[name="approved_amount"]');
+                            const monthlyDisplay = document.getElementById('monthly_{{ adv.id }}');
+                            
+                            function calculateMonthly() {
+                                const amount = parseFloat(approvedAmountInput.value) || {{ adv.amount }};
+                                const installments = parseInt(installmentsInput.value) || 1;
+                                const monthly = amount / installments;
+                                monthlyDisplay.textContent = '$' + monthly.toFixed(2);
+                            }
+                            
+                            installmentsInput.addEventListener('input', calculateMonthly);
+                            approvedAmountInput.addEventListener('input', calculateMonthly);
+                            calculateMonthly(); // Initial calculation
+                        })();
+                    </script>
                 </div>
                 {% else %}
                 <div class="mt-2">

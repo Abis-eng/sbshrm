@@ -665,14 +665,25 @@ def manage_advances(request):
         adv = get_object_or_404(AdvanceRequest, id=advance_id)
         if action == 'approve':
             adv.status = AdvanceRequest.STATUS_APPROVED
-            # Create a Loan record
+            # Get approved amount from admin (default to requested amount if not provided)
+            approved_amount = request.POST.get('approved_amount')
+            if approved_amount:
+                approved_amount = float(approved_amount)
+            else:
+                approved_amount = float(adv.amount)
+            
+            # Get and save installments
             installments = int(request.POST.get('desired_installments') or (adv.desired_installments or 1))
-            monthly_installment = float(adv.amount) / max(1, installments)
+            adv.desired_installments = installments
+            adv.save()
+            
+            # Create a Loan record with approved amount
+            monthly_installment = approved_amount / max(1, installments)
             Loan.objects.create(
                 employee=adv.employee,
-                principal_amount=adv.amount,
+                principal_amount=approved_amount,
                 monthly_installment=monthly_installment,
-                balance=adv.amount,
+                balance=approved_amount,
                 start_date=timezone.now().date(),
                 is_active=True,
             )
@@ -682,7 +693,7 @@ def manage_advances(request):
                 sender=request.user,
                 notification_type='system',
                 title='Advance request approved',
-                message=f'Your advance request of {adv.amount} has been approved.',
+                message=f'Your advance request of {adv.amount} has been approved for {approved_amount}.',
                 link=f'/my-advances/'
             )
         elif action == 'reject':
