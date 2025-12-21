@@ -403,14 +403,13 @@ def chat_user_list(request):
 def my_tickets(request):
     from django.db.models import Q, Count
     
-    # Employees can only see tickets they created or are assigned to
-    # Admin can see all tickets when accessing all_tickets, but my_tickets shows their own
-    if request.user.is_superuser:
-        base_query = Ticket.objects.all()
-    else:
-        base_query = Ticket.objects.filter(
-            Q(created_by=request.user) | Q(assigned_to=request.user)
-        )
+    # Only admins can access tickets
+    if not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to access this page.')
+        return redirect('employee_dashboard')
+    
+    # Admin can see all tickets
+    base_query = Ticket.objects.all()
     
     # Filter by type: all, sent, received
     filter_type = request.GET.get('filter', 'all')
@@ -550,6 +549,11 @@ def manage_advances(request):
 
 @login_required
 def submit_ticket(request):
+    # Only admins can submit tickets
+    if not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to access this page.')
+        return redirect('employee_dashboard')
+    
     from .models import TicketReply
     if request.method == 'POST':
         title = request.POST.get('title')
@@ -684,13 +688,13 @@ def all_tickets(request):
 
 @login_required
 def ticket_detail(request, ticket_id):
+    # Only admins can view tickets
+    if not request.user.is_superuser:
+        messages.error(request, 'You do not have permission to access this page.')
+        return redirect('employee_dashboard')
+    
     from .models import TicketReply
     ticket = get_object_or_404(Ticket.objects.select_related('created_by', 'assigned_to'), id=ticket_id)
-    
-    # Check permissions
-    if not request.user.is_superuser and ticket.created_by != request.user and ticket.assigned_to != request.user:
-        messages.error(request, 'You do not have permission to view this ticket.')
-        return redirect('my_tickets' if not request.user.is_superuser else 'all_tickets')
     
     replies = ticket.replies.select_related('created_by', 'reply_to').order_by('created_at')
     # Get files separately
