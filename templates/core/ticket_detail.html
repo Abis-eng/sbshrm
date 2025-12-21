@@ -303,15 +303,11 @@
                                 <span class="message-time">{{ reply.created_at|date:"M d, Y H:i" }}</span>
                             </div>
                             <div class="message-content {% if reply.created_by == request.user %}own-message{% endif %}">
-                                {% if reply.message != '[File Attachment]' %}
-                                    {{ reply.message }}
-                                {% else %}
-                                    <i class="fas fa-paperclip me-2"></i>File Attachment
-                                {% endif %}
+                                {{ reply.message }}
                                 {% if reply.attachment %}
                                 <div class="attachment-preview mt-2">
                                     <a href="{{ reply.attachment.url }}" target="_blank" class="text-decoration-none">
-                                        <i class="fas fa-file"></i>{{ reply.attachment.name|slice:"20:" }}
+                                        <i class="fas fa-file me-2"></i>{{ reply.attachment.name|slice:"20:" }}
                                     </a>
                                 </div>
                                 {% endif %}

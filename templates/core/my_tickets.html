@@ -4,15 +4,25 @@
 {% block title %}My Tickets - HRM System{% endblock %}
 
 {% block page_title %}
-<div class="d-flex justify-content-between align-items-center">
+<div class="d-flex justify-content-between align-items-center flex-wrap">
     <div>
-        <h1 class="h3 mb-1 fw-bold"><i class="fas fa-ticket-alt me-2"></i>My Tickets</h1>
-        <p class="text-muted mb-0">View and manage your support tickets</p>
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-ticket-alt me-2"></i>
+            {% if request.user.is_superuser %}All Tickets{% else %}My Tickets{% endif %}
+        </h1>
+        <p class="text-muted mb-0">
+            {% if request.user.is_superuser %}
+            Manage all support tickets in the system
+            {% else %}
+            View and manage your support tickets
+            {% endif %}
+        </p>
     </div>
-    <div>
+    <div class="mt-2 mt-md-0">
+        {% if not request.user.is_superuser %}
         <div class="btn-group" role="group">
             <a href="{% url 'my_tickets' %}" class="btn btn-{% if filter_type == 'all' %}primary{% else %}outline-primary{% endif %}">
-                <i class="fas fa-list me-2"></i>All Tickets
+                <i class="fas fa-list me-2"></i>All
             </a>
             <a href="{% url 'my_tickets' %}?filter=sent" class="btn btn-{% if filter_type == 'sent' %}primary{% else %}outline-primary{% endif %}">
                 <i class="fas fa-paper-plane me-2"></i>Sent ({{ stats.sent }})
@@ -21,7 +31,8 @@
                 <i class="fas fa-inbox me-2"></i>Received ({{ stats.received }})
             </a>
         </div>
-        <a href="{% url 'submit_ticket' %}" class="btn btn-primary ms-2">
+        {% endif %}
+        <a href="{% url 'submit_ticket' %}" class="btn btn-primary {% if not request.user.is_superuser %}ms-2{% endif %}">
             <i class="fas fa-plus me-2"></i>Submit New Ticket
         </a>
     </div>

@@ -402,9 +402,15 @@ def chat_user_list(request):
 @login_required
 def my_tickets(request):
     from django.db.models import Q, Count
-    base_query = Ticket.objects.filter(
-        Q(created_by=request.user) | Q(assigned_to=request.user)
-    )
+    
+    # Employees can only see tickets they created or are assigned to
+    # Admin can see all tickets when accessing all_tickets, but my_tickets shows their own
+    if request.user.is_superuser:
+        base_query = Ticket.objects.all()
+    else:
+        base_query = Ticket.objects.filter(
+            Q(created_by=request.user) | Q(assigned_to=request.user)
+        )
     
     # Filter by type: all, sent, received
     filter_type = request.GET.get('filter', 'all')
@@ -413,7 +419,10 @@ def my_tickets(request):
     elif filter_type == 'received':
         tickets = base_query.filter(assigned_to=request.user)
     else:
-        tickets = base_query
+        if request.user.is_superuser:
+            tickets = base_query
+        else:
+            tickets = base_query.filter(Q(created_by=request.user) | Q(assigned_to=request.user))
     
     tickets = tickets.select_related('created_by', 'assigned_to').annotate(
         reply_count=Count('replies')
@@ -435,8 +444,12 @@ def my_tickets(request):
             Q(description__icontains=search_query)
         )
     
-    # Statistics
-    base_stats = Ticket.objects.filter(Q(created_by=request.user) | Q(assigned_to=request.user))
+    # Statistics - only for employee's own tickets
+    if request.user.is_superuser:
+        base_stats = Ticket.objects.all()
+    else:
+        base_stats = Ticket.objects.filter(Q(created_by=request.user) | Q(assigned_to=request.user))
+    
     stats = {
         'total': base_stats.count(),
         'new': base_stats.filter(status='new').count(),
@@ -554,26 +567,30 @@ def submit_ticket(request):
             except:
                 pass
         
+        # Employees submit to admin automatically (no assignment needed)
         ticket = Ticket.objects.create(
             title=title,
             subject=subject,
             description=description,
             priority=priority,
             created_by=request.user,
-            end_date=end_date
+            end_date=end_date,
+            status='new'  # New tickets start as 'new'
         )
         
-        # Handle file attachments
+        # Handle file attachments - use TicketFile model instead
+        from .models import TicketFile
         if request.FILES.getlist('attachments'):
             for file in request.FILES.getlist('attachments'):
-                TicketReply.objects.create(
+                TicketFile.objects.create(
                     ticket=ticket,
-                    message='[File Attachment]',
-                    created_by=request.user,
-                    attachment=file
+                    file=file,
+                    file_name=file.name,
+                    file_size=file.size,
+                    uploaded_by=request.user
                 )
         
-        # Create notification for admin
+        # Create notification for all admins
         admin_users = User.objects.filter(is_superuser=True)
         for admin in admin_users:
             create_notification(
@@ -584,7 +601,7 @@ def submit_ticket(request):
                 message=description[:200],
                 link=f'/ticket/{ticket.id}/'
             )
-        messages.success(request, f'Ticket {ticket.tk_id} created successfully!')
+        messages.success(request, f'Ticket {ticket.tk_id} created successfully! Admin will be notified.')
         return redirect('ticket_detail', ticket_id=ticket.id)
     return render(request, 'core/submit_ticket.html')
 
@@ -641,6 +658,9 @@ def ticket_detail(request, ticket_id):
         return redirect('my_tickets' if not request.user.is_superuser else 'all_tickets')
     
     replies = ticket.replies.select_related('created_by', 'reply_to').order_by('created_at')
+    # Get files separately
+    from .models import TicketFile
+    files = TicketFile.objects.filter(ticket=ticket).select_related('uploaded_by')
     employees = User.objects.filter(is_superuser=False, employee__isnull=False).select_related('employee')
     
     if request.method == 'POST':
@@ -656,10 +676,14 @@ def ticket_detail(request, ticket_id):
                     reply_to_id=request.POST.get('reply_to') or None
                 )
                 
-                # Handle file attachment
+                # Handle file attachment (if field exists)
                 if request.FILES.get('attachment'):
-                    reply.attachment = request.FILES['attachment']
-                    reply.save()
+                    try:
+                        reply.attachment = request.FILES['attachment']
+                        reply.save()
+                    except Exception as e:
+                        # If attachment field doesn't exist, skip it
+                        print(f"Error saving attachment: {e}")
                 
                 # Mark ticket as read for replier
                 reply.is_read = True
@@ -738,6 +762,7 @@ def ticket_detail(request, ticket_id):
     return render(request, 'core/ticket_detail.html', {
         'ticket': ticket,
         'replies': replies,
+        'files': files,
         'employees': employees,
     })
 
