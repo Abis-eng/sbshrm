@@ -27,6 +27,7 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),  # admin only
     path('employee-dashboard/', views.employee_dashboard, name='employee_dashboard'),  # employee only
     path('employees/', views.employee_list, name='employee_list'),  # admin only
+    path('employee/<int:employee_id>/', views.view_employee_profile, name='view_employee_profile'),  # admin
     path('add-employee/', views.add_employee, name='add_employee'),  # admin only
     path('edit-employee/<int:employee_id>/', views.edit_employee, name='edit_employee'),  # admin
     path('delete-employee/<int:employee_id>/', views.delete_employee, name='delete_employee'),  # admin

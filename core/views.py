@@ -202,6 +202,30 @@ def employee_list(request):
     return render(request, 'core/employee_list.html', {'employees': employees, 'departments': departments, 'designations': designations})
 
 @user_passes_test(is_admin)
+def view_employee_profile(request, employee_id):
+    employee = get_object_or_404(Employee.objects.select_related('user', 'department', 'designation'), id=employee_id)
+    # Get related data
+    attendance_count = Attendance.objects.filter(employee=employee).count()
+    leaves_count = Leave.objects.filter(employee=employee).count()
+    # Check if Project and Task models have assigned_to field
+    try:
+        projects_count = Project.objects.filter(manager=employee).count()
+    except:
+        projects_count = 0
+    try:
+        tasks_count = Task.objects.filter(assigned_to=employee.user).count()
+    except:
+        tasks_count = 0
+    
+    return render(request, 'core/view_employee_profile.html', {
+        'employee': employee,
+        'attendance_count': attendance_count,
+        'leaves_count': leaves_count,
+        'projects_count': projects_count,
+        'tasks_count': tasks_count,
+    })
+
+@user_passes_test(is_admin)
 def user_list(request):
     if not request.user.is_authenticated:
         return JsonResponse({'users': []})

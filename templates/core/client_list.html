@@ -1,49 +1,246 @@
 {% extends 'core/base.html' %}
-{% block page_title %}Clients{% endblock %}
-{% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Client List</h4>
-    <a href="{% url 'add_client' %}" class="btn btn-primary mb-3">Add Client</a>
-    {% if clients %}
-    <div class="table-responsive">
-      <table class="table table-hover">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Company</th>
-            <th>Address</th>
-            <th>Description</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for client in clients %}
-          <tr>
-            <td>{{ client.name }}</td>
-            <td>{{ client.email }}</td>
-            <td>{{ client.phone }}</td>
-            <td>{{ client.company }}</td>
-            <td>{{ client.address }}</td>
-            <td>{{ client.description }}</td>
-            <td>
-              <a href="{% url 'edit_client' client.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
-              <a href="{% url 'delete_client' client.id %}" class="btn btn-sm btn-outline-danger">Delete</a>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+{% load static %}
+
+{% block title %}Clients - HRM System{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="flex-grow-1">
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-user-tie me-2"></i>Client Management
+        </h1>
+        <p class="text-muted mb-0 small">Manage and track all your clients</p>
     </div>
-    {% else %}
-    <div class="text-center py-4">
-      <i class="fas fa-user-tie fa-3x text-muted mb-3"></i>
-      <h5 class="text-muted">No clients found</h5>
-      <p class="text-muted">Start by adding your first client.</p>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <a href="{% url 'add_client' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add New Client
+        </a>
     </div>
-    {% endif %}
-  </div>
 </div>
-{% endblock %} 
+{% endblock %}
+
+{% block content %}
+<style>
+    .client-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        overflow: hidden;
+        background: white;
+    }
+    .client-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2);
+    }
+    .client-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0 auto;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+    .client-info {
+        padding: 1.5rem;
+    }
+    .client-name {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 0.5rem;
+    }
+    .client-email {
+        color: #718096;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+    .client-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin: 0.25rem;
+    }
+    .badge-company {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+    }
+    .client-actions {
+        padding: 1rem;
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+    }
+    .action-btn {
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+    .action-btn:hover {
+        transform: scale(1.05);
+    }
+    .stats-card {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    }
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .stats-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    .search-filter-bar {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+    }
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+    .empty-state i {
+        font-size: 5rem;
+        color: #cbd5e0;
+        margin-bottom: 1rem;
+    }
+</style>
+
+<!-- Statistics Card -->
+<div class="row g-4 mb-4">
+    <div class="col-md-12">
+        <div class="stats-card">
+            <div class="stats-number">{{ clients|length }}</div>
+            <div class="stats-label">
+                <i class="fas fa-user-tie me-2"></i>Total Clients
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter Bar -->
+<div class="search-filter-bar">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-12">
+            <label class="form-label fw-bold">
+                <i class="fas fa-search me-2"></i>Search Clients
+            </label>
+            <input type="text" id="searchInput" class="form-control" placeholder="Search by name, email, company, or phone..." 
+                   style="border-radius: 10px; border: 2px solid #e9ecef; padding: 0.75rem;">
+        </div>
+    </div>
+</div>
+
+<!-- Client Cards Grid -->
+{% if clients %}
+<div class="row g-4" id="clientGrid">
+    {% for client in clients %}
+    <div class="col-lg-4 col-md-6 client-item" 
+         data-name="{{ client.name|lower }}"
+         data-email="{{ client.email|default:''|lower }}"
+         data-company="{{ client.company|default:''|lower }}"
+         data-phone="{{ client.phone|default:''|lower }}">
+        <div class="client-card">
+            <div class="client-info">
+                <div class="client-avatar mb-3">
+                    {{ client.name|first|upper }}
+                </div>
+                <div class="text-center">
+                    <div class="client-name">
+                        {{ client.name }}
+                    </div>
+                    {% if client.email %}
+                    <div class="client-email">
+                        <i class="fas fa-envelope me-1"></i>{{ client.email }}
+                    </div>
+                    {% endif %}
+                    {% if client.phone %}
+                    <div class="text-muted small mb-2">
+                        <i class="fas fa-phone me-1"></i>{{ client.phone }}
+                    </div>
+                    {% endif %}
+                    {% if client.company %}
+                    <div class="mt-3">
+                        <span class="client-badge badge-company">
+                            <i class="fas fa-building me-1"></i>{{ client.company }}
+                        </span>
+                    </div>
+                    {% endif %}
+                    {% if client.address %}
+                    <div class="text-muted small mt-2">
+                        <i class="fas fa-map-marker-alt me-1"></i>{{ client.address|truncatewords:10 }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="client-actions">
+                <a href="{% url 'edit_client' client.id %}" class="btn btn-sm btn-warning action-btn" title="Edit Client">
+                    <i class="fas fa-edit me-1"></i>Edit
+                </a>
+                <a href="{% url 'delete_client' client.id %}" 
+                   class="btn btn-sm btn-danger action-btn" 
+                   title="Delete Client"
+                   onclick="return confirm('Are you sure you want to delete {{ client.name }}?');">
+                    <i class="fas fa-trash me-1"></i>Delete
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="fas fa-user-tie"></i>
+    <h4 class="text-muted mt-3">No clients found</h4>
+    <p class="text-muted">Start by adding your first client to the system.</p>
+    <a href="{% url 'add_client' %}" class="btn btn-primary mt-3">
+        <i class="fas fa-plus me-2"></i>Add First Client
+    </a>
+</div>
+{% endif %}
+
+<script>
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const items = document.querySelectorAll('.client-item');
+        items.forEach(item => {
+            const name = item.getAttribute('data-name');
+            const email = item.getAttribute('data-email');
+            const company = item.getAttribute('data-company');
+            const phone = item.getAttribute('data-phone');
+            
+            const matchesSearch = !searchTerm || 
+                name.includes(searchTerm) || 
+                email.includes(searchTerm) ||
+                company.includes(searchTerm) ||
+                phone.includes(searchTerm);
+            
+            if (matchesSearch) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+</script>
+{% endblock %}

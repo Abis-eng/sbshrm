@@ -1,15 +1,131 @@
 {% extends 'core/base.html' %}
-{% block page_title %}Add Client{% endblock %}
-{% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Add Client</h4>
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit" class="btn btn-success">Add Client</button>
-      <a href="{% url 'client_list' %}" class="btn btn-secondary">Cancel</a>
-    </form>
-  </div>
+{% load static %}
+
+{% block title %}Add Client - HRM System{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="flex-grow-1">
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-user-plus me-2"></i>Add New Client
+        </h1>
+        <p class="text-muted mb-0 small">Create a new client in the system</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <a href="{% url 'client_list' %}" class="btn btn-sm btn-light">
+            <i class="fas fa-arrow-left me-1"></i>Back to Clients
+        </a>
+    </div>
 </div>
-{% endblock %} 
+{% endblock %}
+
+{% block content %}
+<style>
+    .form-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        padding: 2rem;
+        background: white;
+    }
+    .form-section {
+        background: #f8f9ff;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid #3b82f6;
+    }
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #3b82f6;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+    }
+    .section-title i {
+        margin-right: 0.5rem;
+    }
+    .form-label {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 0.5rem;
+    }
+    .form-control {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 0.75rem;
+        transition: all 0.3s;
+    }
+    .form-control:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+    }
+    .required-field::after {
+        content: " *";
+        color: #e53e3e;
+    }
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="form-card">
+            <form method="post" id="addClientForm">
+                {% csrf_token %}
+                
+                <!-- Contact Information -->
+                <div class="form-section">
+                    <div class="section-title">
+                        <i class="fas fa-user"></i>Contact Information
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="id_name" class="form-label required-field">Client Name</label>
+                            <input type="text" class="form-control" id="id_name" name="name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="id_company" class="form-label">Company</label>
+                            <input type="text" class="form-control" id="id_company" name="company" placeholder="Company name (optional)">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="id_email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="id_email" name="email" placeholder="client@example.com">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="id_phone" class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="id_phone" name="phone" placeholder="+1 234 567 8900">
+                        </div>
+                        <div class="col-12">
+                            <label for="id_address" class="form-label">Address</label>
+                            <textarea class="form-control" id="id_address" name="address" rows="3" placeholder="Enter full address"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Additional Information -->
+                <div class="form-section">
+                    <div class="section-title">
+                        <i class="fas fa-info-circle"></i>Additional Information
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label for="id_description" class="form-label">Description</label>
+                            <textarea class="form-control" id="id_description" name="description" rows="4" placeholder="Enter client description or notes (optional)"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                    <a href="{% url 'client_list' %}" class="btn btn-light">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save me-2"></i>Add Client
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

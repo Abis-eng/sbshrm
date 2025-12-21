@@ -1,0 +1,359 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{{ employee.user.get_full_name|default:employee.user.username }} - Profile{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="flex-grow-1">
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-user me-2"></i>Employee Profile: {{ employee.user.get_full_name|default:employee.user.username }}
+        </h1>
+        <p class="text-muted mb-0 small">Complete employee information and details</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <a href="{% url 'edit_employee' employee.id %}" class="btn btn-warning">
+            <i class="fas fa-edit me-2"></i>Edit Employee
+        </a>
+        <a href="{% url 'employee_list' %}" class="btn btn-sm btn-light">
+            <i class="fas fa-arrow-left me-1"></i>Back to Employees
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<style>
+    .profile-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 3rem 2rem;
+        color: white;
+        text-align: center;
+        margin-bottom: 2rem;
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+    }
+    .profile-avatar {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 4rem;
+        font-weight: 700;
+        margin: 0 auto 1.5rem;
+        border: 5px solid rgba(255, 255, 255, 0.3);
+    }
+    .info-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        padding: 2rem;
+        background: white;
+        margin-bottom: 1.5rem;
+    }
+    .info-section-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 0.75rem;
+    }
+    .info-section-title i {
+        margin-right: 0.75rem;
+    }
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .info-item:last-child {
+        border-bottom: none;
+    }
+    .info-label {
+        font-weight: 600;
+        color: #718096;
+        flex: 0 0 40%;
+    }
+    .info-value {
+        color: #2d3748;
+        flex: 1;
+        text-align: right;
+    }
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .stats-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    .badge-status {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .status-active {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .status-restricted {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+</style>
+
+<!-- Profile Header -->
+<div class="profile-header">
+    <div class="profile-avatar">
+        {{ employee.user.first_name|first|default:employee.user.username|first|upper }}{{ employee.user.last_name|first|upper|default:'' }}
+    </div>
+    <h2 class="mb-2">{{ employee.user.get_full_name|default:employee.user.username }}</h2>
+    <p class="mb-0 opacity-90">{{ employee.user.email }}</p>
+    {% if employee.designation %}
+    <p class="mb-0 mt-2">
+        <i class="fas fa-id-badge me-2"></i>{{ employee.designation.name }}
+    </p>
+    {% endif %}
+</div>
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">{{ attendance_count }}</div>
+            <div class="stats-label">
+                <i class="fas fa-calendar-check me-2"></i>Attendance Records
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="stats-number">{{ leaves_count }}</div>
+            <div class="stats-label">
+                <i class="fas fa-plane-departure me-2"></i>Leave Requests
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="stats-number">{{ projects_count }}</div>
+            <div class="stats-label">
+                <i class="fas fa-project-diagram me-2"></i>Projects
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <div class="stats-number">{{ tasks_count }}</div>
+            <div class="stats-label">
+                <i class="fas fa-tasks me-2"></i>Tasks
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Personal Information -->
+    <div class="col-lg-6">
+        <div class="info-card">
+            <div class="info-section-title">
+                <i class="fas fa-user"></i>Personal Information
+            </div>
+            <div class="info-item">
+                <span class="info-label">Full Name:</span>
+                <span class="info-value">{{ employee.user.get_full_name|default:"Not set" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Email:</span>
+                <span class="info-value">{{ employee.user.email }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Username:</span>
+                <span class="info-value">{{ employee.user.username }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Phone:</span>
+                <span class="info-value">{{ employee.phone|default:"Not provided" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Address:</span>
+                <span class="info-value">{{ employee.address|default:"Not provided" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employment Details -->
+    <div class="col-lg-6">
+        <div class="info-card">
+            <div class="info-section-title">
+                <i class="fas fa-briefcase"></i>Employment Details
+            </div>
+            <div class="info-item">
+                <span class="info-label">Department:</span>
+                <span class="info-value">
+                    {% if employee.department %}
+                        <span class="badge bg-primary">{{ employee.department.name }}</span>
+                    {% else %}
+                        Not assigned
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Designation:</span>
+                <span class="info-value">
+                    {% if employee.designation %}
+                        <span class="badge bg-info">{{ employee.designation.name }}</span>
+                    {% else %}
+                        Not assigned
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Date of Joining:</span>
+                <span class="info-value">{{ employee.date_of_joining|date:"M d, Y"|default:"Not set" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Monthly Salary:</span>
+                <span class="info-value">
+                    {% if employee.salary %}
+                        ${{ employee.salary|floatformat:2 }}
+                    {% else %}
+                        Not set
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Pay Frequency:</span>
+                <span class="info-value">{{ employee.get_pay_frequency_display }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Last Pay Date:</span>
+                <span class="info-value">{{ employee.last_pay_date|date:"M d, Y"|default:"Not set" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ZKT Machine Configuration -->
+    <div class="col-lg-6">
+        <div class="info-card">
+            <div class="info-section-title">
+                <i class="fas fa-fingerprint"></i>ZKT Machine Configuration
+            </div>
+            <div class="info-item">
+                <span class="info-label">Machine ID:</span>
+                <span class="info-value">{{ employee.machine_id|default:"Not configured" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Fingerprint ID:</span>
+                <span class="info-value">{{ employee.fingerprint_id|default:"Not configured" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Face ID:</span>
+                <span class="info-value">{{ employee.face_id|default:"Not configured" }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Card ID:</span>
+                <span class="info-value">{{ employee.card_id|default:"Not configured" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Permissions & Status -->
+    <div class="col-lg-6">
+        <div class="info-card">
+            <div class="info-section-title">
+                <i class="fas fa-lock"></i>Permissions & Status
+            </div>
+            <div class="info-item">
+                <span class="info-label">Account Status:</span>
+                <span class="info-value">
+                    {% if employee.is_restricted %}
+                        <span class="badge-status status-restricted">Restricted</span>
+                    {% else %}
+                        <span class="badge-status status-active">Active</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Can View Attendance:</span>
+                <span class="info-value">
+                    {% if employee.can_view_attendance %}
+                        <i class="fas fa-check-circle text-success"></i> Yes
+                    {% else %}
+                        <i class="fas fa-times-circle text-danger"></i> No
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Can View Tasks:</span>
+                <span class="info-value">
+                    {% if employee.can_view_tasks %}
+                        <i class="fas fa-check-circle text-success"></i> Yes
+                    {% else %}
+                        <i class="fas fa-times-circle text-danger"></i> No
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Can View Department:</span>
+                <span class="info-value">
+                    {% if employee.can_view_department %}
+                        <i class="fas fa-check-circle text-success"></i> Yes
+                    {% else %}
+                        <i class="fas fa-times-circle text-danger"></i> No
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Can View Designation:</span>
+                <span class="info-value">
+                    {% if employee.can_view_designation %}
+                        <i class="fas fa-check-circle text-success"></i> Yes
+                    {% else %}
+                        <i class="fas fa-times-circle text-danger"></i> No
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Can View Holidays:</span>
+                <span class="info-value">
+                    {% if employee.can_view_holidays %}
+                        <i class="fas fa-check-circle text-success"></i> Yes
+                    {% else %}
+                        <i class="fas fa-times-circle text-danger"></i> No
+                    {% endif %}
+                </span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Can View Leaves:</span>
+                <span class="info-value">
+                    {% if employee.can_view_leaves %}
+                        <i class="fas fa-check-circle text-success"></i> Yes
+                    {% else %}
+                        <i class="fas fa-times-circle text-danger"></i> No
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

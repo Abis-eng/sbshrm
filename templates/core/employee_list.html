@@ -241,6 +241,9 @@
                 </div>
             </div>
             <div class="employee-actions">
+                <a href="{% url 'view_employee_profile' employee.id %}" class="btn btn-sm btn-info action-btn" title="View Profile">
+                    <i class="fas fa-eye me-1"></i>View
+                </a>
                 <a href="{% url 'edit_employee' employee.id %}" class="btn btn-sm btn-warning action-btn" title="Edit Employee">
                     <i class="fas fa-edit me-1"></i>Edit
                 </a>
