@@ -71,20 +71,73 @@ class ChatMessage(models.Model):
 
 class Ticket(models.Model):
     STATUS_CHOICES = [
+        ('new', 'New'),
         ('open', 'Open'),
-        ('in_progress', 'In Progress'),
+        ('reopen', 'Reopen'),
+        ('onhold', 'On Hold'),
         ('closed', 'Closed'),
+        ('in_progress', 'In Progress'),
+        ('cancelled', 'Cancelled'),
+        ('completed', 'Completed'),
     ]
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ]
+    tk_id = models.CharField(max_length=50, unique=True, null=True, blank=True, help_text='Ticket ID')
     title = models.CharField(max_length=200)
+    subject = models.CharField(max_length=200, blank=True, help_text='Ticket subject')
     description = models.TextField()
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tickets_created')
     assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets_assigned')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new')
+    priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
+    end_date = models.DateTimeField(null=True, blank=True, help_text='Expected completion date')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if not self.tk_id:
+            # Generate ticket ID: #TKT-0001, #TKT-0002, etc.
+            last_ticket = Ticket.objects.order_by('-id').first()
+            if last_ticket and last_ticket.tk_id:
+                try:
+                    last_num = int(last_ticket.tk_id.split('-')[1])
+                    new_num = last_num + 1
+                except:
+                    new_num = Ticket.objects.count() + 1
+            else:
+                new_num = Ticket.objects.count() + 1
+            self.tk_id = f"#TKT-{str(new_num).zfill(4)}"
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.title} ({self.status})"
+        return f"{self.tk_id or self.title} ({self.status})"
+    
+    def get_priority_color(self):
+        colors = {
+            'low': 'info',
+            'medium': 'warning',
+            'high': 'danger'
+        }
+        return colors.get(self.priority, 'secondary')
+    
+    def get_status_color(self):
+        colors = {
+            'new': 'primary',
+            'open': 'info',
+            'reopen': 'warning',
+            'onhold': 'secondary',
+            'closed': 'dark',
+            'in_progress': 'primary',
+            'cancelled': 'danger',
+            'completed': 'success'
+        }
+        return colors.get(self.status, 'secondary')
 
 class OnlineUser(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='online_status')
@@ -805,12 +858,13 @@ class AssetIssue(models.Model):
 # Ticket Reply
 class TicketReply(models.Model):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='replies')
-    reply = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='sub_replies')
+    reply_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies_to')
     message = models.TextField()
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ticket_replies')
     is_read = models.BooleanField(default=False)
     attachment = models.FileField(upload_to='ticket_attachments/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['created_at']

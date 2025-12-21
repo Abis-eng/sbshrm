@@ -401,8 +401,45 @@ def chat_user_list(request):
 
 @login_required
 def my_tickets(request):
-    tickets = Ticket.objects.filter(created_by=request.user).order_by('-created_at')
-    return render(request, 'core/my_tickets.html', {'tickets': tickets})
+    from django.db.models import Q, Count
+    tickets = Ticket.objects.filter(
+        Q(created_by=request.user) | Q(assigned_to=request.user)
+    ).select_related('created_by', 'assigned_to').annotate(
+        reply_count=Count('replies')
+    ).order_by('-created_at')
+    
+    # Filtering
+    status_filter = request.GET.get('status', '')
+    priority_filter = request.GET.get('priority', '')
+    search_query = request.GET.get('search', '')
+    
+    if status_filter:
+        tickets = tickets.filter(status=status_filter)
+    if priority_filter:
+        tickets = tickets.filter(priority=priority_filter)
+    if search_query:
+        tickets = tickets.filter(
+            Q(title__icontains=search_query) |
+            Q(tk_id__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
+    
+    # Statistics
+    stats = {
+        'total': Ticket.objects.filter(Q(created_by=request.user) | Q(assigned_to=request.user)).count(),
+        'new': Ticket.objects.filter(Q(created_by=request.user) | Q(assigned_to=request.user), status='new').count(),
+        'open': Ticket.objects.filter(Q(created_by=request.user) | Q(assigned_to=request.user), status='open').count(),
+        'in_progress': Ticket.objects.filter(Q(created_by=request.user) | Q(assigned_to=request.user), status='in_progress').count(),
+        'closed': Ticket.objects.filter(Q(created_by=request.user) | Q(assigned_to=request.user), status='closed').count(),
+    }
+    
+    return render(request, 'core/my_tickets.html', {
+        'tickets': tickets,
+        'stats': stats,
+        'status_filter': status_filter,
+        'priority_filter': priority_filter,
+        'search_query': search_query,
+    })
 
 @login_required
 def my_advances(request):
@@ -485,10 +522,42 @@ def manage_advances(request):
 
 @login_required
 def submit_ticket(request):
+    from .models import TicketReply
     if request.method == 'POST':
         title = request.POST.get('title')
+        subject = request.POST.get('subject', '')
         description = request.POST.get('description')
-        ticket = Ticket.objects.create(title=title, description=description, created_by=request.user)
+        priority = request.POST.get('priority', 'medium')
+        end_date_str = request.POST.get('end_date', '')
+        
+        from datetime import datetime
+        end_date = None
+        if end_date_str:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+                end_date = timezone.make_aware(end_date)
+            except:
+                pass
+        
+        ticket = Ticket.objects.create(
+            title=title,
+            subject=subject,
+            description=description,
+            priority=priority,
+            created_by=request.user,
+            end_date=end_date
+        )
+        
+        # Handle file attachments
+        if request.FILES.getlist('attachments'):
+            for file in request.FILES.getlist('attachments'):
+                TicketReply.objects.create(
+                    ticket=ticket,
+                    message='[File Attachment]',
+                    created_by=request.user,
+                    attachment=file
+                )
+        
         # Create notification for admin
         admin_users = User.objects.filter(is_superuser=True)
         for admin in admin_users:
@@ -496,26 +565,180 @@ def submit_ticket(request):
                 recipient=admin,
                 sender=request.user,
                 notification_type='ticket',
-                title=f'New ticket: {title}',
+                title=f'New ticket: {ticket.tk_id} - {title}',
                 message=description[:200],
-                link=f'/all-tickets/'
+                link=f'/ticket/{ticket.id}/'
             )
-        return redirect('my_tickets')
+        messages.success(request, f'Ticket {ticket.tk_id} created successfully!')
+        return redirect('ticket_detail', ticket_id=ticket.id)
     return render(request, 'core/submit_ticket.html')
 
 @user_passes_test(is_admin)
 def all_tickets(request):
-    tickets = Ticket.objects.all().order_by('-created_at')
-    return render(request, 'core/all_tickets.html', {'tickets': tickets})
+    from django.db.models import Q, Count
+    tickets = Ticket.objects.select_related('created_by', 'assigned_to').annotate(
+        reply_count=Count('replies')
+    ).order_by('-created_at')
+    
+    # Filtering
+    status_filter = request.GET.get('status', '')
+    priority_filter = request.GET.get('priority', '')
+    search_query = request.GET.get('search', '')
+    
+    if status_filter:
+        tickets = tickets.filter(status=status_filter)
+    if priority_filter:
+        tickets = tickets.filter(priority=priority_filter)
+    if search_query:
+        tickets = tickets.filter(
+            Q(title__icontains=search_query) |
+            Q(tk_id__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(created_by__username__icontains=search_query)
+        )
+    
+    # Statistics
+    stats = {
+        'total': Ticket.objects.count(),
+        'new': Ticket.objects.filter(status='new').count(),
+        'open': Ticket.objects.filter(status='open').count(),
+        'in_progress': Ticket.objects.filter(status='in_progress').count(),
+        'closed': Ticket.objects.filter(status='closed').count(),
+        'high_priority': Ticket.objects.filter(priority='high', status__in=['new', 'open', 'in_progress']).count(),
+    }
+    
+    return render(request, 'core/all_tickets.html', {
+        'tickets': tickets,
+        'stats': stats,
+        'status_filter': status_filter,
+        'priority_filter': priority_filter,
+        'search_query': search_query,
+    })
+
+@login_required
+def ticket_detail(request, ticket_id):
+    from .models import TicketReply
+    ticket = get_object_or_404(Ticket.objects.select_related('created_by', 'assigned_to'), id=ticket_id)
+    
+    # Check permissions
+    if not request.user.is_superuser and ticket.created_by != request.user and ticket.assigned_to != request.user:
+        messages.error(request, 'You do not have permission to view this ticket.')
+        return redirect('my_tickets' if not request.user.is_superuser else 'all_tickets')
+    
+    replies = ticket.replies.select_related('created_by', 'reply_to').order_by('created_at')
+    employees = User.objects.filter(is_superuser=False, employee__isnull=False).select_related('employee')
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'reply':
+            message = request.POST.get('message', '').strip()
+            if message:
+                reply = TicketReply.objects.create(
+                    ticket=ticket,
+                    message=message,
+                    created_by=request.user,
+                    reply_to_id=request.POST.get('reply_to') or None
+                )
+                
+                # Handle file attachment
+                if request.FILES.get('attachment'):
+                    reply.attachment = request.FILES['attachment']
+                    reply.save()
+                
+                # Mark ticket as read for replier
+                reply.is_read = True
+                reply.save()
+                
+                # Create notification
+                if request.user.is_superuser:
+                    # Admin replied - notify ticket creator
+                    if ticket.created_by != request.user:
+                        create_notification(
+                            recipient=ticket.created_by,
+                            sender=request.user,
+                            notification_type='ticket',
+                            title=f'Reply on ticket {ticket.tk_id}',
+                            message=message[:200],
+                            link=f'/ticket/{ticket.id}/'
+                        )
+                else:
+                    # Employee replied - notify assigned admin or all admins
+                    if ticket.assigned_to:
+                        create_notification(
+                            recipient=ticket.assigned_to,
+                            sender=request.user,
+                            notification_type='ticket',
+                            title=f'Reply on ticket {ticket.tk_id}',
+                            message=message[:200],
+                            link=f'/ticket/{ticket.id}/'
+                        )
+                    else:
+                        for admin in User.objects.filter(is_superuser=True):
+                            create_notification(
+                                recipient=admin,
+                                sender=request.user,
+                                notification_type='ticket',
+                                title=f'Reply on ticket {ticket.tk_id}',
+                                message=message[:200],
+                                link=f'/ticket/{ticket.id}/'
+                            )
+                
+                messages.success(request, 'Reply added successfully!')
+            else:
+                messages.error(request, 'Message cannot be empty.')
+        
+        elif action == 'update_status' and request.user.is_superuser:
+            ticket.status = request.POST.get('status')
+            ticket.save()
+            messages.success(request, 'Ticket status updated!')
+        
+        elif action == 'assign' and request.user.is_superuser:
+            assigned_user_id = request.POST.get('assigned_to')
+            if assigned_user_id:
+                ticket.assigned_to_id = assigned_user_id
+                ticket.save()
+                # Notify assigned user
+                assigned_user = User.objects.get(id=assigned_user_id)
+                create_notification(
+                    recipient=assigned_user,
+                    sender=request.user,
+                    notification_type='ticket',
+                    title=f'You have been assigned ticket {ticket.tk_id}',
+                    message=ticket.description[:200],
+                    link=f'/ticket/{ticket.id}/'
+                )
+                messages.success(request, f'Ticket assigned to {assigned_user.get_full_name() or assigned_user.username}!')
+        
+        elif action == 'update_priority' and request.user.is_superuser:
+            ticket.priority = request.POST.get('priority')
+            ticket.save()
+            messages.success(request, 'Ticket priority updated!')
+        
+        return redirect('ticket_detail', ticket_id=ticket.id)
+    
+    # Mark unread replies as read for current user
+    ticket.replies.filter(is_read=False).exclude(created_by=request.user).update(is_read=True)
+    
+    return render(request, 'core/ticket_detail.html', {
+        'ticket': ticket,
+        'replies': replies,
+        'employees': employees,
+    })
 
 @user_passes_test(is_admin)
 def update_ticket_status(request, ticket_id):
-    ticket = Ticket.objects.get(id=ticket_id)
+    ticket = get_object_or_404(Ticket, id=ticket_id)
     if request.method == 'POST':
         ticket.status = request.POST.get('status')
+        ticket.priority = request.POST.get('priority', ticket.priority)
+        if request.POST.get('assigned_to'):
+            ticket.assigned_to_id = request.POST.get('assigned_to')
         ticket.save()
-        return redirect('all_tickets')
-    return render(request, 'core/update_ticket.html', {'ticket': ticket})
+        messages.success(request, 'Ticket updated successfully!')
+        return redirect('ticket_detail', ticket_id=ticket.id)
+    employees = User.objects.filter(is_superuser=False, employee__isnull=False).select_related('employee')
+    return render(request, 'core/update_ticket.html', {'ticket': ticket, 'employees': employees})
 
 @login_required
 def delete_ticket(request, ticket_id):
