@@ -12,8 +12,8 @@
         <p class="text-muted mb-0 small">View all employees in this department</p>
     </div>
     <div class="d-flex flex-wrap gap-2 align-items-center">
-        <a href="{% url 'manage_departments' %}" class="btn btn-sm btn-light">
-            <i class="fas fa-arrow-left me-1"></i>Back to Departments
+        <a href="{% if user.is_superuser %}{% url 'manage_departments' %}{% else %}{% url 'my_department' %}{% endif %}" class="btn btn-sm btn-light">
+            <i class="fas fa-arrow-left me-1"></i>Back
         </a>
     </div>
 </div>
@@ -135,10 +135,14 @@
                 </div>
             </div>
             <div class="employee-actions">
+                <a href="{% url 'view_employee_profile' employee.id %}" class="btn btn-sm btn-info" title="View Profile">
+                    <i class="fas fa-eye me-1"></i>Details
+                </a>
                 {% if user.is_superuser %}
                 <a href="{% url 'edit_employee' employee.id %}" class="btn btn-sm btn-warning" title="Edit Employee">
                     <i class="fas fa-edit me-1"></i>Edit
                 </a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -152,4 +156,3 @@
 </div>
 {% endif %}
 {% endblock %}
-
