@@ -297,6 +297,20 @@
                             </a>
                         </li>
                         {% endif %}
+                        {% if not user.is_superuser %}
+                        <li class="nav-item">
+                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#ticketsMenu" role="button" aria-expanded="false" aria-controls="ticketsMenu">
+                                <i class="fas fa-ticket-alt me-2"></i>Tickets
+                                <i class="fas fa-chevron-down ms-auto float-end mt-1"></i>
+                            </a>
+                            <div class="collapse" id="ticketsMenu">
+                                <ul class="nav flex-column ms-3">
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'submit_ticket' %}"><i class="fas fa-plus me-2"></i>Send Ticket</a></li>
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'my_tickets' %}?filter=received"><i class="fas fa-inbox me-2"></i>Received Tickets</a></li>
+                                </ul>
+                            </div>
+                        </li>
+                        {% endif %}
                         {% if not user.is_superuser and user.employee and user.employee.designation.name != 'Project Manager' %}
                         <li class="nav-item">
                             <a class="nav-link text-white" href="{% url 'my_tasks' %}">

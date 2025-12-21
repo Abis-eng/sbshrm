@@ -21,6 +21,15 @@
     <div class="d-flex flex-wrap gap-2 align-items-center">
         {% if not request.user.is_superuser %}
         <div class="btn-group" role="group">
+            <a href="{% url 'my_tickets' %}?filter=sent" class="btn btn-sm btn-{% if filter_type == 'sent' %}primary{% else %}outline-primary{% endif %}">
+                <i class="fas fa-paper-plane me-1"></i>Sent <span class="badge bg-light text-dark ms-1">{{ stats.sent }}</span>
+            </a>
+            <a href="{% url 'my_tickets' %}?filter=received" class="btn btn-sm btn-{% if filter_type == 'received' %}primary{% else %}outline-primary{% endif %}">
+                <i class="fas fa-inbox me-1"></i>Received <span class="badge bg-light text-dark ms-1">{{ stats.received }}</span>
+            </a>
+        </div>
+        {% else %}
+        <div class="btn-group" role="group">
             <a href="{% url 'my_tickets' %}" class="btn btn-sm btn-{% if filter_type == 'all' %}primary{% else %}outline-primary{% endif %}">
                 <i class="fas fa-list me-1"></i>All
             </a>
