@@ -55,9 +55,16 @@ class Employee(models.Model):
 
 class ChatMessage(models.Model):
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
-    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
+    recipient = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='received_messages')
     content = models.TextField()
     timestamp = models.DateTimeField(default=timezone.now)
+    is_group = models.BooleanField(default=False, help_text='True if this is a group chat message')
+    read_by = models.ManyToManyField(User, related_name='read_messages', blank=True, help_text="Users who have read this message")
+    is_edited = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['timestamp']
 
     def __str__(self):
         return f"{self.sender} to {self.recipient}: {self.content[:20]}"
@@ -687,3 +694,239 @@ class InvoiceItem(models.Model):
 
     def __str__(self):
         return f"{self.item} ({self.invoice})"
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = [
+        ('message', 'Message'),
+        ('ticket', 'Ticket'),
+        ('leave', 'Leave'),
+        ('task', 'Task'),
+        ('system', 'System'),
+    ]
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='sent_notifications')
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES, default='system')
+    title = models.CharField(max_length=255)
+    message = models.TextField(blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    link = models.CharField(max_length=255, blank=True, help_text="URL to navigate to when notification is clicked")
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Notification for {self.recipient.username}: {self.title}"
+
+    def mark_as_read(self):
+        self.is_read = True
+        self.save(update_fields=['is_read'])
+
+# Employee Education
+class EmployeeEducation(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='educations')
+    institution = models.CharField(max_length=200)
+    subject = models.CharField(max_length=200, blank=True)
+    course = models.CharField(max_length=200, blank=True)
+    grade = models.CharField(max_length=50, blank=True)
+    file = models.FileField(upload_to='employee_education/', null=True, blank=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-end_date', '-start_date']
+
+    def __str__(self):
+        return f"{self.employee} - {self.institution}"
+
+# Employee Work Experience
+class EmployeeWorkExperience(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='work_experiences')
+    company = models.CharField(max_length=200)
+    location = models.CharField(max_length=200, blank=True)
+    position = models.CharField(max_length=200)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    file = models.FileField(upload_to='employee_experience/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-end_date', '-start_date']
+
+    def __str__(self):
+        return f"{self.employee} - {self.company}"
+
+# User Family Information
+class UserFamilyInfo(models.Model):
+    RELATIONSHIP_CHOICES = [
+        ('spouse', 'Spouse'),
+        ('father', 'Father'),
+        ('mother', 'Mother'),
+        ('son', 'Son'),
+        ('daughter', 'Daughter'),
+        ('brother', 'Brother'),
+        ('sister', 'Sister'),
+        ('other', 'Other'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='family_info')
+    name = models.CharField(max_length=200)
+    relationship = models.CharField(max_length=20, choices=RELATIONSHIP_CHOICES)
+    dob = models.DateField(null=True, blank=True)
+    phone = models.CharField(max_length=20, blank=True)
+    address = models.TextField(blank=True)
+    picture = models.ImageField(upload_to='family_pictures/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.name} ({self.get_relationship_display()})"
+
+# Asset Issue
+class AssetIssue(models.Model):
+    asset = models.ForeignKey('Asset', on_delete=models.CASCADE, related_name='issues')
+    description = models.TextField()
+    raised_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='asset_issues_raised')
+    status = models.CharField(max_length=20, choices=[
+        ('open', 'Open'),
+        ('in_progress', 'In Progress'),
+        ('resolved', 'Resolved'),
+        ('closed', 'Closed'),
+    ], default='open')
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='asset_issues_resolved')
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Issue for {self.asset.name} by {self.raised_by.username}"
+
+# Ticket Reply
+class TicketReply(models.Model):
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='replies')
+    reply = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='sub_replies')
+    message = models.TextField()
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ticket_replies')
+    is_read = models.BooleanField(default=False)
+    attachment = models.FileField(upload_to='ticket_attachments/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Reply to {self.ticket.title} by {self.created_by.username}"
+
+# Employee Allowance
+class EmployeeAllowance(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='allowances')
+    name = models.CharField(max_length=200)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    is_active = models.BooleanField(default=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.employee} - {self.name}: {self.amount}"
+
+# Employee Deduction
+class EmployeeDeduction(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='deductions')
+    name = models.CharField(max_length=200)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    is_active = models.BooleanField(default=True)
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.employee} - {self.name}: {self.amount}"
+
+# Employee Salary Detail
+class EmployeeSalaryDetail(models.Model):
+    SALARY_TYPE_CHOICES = [
+        ('monthly', 'Monthly'),
+        ('hourly', 'Hourly'),
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+    ]
+    PAYMENT_METHOD_CHOICES = [
+        ('bank_transfer', 'Bank Transfer'),
+        ('cash', 'Cash'),
+        ('check', 'Check'),
+        ('other', 'Other'),
+    ]
+    employee = models.OneToOneField(Employee, on_delete=models.CASCADE, related_name='salary_detail')
+    basis = models.CharField(max_length=20, choices=SALARY_TYPE_CHOICES, default='monthly')
+    base_salary = models.DecimalField(max_digits=10, decimal_places=2)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='bank_transfer')
+    pf_contribution = models.BooleanField(default=False)
+    pf_number = models.CharField(max_length=50, blank=True)
+    additional_pf = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    total_pf_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    esi_contribution = models.BooleanField(default=False)
+    esi_number = models.CharField(max_length=50, blank=True)
+    additional_esi_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    total_additional_esi_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Salary Detail for {self.employee}"
+
+# Task Comment
+class TaskComment(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='comments')
+    comment = models.TextField()
+    created_by = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='task_comments')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Comment on {self.task.title} by {self.created_by}"
+
+# Task Follower
+class TaskFollower(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='followers')
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='followed_tasks')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['task', 'employee']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.employee} follows {self.task.title}"
+
+# SubTask
+class SubTask(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+    ]
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='subtasks')
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    assigned_to = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='subtasks')
+    deadline = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.task.title} - {self.title}"

@@ -1,163 +1,800 @@
 {% extends 'core/base.html' %}
+{% load static %}
 
 {% block title %}Dashboard - HRM System{% endblock %}
 
-{% block page_title %}Admin Dashboard{% endblock %}
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="h2 mb-1 fw-bold">Dashboard</h1>
+        <p class="text-muted mb-0">
+            <i class="fas fa-calendar-alt me-1"></i>
+            <span id="current-date"></span> | Welcome back, <strong>{{ user.get_full_name|default:user.username }}</strong>
+        </p>
+    </div>
+    <div>
+        <div class="btn-group shadow-sm" role="group">
+            <button type="button" class="btn btn-sm btn-light border" onclick="setTheme('light')" title="Light Theme" id="theme-light">
+                <i class="fas fa-sun text-warning"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-light border" onclick="setTheme('dark')" title="Dark Theme" id="theme-dark">
+                <i class="fas fa-moon text-primary"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-light border" onclick="setTheme('blue')" title="Blue Theme" id="theme-blue">
+                <i class="fas fa-palette text-info"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-light border" onclick="setTheme('green')" title="Green Theme" id="theme-green">
+                <i class="fas fa-leaf text-success"></i>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
 
 {% block content %}
-<div class="row mt-4">
-  <div class="col-md-3 mb-4">
-    <div class="card text-center">
-      <div class="card-body">
-        <i class="fas fa-users fa-3x text-primary mb-3"></i>
-        <h5 class="card-title">Total Employees</h5>
-        <h2 class="text-primary">{{ total_employees }}</h2>
-      </div>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    :root {
+        --theme-primary: #667eea;
+        --theme-secondary: #764ba2;
+        --theme-success: #10b981;
+        --theme-info: #3b82f6;
+        --theme-warning: #f59e0b;
+        --theme-danger: #ef4444;
+        --theme-light: #f8fafc;
+        --theme-dark: #1e293b;
+        --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+        --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+        --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+        --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
+    }
+    
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    
+    body.theme-blue {
+        --theme-primary: #3b82f6;
+        --theme-secondary: #1e40af;
+    }
+    
+    body.theme-green {
+        --theme-primary: #10b981;
+        --theme-secondary: #059669;
+    }
+    
+    body.theme-dark {
+        --theme-primary: #8b5cf6;
+        --theme-secondary: #6366f1;
+        background: #0f172a;
+        color: #f1f5f9;
+    }
+    
+    body.theme-dark .dashboard-card {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        color: #f1f5f9;
+    }
+    
+    body.theme-dark .chart-card {
+        background: #1e293b;
+        color: #f1f5f9;
+    }
+    
+    .dashboard-card {
+        border: none;
+        border-radius: 20px;
+        box-shadow: var(--shadow-lg);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        cursor: pointer;
+        height: 100%;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    .dashboard-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: linear-gradient(90deg, var(--theme-primary), var(--theme-secondary));
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.4s ease;
+    }
+    
+    .dashboard-card:hover::before {
+        transform: scaleX(1);
+    }
+    
+    .dashboard-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: var(--shadow-xl);
+    }
+    
+    .dashboard-card:active {
+        transform: translateY(-4px) scale(1.01);
+    }
+    
+    .stat-icon-wrapper {
+        position: relative;
+        width: 70px;
+        height: 70px;
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
+        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .dashboard-card:hover .stat-icon-wrapper {
+        transform: rotate(5deg) scale(1.1);
+        box-shadow: 0 12px 24px rgba(102, 126, 234, 0.4);
+    }
+    
+    .stat-icon {
+        font-size: 28px;
+        color: white;
+        z-index: 1;
+    }
+    
+    .stat-icon-wrapper.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-icon-wrapper.success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+    .stat-icon-wrapper.warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+    .stat-icon-wrapper.info { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+    .stat-icon-wrapper.danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+    .stat-icon-wrapper.secondary { background: linear-gradient(135deg, #64748b 0%, #475569 100%); }
+    .stat-icon-wrapper.purple { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+    
+    .stat-number {
+        font-size: 3rem;
+        font-weight: 800;
+        margin: 15px 0;
+        background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1;
+        letter-spacing: -1px;
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: #64748b;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 12px;
+    }
+    
+    .stat-trend {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-top: 8px;
+    }
+    
+    .stat-trend.up {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+    }
+    
+    .stat-trend.down {
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
+    }
+    
+    .chart-card {
+        border: none;
+        border-radius: 20px;
+        box-shadow: var(--shadow-lg);
+        margin-top: 25px;
+        overflow: hidden;
+        background: white;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    
+    body.theme-dark .chart-card {
+        background: #1e293b;
+        border-color: rgba(255,255,255,0.1);
+    }
+    
+    .chart-card .card-header {
+        background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 100%);
+        color: white;
+        padding: 20px 25px;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .chart-card .card-header h5 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    
+    .chart-card .card-body {
+        padding: 25px;
+    }
+    
+    .activity-item {
+        padding: 16px 0;
+        border-bottom: 1px solid #e2e8f0;
+        transition: all 0.2s ease;
+        border-radius: 12px;
+        margin: 0 -15px;
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    
+    .activity-item:hover {
+        background: #f8fafc;
+        transform: translateX(5px);
+    }
+    
+    body.theme-dark .activity-item:hover {
+        background: #334155;
+    }
+    
+    body.theme-dark .activity-item {
+        border-color: rgba(255,255,255,0.1);
+    }
+    
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+    
+    .badge-modern {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+    }
+    
+    .quick-action-btn {
+        padding: 12px 20px;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .quick-action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 25px;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .dashboard-card {
+        animation: fadeInUp 0.6s ease forwards;
+    }
+    
+    .dashboard-card:nth-child(1) { animation-delay: 0.1s; }
+    .dashboard-card:nth-child(2) { animation-delay: 0.2s; }
+    .dashboard-card:nth-child(3) { animation-delay: 0.3s; }
+    .dashboard-card:nth-child(4) { animation-delay: 0.4s; }
+    .dashboard-card:nth-child(5) { animation-delay: 0.5s; }
+    .dashboard-card:nth-child(6) { animation-delay: 0.6s; }
+    .dashboard-card:nth-child(7) { animation-delay: 0.7s; }
+    .dashboard-card:nth-child(8) { animation-delay: 0.8s; }
+    
+    @media (max-width: 768px) {
+        .stat-number {
+            font-size: 2.2rem;
+        }
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .theme-btn.active {
+        background: var(--theme-primary) !important;
+        color: white !important;
+        border-color: var(--theme-primary) !important;
+    }
+</style>
+
+<div class="stats-grid mt-4">
+    <!-- Total Employees -->
+    <div class="dashboard-card" onclick="window.location.href='{% url 'employee_list' %}'">
+        <div class="card-body p-4">
+            <div class="stat-icon-wrapper primary">
+                <i class="fas fa-users stat-icon"></i>
+            </div>
+            <div class="stat-number">{{ total_employees }}</div>
+            <div class="stat-label">Total Employees</div>
+            {% if employees_trend > 0 %}
+            <div class="stat-trend up">
+                <i class="fas fa-arrow-up"></i> +{{ employees_trend }} this month
+            </div>
+            {% endif %}
+            <div class="mt-3 pt-3 border-top">
+                <small class="text-muted d-flex align-items-center">
+                    <i class="fas fa-arrow-right me-2"></i>View all employees
+                </small>
+            </div>
+        </div>
     </div>
-  </div>
-  <div class="col-md-3 mb-4">
-    <div class="card text-center">
-      <div class="card-body">
-        <i class="fas fa-user-tie fa-3x text-warning mb-3"></i>
-        <h5 class="card-title">Total Clients</h5>
-        <h2 class="text-warning">{{ total_clients }}</h2>
-      </div>
+    
+    <!-- Total Clients -->
+    <div class="dashboard-card" onclick="window.location.href='{% url 'client_list' %}'">
+        <div class="card-body p-4">
+            <div class="stat-icon-wrapper warning">
+                <i class="fas fa-user-tie stat-icon"></i>
+            </div>
+            <div class="stat-number">{{ total_clients }}</div>
+            <div class="stat-label">Total Clients</div>
+            <div class="mt-3 pt-3 border-top">
+                <small class="text-muted d-flex align-items-center">
+                    <i class="fas fa-arrow-right me-2"></i>View all clients
+                </small>
+            </div>
+        </div>
     </div>
-  </div>
-  <div class="col-md-3 mb-4">
-    <div class="card text-center">
-      <div class="card-body">
-        <i class="fas fa-building fa-3x text-success mb-3"></i>
-        <h5 class="card-title">Departments</h5>
-        <h2 class="text-success">{{ total_departments }}</h2>
-      </div>
+    
+    <!-- Departments -->
+    <div class="dashboard-card" onclick="window.location.href='{% url 'manage_departments' %}'">
+        <div class="card-body p-4">
+            <div class="stat-icon-wrapper success">
+                <i class="fas fa-building stat-icon"></i>
+            </div>
+            <div class="stat-number">{{ total_departments }}</div>
+            <div class="stat-label">Departments</div>
+            <div class="mt-3 pt-3 border-top">
+                <small class="text-muted d-flex align-items-center">
+                    <i class="fas fa-arrow-right me-2"></i>Manage departments
+                </small>
+            </div>
+        </div>
     </div>
-  </div>
-  <div class="col-md-3 mb-4">
-    <div class="card text-center">
-      <div class="card-body">
-        <i class="fas fa-ticket-alt fa-3x text-info mb-3"></i>
-        <h5 class="card-title">Tickets</h5>
-        <h2 class="text-info">{{ total_tickets }}</h2>
-      </div>
+    
+    <!-- Total Projects -->
+    <div class="dashboard-card" onclick="window.location.href='{% url 'project_list' %}'">
+        <div class="card-body p-4">
+            <div class="stat-icon-wrapper info">
+                <i class="fas fa-project-diagram stat-icon"></i>
+            </div>
+            <div class="stat-number">{{ total_projects }}</div>
+            <div class="stat-label">Total Projects</div>
+            <div class="mt-3 pt-3 border-top">
+                <small class="text-muted d-flex align-items-center">
+                    <i class="fas fa-arrow-right me-2"></i>View all projects
+                </small>
+            </div>
+        </div>
     </div>
-  </div>
-  <div class="col-md-3 mb-4">
-    <div class="card text-center">
-      <div class="card-body">
-        <i class="fas fa-project-diagram fa-3x text-secondary mb-3"></i>
-        <h5 class="card-title">Total Projects</h5>
-        <h2 class="text-secondary">{{ total_projects }}</h2>
-      </div>
+    
+    <!-- Open Tickets -->
+    <div class="dashboard-card" onclick="window.location.href='{% url 'all_tickets' %}'">
+        <div class="card-body p-4">
+            <div class="stat-icon-wrapper danger">
+                <i class="fas fa-ticket-alt stat-icon"></i>
+            </div>
+            <div class="stat-number">{{ open_tickets }}</div>
+            <div class="stat-label">Open Tickets</div>
+            <div class="mt-2">
+                <span class="badge bg-danger badge-modern">{{ open_tickets }} Open</span>
+                <span class="badge bg-secondary badge-modern ms-2">{{ total_tickets }} Total</span>
+            </div>
+            <div class="mt-3 pt-3 border-top">
+                <small class="text-muted d-flex align-items-center">
+                    <i class="fas fa-arrow-right me-2"></i>View all tickets
+                </small>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
-<div class="card mt-4">
-  <div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h4 class="card-title">Attendance Overview</h4>
-      <div>
-        <a href="{% url 'all_attendance' %}" class="btn btn-primary btn-sm">View All</a>
-        <a href="{% url 'sync_zkt_machine' %}" class="btn btn-success btn-sm">Sync ZKT</a>
-        <a href="{% url 'manage_attendance_machines' %}" class="btn btn-info btn-sm">Manage Machines</a>
-      </div>
+    
+    <!-- Pending Leaves -->
+    <div class="dashboard-card" onclick="window.location.href='{% url 'manage_leaves' %}'">
+        <div class="card-body p-4">
+            <div class="stat-icon-wrapper warning">
+                <i class="fas fa-calendar-alt stat-icon"></i>
+            </div>
+            <div class="stat-number">{{ pending_leaves }}</div>
+            <div class="stat-label">Pending Leaves</div>
+            <div class="mt-2">
+                <span class="badge bg-warning badge-modern">Requires Review</span>
+            </div>
+            <div class="mt-3 pt-3 border-top">
+                <small class="text-muted d-flex align-items-center">
+                    <i class="fas fa-arrow-right me-2"></i>Manage leaves
+                </small>
+            </div>
+        </div>
     </div>
-    <canvas id="attendanceChart" width="400" height="120"></canvas>
-  </div>
+    
+    <!-- Pending Advances -->
+    <div class="dashboard-card" onclick="window.location.href='{% url 'manage_advances' %}'">
+        <div class="card-body p-4">
+            <div class="stat-icon-wrapper secondary">
+                <i class="fas fa-hand-holding-usd stat-icon"></i>
+            </div>
+            <div class="stat-number">{{ pending_advances }}</div>
+            <div class="stat-label">Pending Advances</div>
+            <div class="mt-2">
+                <span class="badge bg-secondary badge-modern">Awaiting Approval</span>
+            </div>
+            <div class="mt-3 pt-3 border-top">
+                <small class="text-muted d-flex align-items-center">
+                    <i class="fas fa-arrow-right me-2"></i>Manage advances
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Today's Attendance -->
+    <div class="dashboard-card" onclick="window.location.href='{% url 'all_attendance' %}'">
+        <div class="card-body p-4">
+            <div class="stat-icon-wrapper success">
+                <i class="fas fa-calendar-check stat-icon"></i>
+            </div>
+            <div class="stat-number">{{ today_present }}</div>
+            <div class="stat-label">Present Today</div>
+            <div class="mt-2 d-flex gap-2 flex-wrap">
+                <span class="badge bg-success badge-modern">
+                    <i class="fas fa-check-circle me-1"></i>{{ today_present }} Present
+                </span>
+                <span class="badge bg-danger badge-modern">
+                    <i class="fas fa-times-circle me-1"></i>{{ today_absent }} Absent
+                </span>
+                {% if today_late > 0 %}
+                <span class="badge bg-warning badge-modern">
+                    <i class="fas fa-clock me-1"></i>{{ today_late }} Late
+                </span>
+                {% endif %}
+            </div>
+            <div class="mt-3 pt-3 border-top">
+                <small class="text-muted d-flex align-items-center">
+                    <i class="fas fa-arrow-right me-2"></i>View attendance
+                </small>
+            </div>
+        </div>
+    </div>
 </div>
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Department Distribution</h4>
-    <canvas id="deptChart" width="400" height="120"></canvas>
-  </div>
+
+<!-- Charts Row -->
+<div class="row g-4 mt-3">
+    <!-- Attendance Chart -->
+    <div class="col-xl-6">
+        <div class="chart-card card">
+            <div class="card-header">
+                <i class="fas fa-chart-pie"></i>
+                <h5 class="mb-0">Attendance Overview</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="attendanceChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Department Distribution -->
+    <div class="col-xl-6">
+        <div class="chart-card card">
+            <div class="card-header">
+                <i class="fas fa-chart-bar"></i>
+                <h5 class="mb-0">Department Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="deptChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
 </div>
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Designation Distribution</h4>
-    <canvas id="desigChart" width="400" height="120"></canvas>
-  </div>
+
+<div class="row g-4 mt-3">
+    <!-- Revenue vs Expenses -->
+    <div class="col-xl-8">
+        <div class="chart-card card">
+            <div class="card-header">
+                <i class="fas fa-chart-line"></i>
+                <h5 class="mb-0">Revenue vs Expenses</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="revenueExpenseChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activities -->
+    <div class="col-xl-4">
+        <div class="chart-card card">
+            <div class="card-header">
+                <i class="fas fa-clock"></i>
+                <h5 class="mb-0">Recent Activities</h5>
+            </div>
+            <div class="card-body">
+                <div class="activity-list">
+                    {% for ticket in recent_tickets|slice:":3" %}
+                    <div class="activity-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="fas fa-ticket-alt text-warning me-2"></i>
+                                    <strong class="text-truncate" style="max-width: 150px;">{{ ticket.title|truncatewords:4 }}</strong>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="far fa-clock me-1"></i>{{ ticket.created_at|timesince }} ago
+                                </small>
+                            </div>
+                            <span class="badge bg-{{ ticket.status|default:'secondary' }} badge-modern ms-2">{{ ticket.get_status_display|truncatewords:1 }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% for leave in recent_leaves|slice:":2" %}
+                    <div class="activity-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-1">
+                                    <i class="fas fa-calendar text-info me-2"></i>
+                                    <strong>{{ leave.employee.user.get_full_name|default:leave.employee.user.username|truncatewords:2 }}</strong>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="far fa-clock me-1"></i>{{ leave.applied_at|timesince }} ago
+                                </small>
+                            </div>
+                            <span class="badge bg-{{ leave.status|default:'secondary' }} badge-modern ms-2">{{ leave.get_status_display|truncatewords:1 }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% if not recent_tickets and not recent_leaves %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p class="mb-0">No recent activities</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Expense Overview</h4>
-    <canvas id="expenseChart" width="400" height="120"></canvas>
-  </div>
-</div>
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Revenue Overview</h4>
-    <canvas id="revenueChart" width="400" height="120"></canvas>
-  </div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-{% if attendance_stats %}
-{{ attendance_stats|json_script:"attendance-stats-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-  const ctxA = document.getElementById('attendanceChart').getContext('2d');
-  const aStats = JSON.parse(document.getElementById('attendance-stats-data').textContent);
-  const aLabels = aStats.map(s => s.status.charAt(0).toUpperCase() + s.status.slice(1));
-  const aCounts = aStats.map(s => s.count);
-  new Chart(ctxA, {
-    type: 'line',
-    data: {labels: aLabels, datasets: [{label: 'Attendance', data: aCounts, backgroundColor: 'rgba(40,167,69,0.2)', borderColor: '#28a745', fill: true, tension: 0.4}]},
-    options: {responsive: true, plugins: {legend: {position: 'bottom'}}}
-  });
+    // Set current date
+    document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    
+    // Theme Management
+    function setTheme(theme) {
+        document.body.className = document.body.className.replace(/theme-\w+/g, '');
+        if (theme !== 'light') {
+            document.body.classList.add('theme-' + theme);
+        }
+        localStorage.setItem('dashboard-theme', theme);
+        
+        // Update active button
+        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('theme-' + theme).classList.add('active');
+        
+        updateChartColors(theme);
+    }
+    
+    function loadTheme() {
+        const savedTheme = localStorage.getItem('dashboard-theme') || 'light';
+        setTheme(savedTheme);
+    }
+    
+    function updateChartColors(theme) {
+        // Charts will be updated on next render
+    }
+    
+    // Load theme on page load
+    loadTheme();
+    
+    // Chart configurations with professional styling
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 20,
+                    usePointStyle: true,
+                    font: {
+                        size: 12,
+                        weight: '600'
+                    }
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: {
+                    size: 14,
+                    weight: '600'
+                },
+                bodyFont: {
+                    size: 13
+                },
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderWidth: 1,
+                cornerRadius: 8
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
+                },
+                ticks: {
+                    font: {
+                        size: 11
+                    }
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    font: {
+                        size: 11
+                    }
+                }
+            }
+        }
+    };
+    
+    // Attendance Chart
+    {% if attendance_stats %}
+    {{ attendance_stats|json_script:"attendance-stats-data" }}
+    const ctxA = document.getElementById('attendanceChart').getContext('2d');
+    const aStats = JSON.parse(document.getElementById('attendance-stats-data').textContent);
+    const aLabels = aStats.map(s => s.status.charAt(0).toUpperCase() + s.status.slice(1).replace('_', ' '));
+    const aCounts = aStats.map(s => s.count);
+    new Chart(ctxA, {
+        type: 'doughnut',
+        data: {
+            labels: aLabels,
+            datasets: [{
+                data: aCounts,
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.9)',
+                    'rgba(239, 68, 68, 0.9)',
+                    'rgba(245, 158, 11, 0.9)',
+                    'rgba(59, 130, 246, 0.9)',
+                    'rgba(139, 92, 246, 0.9)'
+                ],
+                borderWidth: 0,
+                hoverOffset: 8
+            }]
+        },
+        options: {
+            ...chartOptions,
+            cutout: '70%',
+            plugins: {
+                ...chartOptions.plugins,
+                legend: {
+                    ...chartOptions.plugins.legend,
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+    {% endif %}
+    
+    // Department Chart
+    {% if dept_counts %}
+    {{ dept_counts|json_script:"dept-counts-data" }}
+    const ctxD = document.getElementById('deptChart').getContext('2d');
+    const dStats = JSON.parse(document.getElementById('dept-counts-data').textContent);
+    const dLabels = dStats.map(d => d.name);
+    const dCounts = dStats.map(d => d.emp_count);
+    new Chart(ctxD, {
+        type: 'bar',
+        data: {
+            labels: dLabels,
+            datasets: [{
+                label: 'Employees',
+                data: dCounts,
+                backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                borderColor: '#667eea',
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false,
+            }]
+        },
+        options: chartOptions
+    });
+    {% endif %}
+    
+    // Revenue vs Expenses Chart
+    {% if expense_stats and revenue_stats %}
+    {{ expense_stats|json_script:"expense-stats-data" }}
+    {{ revenue_stats|json_script:"revenue-stats-data" }}
+    const ctxRE = document.getElementById('revenueExpenseChart').getContext('2d');
+    const expStats = JSON.parse(document.getElementById('expense-stats-data').textContent);
+    const revStats = JSON.parse(document.getElementById('revenue-stats-data').textContent);
+    
+    // Combine and format data
+    const months = [...new Set([...expStats.map(e => e.month), ...revStats.map(r => r.month)])].sort();
+    const expData = months.map(m => {
+        const stat = expStats.find(e => e.month === m);
+        return stat ? parseFloat(stat.total) : 0;
+    });
+    const revData = months.map(m => {
+        const stat = revStats.find(r => r.month === m);
+        return stat ? parseFloat(stat.total) : 0;
+    });
+    const monthLabels = months.map(m => {
+        if (m) {
+            const date = new Date(m);
+            return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        }
+        return '';
+    });
+    
+    new Chart(ctxRE, {
+        type: 'line',
+        data: {
+            labels: monthLabels,
+            datasets: [{
+                label: 'Revenue',
+                data: revData,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: '#10b981',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2
+            }, {
+                label: 'Expenses',
+                data: expData,
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: '#ef4444',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2
+            }]
+        },
+        options: chartOptions
+    });
+    {% endif %}
 </script>
-{% endif %}
-{% if dept_counts %}
-{{ dept_counts|json_script:"dept-counts-data" }}
-<script>
-  const ctxD = document.getElementById('deptChart').getContext('2d');
-  const dStats = JSON.parse(document.getElementById('dept-counts-data').textContent);
-  const dLabels = dStats.map(d => d.name);
-  const dCounts = dStats.map(d => d.emp_count);
-  new Chart(ctxD, {
-    type: 'line',
-    data: {labels: dLabels, datasets: [{label: 'Employees', data: dCounts, backgroundColor: 'rgba(0,123,255,0.2)', borderColor: '#007bff', fill: true, tension: 0.4}]},
-    options: {responsive: true, plugins: {legend: {display: false}}}
-  });
-</script>
-{% endif %}
-{% if desig_counts %}
-{{ desig_counts|json_script:"desig-counts-data" }}
-<script>
-  const ctxDesig = document.getElementById('desigChart').getContext('2d');
-  const desigData = JSON.parse(document.getElementById('desig-counts-data').textContent);
-  const desigLabels = desigData.map(d => d.name);
-  const desigCounts = desigData.map(d => d.emp_count);
-  new Chart(ctxDesig, {
-    type: 'line',
-    data: {labels: desigLabels, datasets: [{label: 'Employees', data: desigCounts, backgroundColor: 'rgba(111,66,193,0.2)', borderColor: '#6f42c1', fill: true, tension: 0.4}]},
-    options: {responsive: true, plugins: {legend: {position: 'bottom'}}}
-  });
-</script>
-{% endif %}
-{% if expense_stats %}
-{{ expense_stats|json_script:"expense-stats-data" }}
-<script>
-  const ctxExp = document.getElementById('expenseChart').getContext('2d');
-  const expStats = JSON.parse(document.getElementById('expense-stats-data').textContent);
-  const expLabels = expStats.map(e => e.month ? e.month.substring(0, 7) : '');
-  const expTotals = expStats.map(e => e.total);
-  new Chart(ctxExp, {
-    type: 'bar',
-    data: {labels: expLabels, datasets: [{label: 'Expenses', data: expTotals, backgroundColor: 'rgba(220,53,69,0.2)', borderColor: '#dc3545', fill: true}]},
-    options: {responsive: true, plugins: {legend: {position: 'bottom'}}}
-  });
-</script>
-{% endif %}
-{% if revenue_stats %}
-{{ revenue_stats|json_script:"revenue-stats-data" }}
-<script>
-  const ctxRev = document.getElementById('revenueChart').getContext('2d');
-  const revStats = JSON.parse(document.getElementById('revenue-stats-data').textContent);
-  const revLabels = revStats.map(e => e.month ? e.month.substring(0, 7) : '');
-  const revTotals = revStats.map(e => e.total);
-  new Chart(ctxRev, {
-    type: 'bar',
-    data: {labels: revLabels, datasets: [{label: 'Revenues', data: revTotals, backgroundColor: 'rgba(40,167,69,0.2)', borderColor: '#28a745', fill: true}]},
-    options: {responsive: true, plugins: {legend: {position: 'bottom'}}}
-  });
-</script>
-{% endif %}
-{% endblock %} 
+{% endblock %}

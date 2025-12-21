@@ -1,0 +1,227 @@
+C:\Users\SBS\Desktop\old hrm{% extends 'core/base.html' %}
+
+{% block title %}All Notifications - HRM System{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="h2 mb-1">All Notifications</h1>
+        <p class="text-muted mb-0">View and manage all your notifications</p>
+    </div>
+    <div>
+        <button type="button" class="btn btn-primary" id="mark-all-read-page-btn">
+            <i class="fas fa-check-double me-2"></i>Mark All as Read
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                {% if notifications %}
+                <div class="list-group list-group-flush">
+                    {% for notification in notifications %}
+                    <div class="list-group-item {% if not notification.is_read %}bg-light border-start border-primary border-3{% endif %}" style="padding: 20px;">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-shrink-0 me-3">
+                                {% if notification.notification_type == 'message' %}
+                                    <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                                        <i class="fas fa-comments text-primary fs-4"></i>
+                                    </div>
+                                {% elif notification.notification_type == 'ticket' %}
+                                    <div class="bg-warning bg-opacity-10 rounded-circle p-3">
+                                        <i class="fas fa-ticket-alt text-warning fs-4"></i>
+                                    </div>
+                                {% elif notification.notification_type == 'leave' %}
+                                    <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                                        <i class="fas fa-calendar-alt text-info fs-4"></i>
+                                    </div>
+                                {% elif notification.notification_type == 'task' %}
+                                    <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                                        <i class="fas fa-tasks text-success fs-4"></i>
+                                    </div>
+                                {% else %}
+                                    <div class="bg-secondary bg-opacity-10 rounded-circle p-3">
+                                        <i class="fas fa-info-circle text-secondary fs-4"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h5 class="mb-1 {% if not notification.is_read %}text-primary fw-bold{% endif %}">
+                                            {{ notification.title }}
+                                        </h5>
+                                        {% if notification.sender %}
+                                        <p class="text-muted small mb-0">
+                                            From: {{ notification.sender.get_full_name|default:notification.sender.username }}
+                                        </p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-end">
+                                        {% if not notification.is_read %}
+                                        <span class="badge bg-primary rounded-pill mb-2">New</span>
+                                        {% endif %}
+                                        <div class="text-muted small">
+                                            {{ notification.created_at|timesince }} ago
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="mb-2">{{ notification.message }}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>{{ notification.created_at|date:"F d, Y g:i A" }}
+                                    </small>
+                                    <div>
+                                        {% if notification.link and notification.link != '#' %}
+                                        <a href="{{ notification.link }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-external-link-alt me-1"></i>View
+                                        </a>
+                                        {% endif %}
+                                        {% if not notification.is_read %}
+                                        <button type="button" class="btn btn-sm btn-outline-secondary mark-read-btn" data-notification-id="{{ notification.id }}" data-link="{{ notification.link|default:'#' }}">
+                                            <i class="fas fa-check me-1"></i>Mark as Read
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Pagination -->
+                {% if notifications.has_other_pages %}
+                <div class="card-footer bg-white">
+                    <nav aria-label="Notifications pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if notifications.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1">First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ notifications.previous_page_number }}">Previous</a>
+                            </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ notifications.number }} of {{ notifications.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if notifications.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ notifications.next_page_number }}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ notifications.paginator.num_pages }}">Last</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-center p-5">
+                    <i class="fas fa-bell-slash fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">No notifications</h4>
+                    <p class="text-muted">You don't have any notifications yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Helper to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith(name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Mark individual notification as read
+    document.querySelectorAll('.mark-read-btn').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const notificationId = this.getAttribute('data-notification-id');
+            const link = this.getAttribute('data-link');
+            
+            fetch(`/notifications/${notificationId}/read/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to update the UI
+                    if (link && link !== '#') {
+                        window.location.href = link;
+                    } else {
+                        window.location.reload();
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error marking notification as read:', error);
+                if (link && link !== '#') {
+                    window.location.href = link;
+                }
+            });
+        });
+    });
+
+    // Mark all as read
+    const markAllReadBtn = document.getElementById('mark-all-read-page-btn');
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            fetch('/notifications/mark-all-read/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Reload the page to update the UI
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error marking all notifications as read:', error);
+            });
+        });
+    }
+</script>
+{% endblock %}
+

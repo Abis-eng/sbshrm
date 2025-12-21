@@ -68,6 +68,14 @@ urlpatterns = [
     path('add-project/', views.add_project, name='add_project'),
     path('edit-project/<int:project_id>/', views.edit_project, name='edit_project'),
     path('delete-project/<int:project_id>/', views.delete_project, name='delete_project'),
+    # Notifications
+    path('notifications/', views.get_notifications, name='get_notifications'),
+    path('notifications/all/', views.all_notifications, name='all_notifications'),
+    path('notifications/<int:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),
+    path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
+    # Direct access to manage-advances (for backward compatibility and notifications)
+    path('manage-advances/', views.manage_advances, name='manage_advances'),
+    path('my-advances/', views.my_advances, name='my_advances'),
     path('core/', include('core.urls')),
 ]
 if settings.DEBUG:

@@ -54,7 +54,7 @@ from .models import Estimate, EstimateItem
 from .forms import EstimateForm, EstimateItemForm
 from .forms import InvoiceForm, InvoiceItemForm, EmployeeMachineForm, ManualAttendanceForm, AttendanceMachineForm, AttendanceFilterForm
 from .forms import PayrollItemForm, PayslipCreateForm, PayslipEditForm, TaxSlabForm, LoanForm, AdvanceRequestForm, AdvanceReviewForm
-from .models import Invoice, InvoiceItem
+from .models import Invoice, InvoiceItem, Notification
 from django.http import HttpResponse
 from django.contrib.admin.views.decorators import staff_member_required
 from .zkt_service import zkt_service
@@ -89,8 +89,11 @@ def is_employee(user):
 
 @user_passes_test(is_admin)
 def dashboard(request):
-    from django.db.models import Count, Sum
+    from django.db.models import Count, Sum, Q
     from django.db.models.functions import TruncMonth
+    from django.utils import timezone
+    from datetime import timedelta
+    
     attendance_stats = Attendance.objects.values('status').annotate(count=Count('id'))
     dept_counts = Department.objects.annotate(emp_count=Count('employee')).values('name', 'emp_count')
     desig_counts = Designation.objects.annotate(emp_count=Count('employee')).values('name', 'emp_count')
@@ -104,6 +107,38 @@ def dashboard(request):
     total_projects = Project.objects.count()
     total_tickets = Ticket.objects.count()
     total_clients = Client.objects.count()
+    
+    # Additional stats
+    open_tickets = Ticket.objects.filter(status__in=['open', 'new', 'in_progress']).count()
+    pending_leaves = Leave.objects.filter(status='pending').count()
+    pending_advances = AdvanceRequest.objects.filter(status='pending').count()
+    try:
+        active_projects = Project.objects.filter(status='active').count()
+    except:
+        active_projects = total_projects
+    
+    # Today's attendance
+    today = timezone.now().date()
+    today_present = Attendance.objects.filter(date=today, status='present').count()
+    today_absent = Attendance.objects.filter(date=today, status='absent').count()
+    today_late = Attendance.objects.filter(date=today, status='late').count()
+    
+    # Recent activities
+    recent_tickets = Ticket.objects.order_by('-created_at')[:5]
+    recent_leaves = Leave.objects.order_by('-applied_at')[:5]
+    
+    # Calculate trends (comparing with last month)
+    last_month = timezone.now() - timedelta(days=30)
+    employees_last_month = Employee.objects.filter(date_of_joining__lt=last_month).count()
+    employees_trend = total_employees - employees_last_month if employees_last_month > 0 else 0
+    
+    # Active tasks
+    active_tasks = Task.objects.filter(status__in=['pending', 'in_progress']).count()
+    completed_tasks = Task.objects.filter(status='completed').count()
+    
+    # Total salary
+    total_salary = Employee.objects.aggregate(total=Sum('salary'))['total'] or 0
+    
     # Expenses by month
     expense_stats = (
         BudgetExpense.objects.annotate(month=TruncMonth('date'))
@@ -118,6 +153,18 @@ def dashboard(request):
         .annotate(total=Sum('amount'))
         .order_by('month')
     )
+    
+    # Monthly totals
+    current_month_expenses = BudgetExpense.objects.filter(
+        date__year=timezone.now().year,
+        date__month=timezone.now().month
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    current_month_revenue = BudgetRevenue.objects.filter(
+        date__year=timezone.now().year,
+        date__month=timezone.now().month
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
     return render(request, 'core/dashboard.html', {
         'attendance_stats': list(attendance_stats),
         'dept_counts': list(dept_counts),
@@ -128,8 +175,23 @@ def dashboard(request):
         'total_projects': total_projects,
         'total_tickets': total_tickets,
         'total_clients': total_clients,
+        'open_tickets': open_tickets,
+        'pending_leaves': pending_leaves,
+        'pending_advances': pending_advances,
+        'active_projects': active_projects,
+        'today_present': today_present,
+        'today_absent': today_absent,
+        'today_late': today_late,
+        'recent_tickets': recent_tickets,
+        'recent_leaves': recent_leaves,
         'expense_stats': list(expense_stats),
         'revenue_stats': list(revenue_stats),
+        'current_month_expenses': current_month_expenses,
+        'current_month_revenue': current_month_revenue,
+        'employees_trend': employees_trend,
+        'active_tasks': active_tasks,
+        'completed_tasks': completed_tasks,
+        'total_salary': total_salary,
     })
 
 @user_passes_test(is_admin)
@@ -312,6 +374,7 @@ def logout_view(request):
     return redirect('login')
 
 @login_required
+@login_required
 def chat_user_list(request):
     user = request.user
     if user.is_superuser:
@@ -354,6 +417,17 @@ def my_advances(request):
             advance = form.save(commit=False)
             advance.employee = employee
             advance.save()
+            # Create notification for admin
+            admin_users = User.objects.filter(is_superuser=True)
+            for admin in admin_users:
+                create_notification(
+                    recipient=admin,
+                    sender=request.user,
+                    notification_type='system',
+                    title=f'Advance request from {employee.user.get_full_name() or employee.user.username}',
+                    message=f'Amount: {advance.amount}, Reason: {advance.reason[:100]}',
+                    link=f'/manage-advances/'
+                )
             return redirect('my_advances')
     else:
         form = AdvanceRequestForm()
@@ -380,6 +454,26 @@ def manage_advances(request):
                 start_date=timezone.now().date(),
                 is_active=True,
             )
+            # Create notification for employee
+            create_notification(
+                recipient=adv.employee.user,
+                sender=request.user,
+                notification_type='system',
+                title='Advance request approved',
+                message=f'Your advance request of {adv.amount} has been approved.',
+                link=f'/my-advances/'
+            )
+        elif action == 'reject':
+            adv.status = AdvanceRequest.STATUS_REJECTED
+            # Create notification for employee
+            create_notification(
+                recipient=adv.employee.user,
+                sender=request.user,
+                notification_type='system',
+                title='Advance request rejected',
+                message=f'Your advance request of {adv.amount} has been rejected. {admin_comment[:100]}',
+                link=f'/my-advances/'
+            )
         elif action == 'reject':
             adv.status = AdvanceRequest.STATUS_REJECTED
         adv.reviewed_by = request.user
@@ -394,7 +488,18 @@ def submit_ticket(request):
     if request.method == 'POST':
         title = request.POST.get('title')
         description = request.POST.get('description')
-        Ticket.objects.create(title=title, description=description, created_by=request.user)
+        ticket = Ticket.objects.create(title=title, description=description, created_by=request.user)
+        # Create notification for admin
+        admin_users = User.objects.filter(is_superuser=True)
+        for admin in admin_users:
+            create_notification(
+                recipient=admin,
+                sender=request.user,
+                notification_type='ticket',
+                title=f'New ticket: {title}',
+                message=description[:200],
+                link=f'/all-tickets/'
+            )
         return redirect('my_tickets')
     return render(request, 'core/submit_ticket.html')
 
@@ -713,6 +818,17 @@ def apply_leave(request):
             leave = form.save(commit=False)
             leave.employee = employee
             leave.save()
+            # Create notification for admin
+            admin_users = User.objects.filter(is_superuser=True)
+            for admin in admin_users:
+                create_notification(
+                    recipient=admin,
+                    sender=request.user,
+                    notification_type='leave',
+                    title=f'Leave request from {employee.user.get_full_name() or employee.user.username}',
+                    message=f'Leave type: {leave.leave_type}, Dates: {leave.start_date} to {leave.end_date}',
+                    link=f'/manage-leaves/'
+                )
             return redirect('my_leaves')
     else:
         form = LeaveForm()
@@ -742,6 +858,15 @@ def manage_leaves(request):
         leave.reviewed_at = timezone.now()
         leave.comments = comments
         leave.save()
+        # Create notification for employee
+        create_notification(
+            recipient=leave.employee.user,
+            sender=request.user,
+            notification_type='leave',
+            title=f'Leave request {action}',
+            message=f'Your leave request has been {action}. {comments[:100]}',
+            link=f'/my-leaves/'
+        )
         return redirect('manage_leaves')
     return render(request, 'core/manage_leaves.html', {'leaves': leaves})
 
@@ -917,6 +1042,15 @@ def assign_task(request, project_id):
             task.project = project
             task.assigned_by = manager if manager else None
             task.save()
+            # Create notification for assigned employee
+            create_notification(
+                recipient=task.assigned_to.user,
+                sender=request.user,
+                notification_type='task',
+                title=f'New task assigned: {task.title}',
+                message=task.description[:200] if task.description else 'No description',
+                link=f'/core/projects/{project.id}/tasks/'
+            )
             return redirect(reverse('project_tasks', args=[project.id]))
     else:
         form = TaskForm(project=project, manager=manager)
@@ -1825,3 +1959,76 @@ def loans(request):
         loan = form.save()
         return redirect('loans')
     return render(request, 'core/loans.html', {'loans': loans_qs, 'form': form})
+
+# Notification views
+def create_notification(recipient, sender, notification_type, title, message, link=None):
+    """Helper function to create notifications"""
+    Notification.objects.create(
+        recipient=recipient,
+        sender=sender,
+        notification_type=notification_type,
+        title=title,
+        message=message[:200] + ('...' if len(message) > 200 else ''),
+        link=link or '#',
+    )
+
+@login_required
+def get_notifications(request):
+    """Get unread notifications count and recent notifications"""
+    notifications = Notification.objects.filter(recipient=request.user, is_read=False).order_by('-created_at')[:10]
+    unread_count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+    
+    notifications_data = []
+    for notif in notifications:
+        notifications_data.append({
+            'id': notif.id,
+            'type': notif.notification_type,
+            'title': notif.title,
+            'message': notif.message,
+            'is_read': notif.is_read,
+            'created_at': notif.created_at.isoformat(),
+            'link': notif.link or '#',
+        })
+    
+    return JsonResponse({
+        'unread_count': unread_count,
+        'notifications': notifications_data,
+    })
+
+@login_required
+def all_notifications(request):
+    """View all notifications with pagination"""
+    from django.core.paginator import Paginator
+    
+    notifications = Notification.objects.filter(recipient=request.user).order_by('-created_at')
+    paginator = Paginator(notifications, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'core/all_notifications.html', {
+        'notifications': page_obj,
+    })
+
+@login_required
+def mark_notification_read(request, notification_id):
+    """Mark a notification as read"""
+    try:
+        notification = Notification.objects.get(id=notification_id, recipient=request.user)
+        notification.mark_as_read()
+        if request.method == 'POST':
+            return JsonResponse({'success': True})
+        else:
+            if notification.link and notification.link != '#':
+                return redirect(notification.link)
+            return redirect('all_notifications')
+    except Notification.DoesNotExist:
+        if request.method == 'POST':
+            return JsonResponse({'success': False, 'error': 'Notification not found'}, status=404)
+        return redirect('all_notifications')
+
+@login_required
+@require_POST
+def mark_all_notifications_read(request):
+    """Mark all notifications as read for the current user"""
+    Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+    return JsonResponse({'success': True})
