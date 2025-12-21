@@ -1,51 +1,295 @@
 {% extends 'core/base.html' %}
-{% block page_title %}User Management{% endblock %}
-{% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">User Management</h4>
-    <a href="{% url 'add_user' %}" class="btn btn-primary mb-3">Add User</a>
-    <div class="table-responsive">
-      <table class="table table-hover">
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>First Name</th>
-            <th>Last Name</th>
-            <th>Email</th>
-            <th>Is Active</th>
-            <th>Is Staff</th>
-            <th>Is Superuser</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for user in users %}
-          <tr>
-            <td>{{ user.username }}</td>
-            <td>{{ user.first_name }}</td>
-            <td>{{ user.last_name }}</td>
-            <td>{{ user.email }}</td>
-            <td>{{ user.is_active|yesno:'Yes,No' }}</td>
-            <td>{{ user.is_staff|yesno:'Yes,No' }}</td>
-            <td>{{ user.is_superuser|yesno:'Yes,No' }}</td>
-            <td>
-              <a href="{% url 'edit_user' user.id %}" class="btn btn-sm btn-outline-primary">Edit</a>
-              {% if user.is_active %}
-              <a href="{% url 'deactivate_user' user.id %}" class="btn btn-sm btn-outline-danger">Deactivate</a>
-              {% else %}
-              <a href="{% url 'activate_user' user.id %}" class="btn btn-sm btn-outline-success">Activate</a>
-              {% endif %}
-              <form action="{% url 'delete_user' user.id %}" method="post" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this user?');">Delete</button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+{% load static %}
+
+{% block title %}User Management - HRM System{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="flex-grow-1">
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-user-cog me-2"></i>User Management
+        </h1>
+        <p class="text-muted mb-0 small">Manage all system users and their permissions</p>
     </div>
-  </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <a href="{% url 'add_user' %}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add New User
+        </a>
+    </div>
 </div>
-{% endblock %} 
+{% endblock %}
+
+{% block content %}
+<style>
+    .user-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        overflow: hidden;
+        background: white;
+    }
+    .user-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(14, 116, 144, 0.2);
+    }
+    .user-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0 auto;
+        box-shadow: 0 4px 15px rgba(14, 116, 144, 0.3);
+    }
+    .user-info {
+        padding: 1.5rem;
+    }
+    .user-name {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 0.5rem;
+    }
+    .user-email {
+        color: #718096;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+    .user-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin: 0.25rem;
+    }
+    .badge-active {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    .badge-inactive {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        color: white;
+    }
+    .badge-staff {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: white;
+    }
+    .badge-admin {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+    .user-actions {
+        padding: 1rem;
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .action-btn {
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+        transition: all 0.3s;
+        font-size: 0.85rem;
+    }
+    .action-btn:hover {
+        transform: scale(1.05);
+    }
+    .stats-card {
+        background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(14, 116, 144, 0.3);
+    }
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .stats-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    .search-filter-bar {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+    }
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+    .empty-state i {
+        font-size: 5rem;
+        color: #cbd5e0;
+        margin-bottom: 1rem;
+    }
+</style>
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">{{ users|length }}</div>
+            <div class="stats-label">
+                <i class="fas fa-users me-2"></i>Total Users
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <div class="stats-number">{{ active_count }}</div>
+            <div class="stats-label">
+                <i class="fas fa-user-check me-2"></i>Active Users
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+            <div class="stats-number">{{ staff_count }}</div>
+            <div class="stats-label">
+                <i class="fas fa-user-shield me-2"></i>Staff Users
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+            <div class="stats-number">{{ admin_count }}</div>
+            <div class="stats-label">
+                <i class="fas fa-user-crown me-2"></i>Admins
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search and Filter Bar -->
+<div class="search-filter-bar">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-12">
+            <label class="form-label fw-bold">
+                <i class="fas fa-search me-2"></i>Search Users
+            </label>
+            <input type="text" id="searchInput" class="form-control" placeholder="Search by username, name, or email..." 
+                   style="border-radius: 10px; border: 2px solid #e9ecef; padding: 0.75rem;">
+        </div>
+    </div>
+</div>
+
+<!-- User Cards Grid -->
+{% if users %}
+<div class="row g-4" id="userGrid">
+    {% for user in users %}
+    <div class="col-lg-4 col-md-6 user-item" 
+         data-username="{{ user.username|lower }}"
+         data-name="{{ user.get_full_name|default:user.username|lower }}"
+         data-email="{{ user.email|lower }}">
+        <div class="user-card">
+            <div class="user-info">
+                <div class="user-avatar mb-3">
+                    {{ user.first_name|first|default:user.username|first|upper }}{{ user.last_name|first|upper|default:'' }}
+                </div>
+                <div class="text-center">
+                    <div class="user-name">
+                        {{ user.get_full_name|default:user.username }}
+                    </div>
+                    <div class="user-email">
+                        <i class="fas fa-envelope me-1"></i>{{ user.email|default:"No email" }}
+                    </div>
+                    <div class="text-muted small mb-2">
+                        <i class="fas fa-user me-1"></i>@{{ user.username }}
+                    </div>
+                    <div class="mt-3">
+                        {% if user.is_active %}
+                        <span class="user-badge badge-active">
+                            <i class="fas fa-check-circle me-1"></i>Active
+                        </span>
+                        {% else %}
+                        <span class="user-badge badge-inactive">
+                            <i class="fas fa-times-circle me-1"></i>Inactive
+                        </span>
+                        {% endif %}
+                        {% if user.is_staff %}
+                        <span class="user-badge badge-staff">
+                            <i class="fas fa-user-shield me-1"></i>Staff
+                        </span>
+                        {% endif %}
+                        {% if user.is_superuser %}
+                        <span class="user-badge badge-admin">
+                            <i class="fas fa-crown me-1"></i>Admin
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="user-actions">
+                <a href="{% url 'edit_user' user.id %}" class="btn btn-sm btn-warning action-btn" title="Edit User">
+                    <i class="fas fa-edit me-1"></i>Edit
+                </a>
+                {% if user.is_active %}
+                <a href="{% url 'deactivate_user' user.id %}" class="btn btn-sm btn-secondary action-btn" title="Deactivate User">
+                    <i class="fas fa-ban me-1"></i>Deactivate
+                </a>
+                {% else %}
+                <a href="{% url 'activate_user' user.id %}" class="btn btn-sm btn-success action-btn" title="Activate User">
+                    <i class="fas fa-check me-1"></i>Activate
+                </a>
+                {% endif %}
+                <a href="{% url 'delete_user' user.id %}" 
+                   class="btn btn-sm btn-danger action-btn" 
+                   title="Delete User"
+                   onclick="return confirm('Are you sure you want to delete {{ user.get_full_name|default:user.username }}? This action cannot be undone.');">
+                    <i class="fas fa-trash me-1"></i>Delete
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <i class="fas fa-users"></i>
+    <h4 class="text-muted mt-3">No users found</h4>
+    <p class="text-muted">Start by adding your first user to the system.</p>
+    <a href="{% url 'add_user' %}" class="btn btn-primary mt-3">
+        <i class="fas fa-plus me-2"></i>Add First User
+    </a>
+</div>
+{% endif %}
+
+<script>
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const items = document.querySelectorAll('.user-item');
+        items.forEach(item => {
+            const username = item.getAttribute('data-username');
+            const name = item.getAttribute('data-name');
+            const email = item.getAttribute('data-email');
+            
+            const matchesSearch = !searchTerm || 
+                username.includes(searchTerm) || 
+                name.includes(searchTerm) ||
+                email.includes(searchTerm);
+            
+            if (matchesSearch) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+</script>
+{% endblock %}

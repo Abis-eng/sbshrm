@@ -1789,8 +1789,17 @@ def asset_delete(request, pk):
 
 @user_passes_test(is_admin)
 def admin_user_list(request):
-    users = User.objects.all()
-    return render(request, 'core/admin_user_list.html', {'users': users})
+    users = User.objects.all().order_by('-date_joined')
+    # Calculate statistics
+    active_count = users.filter(is_active=True).count()
+    staff_count = users.filter(is_staff=True).count()
+    admin_count = users.filter(is_superuser=True).count()
+    return render(request, 'core/admin_user_list.html', {
+        'users': users,
+        'active_count': active_count,
+        'staff_count': staff_count,
+        'admin_count': admin_count,
+    })
 
 @user_passes_test(is_admin)
 def add_user(request):
