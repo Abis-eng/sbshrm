@@ -119,7 +119,21 @@ class AssetForm(forms.ModelForm):
 class CompanySettingsForm(forms.ModelForm):
     class Meta:
         model = CompanySettings
-        fields = ['company_name', 'contact_person', 'address', 'country', 'city', 'state_province', 'postal_code', 'email', 'phone_number', 'mobile_number', 'fax', 'website_url'] 
+        fields = ['company_name', 'contact_person', 'address', 'country', 'city', 'state_province', 'postal_code', 'email', 'phone_number', 'mobile_number', 'fax', 'website_url']
+        widgets = {
+            'company_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'contact_person': forms.TextInput(attrs={'class': 'form-control'}),
+            'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'country': forms.TextInput(attrs={'class': 'form-control'}),
+            'city': forms.TextInput(attrs={'class': 'form-control'}),
+            'state_province': forms.TextInput(attrs={'class': 'form-control'}),
+            'postal_code': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'mobile_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'fax': forms.TextInput(attrs={'class': 'form-control'}),
+            'website_url': forms.URLInput(attrs={'class': 'form-control'}),
+        } 
 
 class LocalizationSettingsForm(forms.ModelForm):
     class Meta:
@@ -141,6 +155,7 @@ class InvoiceSettingsForm(forms.ModelForm):
         model = InvoiceSettings
         fields = ['prefix', 'logo']
         widgets = {
+            'prefix': forms.TextInput(attrs={'class': 'form-control'}),
             'logo': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         } 
 
@@ -178,17 +193,18 @@ class ThemeSettingsForm(forms.ModelForm):
             'topbar_color', 'sidebar_size', 'sidebar_view', 'sidebar_color',
         ]
         widgets = {
+            'app_name': forms.TextInput(attrs={'class': 'form-control'}),
             'logo_light': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'logo_dark': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'favicon': forms.ClearableFileInput(attrs={'class': 'form-control'}),
-            'layout': forms.Select(attrs={'class': 'form-select'}),
-            'layout_width': forms.Select(attrs={'class': 'form-select'}),
-            'color_scheme': forms.Select(attrs={'class': 'form-select'}),
-            'layout_position': forms.Select(attrs={'class': 'form-select'}),
-            'topbar_color': forms.Select(attrs={'class': 'form-select'}),
-            'sidebar_size': forms.Select(attrs={'class': 'form-select'}),
-            'sidebar_view': forms.Select(attrs={'class': 'form-select'}),
-            'sidebar_color': forms.Select(attrs={'class': 'form-select'}),
+            'layout': forms.Select(attrs={'class': 'form-control form-select'}),
+            'layout_width': forms.Select(attrs={'class': 'form-control form-select'}),
+            'color_scheme': forms.Select(attrs={'class': 'form-control form-select'}),
+            'layout_position': forms.Select(attrs={'class': 'form-control form-select'}),
+            'topbar_color': forms.Select(attrs={'class': 'form-control form-select'}),
+            'sidebar_size': forms.Select(attrs={'class': 'form-control form-select'}),
+            'sidebar_view': forms.Select(attrs={'class': 'form-control form-select'}),
+            'sidebar_color': forms.Select(attrs={'class': 'form-control form-select'}),
         } 
 
 class TaxForm(forms.ModelForm):
