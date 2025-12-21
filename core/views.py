@@ -559,6 +559,23 @@ def my_advances(request):
     except Exception:
         return HttpResponse('Not an employee', status=403)
     advances = AdvanceRequest.objects.filter(employee=employee).order_by('-requested_at')
+    
+    # Calculate statistics
+    total_count = advances.count()
+    approved_count = advances.filter(status='approved').count()
+    pending_count = advances.filter(status='pending').count()
+    
+    # Calculate monthly payments for each advance
+    advances_with_monthly = []
+    for adv in advances:
+        monthly_payment = None
+        if adv.desired_installments and adv.desired_installments > 0:
+            monthly_payment = float(adv.amount) / adv.desired_installments
+        advances_with_monthly.append({
+            'advance': adv,
+            'monthly_payment': monthly_payment
+        })
+    
     if request.method == 'POST':
         form = AdvanceRequestForm(request.POST)
         if form.is_valid():
@@ -576,10 +593,18 @@ def my_advances(request):
                     message=f'Amount: {advance.amount}, Reason: {advance.reason[:100]}',
                     link=f'/manage-advances/'
                 )
+            messages.success(request, 'Advance request submitted successfully!')
             return redirect('my_advances')
     else:
         form = AdvanceRequestForm()
-    return render(request, 'core/my_advances.html', {'advances': advances, 'form': form})
+    return render(request, 'core/my_advances.html', {
+        'advances': advances,
+        'advances_with_monthly': advances_with_monthly,
+        'form': form,
+        'total_count': total_count,
+        'approved_count': approved_count,
+        'pending_count': pending_count,
+    })
 
 @user_passes_test(is_admin)
 def manage_advances(request):
