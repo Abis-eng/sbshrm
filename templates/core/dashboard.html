@@ -454,7 +454,7 @@
     </div>
     
     <!-- Today's Attendance -->
-    <div class="dashboard-card" onclick="window.location.href='{% url 'all_attendance' %}'">
+    <div class="dashboard-card" onclick="showChart('attendance')" style="cursor: pointer;">
         <div class="card-body p-4">
             <div class="stat-icon-wrapper success">
                 <i class="fas fa-calendar-check stat-icon"></i>
@@ -476,11 +476,72 @@
             </div>
             <div class="mt-3 pt-3 border-top">
                 <small class="text-muted d-flex align-items-center">
-                    <i class="fas fa-arrow-right me-2"></i>View attendance
+                    <i class="fas fa-chart-pie me-2"></i>View attendance chart
                 </small>
             </div>
         </div>
     </div>
+    
+    <!-- Active Projects -->
+    <div class="dashboard-card" onclick="showChart('department')" style="cursor: pointer;">
+        <div class="card-body p-4">
+            <div class="stat-icon-wrapper info">
+                <i class="fas fa-building stat-icon"></i>
+            </div>
+            <div class="stat-number">{{ total_departments }}</div>
+            <div class="stat-label">Departments</div>
+            <div class="mt-2">
+                <span class="badge bg-info badge-modern">{{ total_employees }} Employees</span>
+            </div>
+            <div class="mt-3 pt-3 border-top">
+                <small class="text-muted d-flex align-items-center">
+                    <i class="fas fa-chart-bar me-2"></i>View department chart
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Revenue/Expenses -->
+    <div class="dashboard-card" onclick="showChart('revenue')" style="cursor: pointer;">
+        <div class="card-body p-4">
+            <div class="stat-icon-wrapper primary">
+                <i class="fas fa-dollar-sign stat-icon"></i>
+            </div>
+            <div class="stat-number">${{ current_month_revenue|floatformat:0 }}</div>
+            <div class="stat-label">Monthly Revenue</div>
+            <div class="mt-2">
+                <span class="badge bg-success badge-modern">Revenue: ${{ current_month_revenue|floatformat:0 }}</span>
+                <span class="badge bg-danger badge-modern ms-2">Expenses: ${{ current_month_expenses|floatformat:0 }}</span>
+            </div>
+            <div class="mt-3 pt-3 border-top">
+                <small class="text-muted d-flex align-items-center">
+                    <i class="fas fa-chart-line me-2"></i>View revenue chart
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tasks -->
+    {% if active_tasks or completed_tasks %}
+    <div class="dashboard-card" onclick="showChart('task')" style="cursor: pointer;">
+        <div class="card-body p-4">
+            <div class="stat-icon-wrapper warning">
+                <i class="fas fa-tasks stat-icon"></i>
+            </div>
+            <div class="stat-number">{{ active_tasks }}</div>
+            <div class="stat-label">Active Tasks</div>
+            <div class="mt-2">
+                <span class="badge bg-warning badge-modern">{{ active_tasks }} Active</span>
+                <span class="badge bg-success badge-modern ms-2">{{ completed_tasks }} Completed</span>
+            </div>
+            <div class="mt-3 pt-3 border-top">
+                <small class="text-muted d-flex align-items-center">
+                    <i class="fas fa-chart-pie me-2"></i>View task chart
+                </small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Recent Activities -->
@@ -536,6 +597,82 @@
         </div>
     </div>
 </div>
+
+<!-- Chart Modal -->
+<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chartModalLabel">Chart</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalChartContainer" style="position: relative; height: 400px;">
+                    <canvas id="attendanceChart" style="display: none;"></canvas>
+                    <canvas id="deptChart" style="display: none;"></canvas>
+                    <canvas id="revenueExpenseChart" style="display: none;"></canvas>
+                    <canvas id="taskChart" data-active="{{ active_tasks }}" data-completed="{{ completed_tasks }}" style="display: none;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden data for charts -->
+{% if attendance_stats %}
+{{ attendance_stats|json_script:"attendance-stats-data" }}
+{% endif %}
+{% if dept_counts %}
+{{ dept_counts|json_script:"dept-counts-data" }}
+{% endif %}
+{% if expense_stats %}
+{{ expense_stats|json_script:"expense-stats-data" }}
+{% endif %}
+{% if revenue_stats %}
+{{ revenue_stats|json_script:"revenue-stats-data" }}
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/dashboard-charts.js' %}"></script>
+<script>
+    function showChart(chartType) {
+        if (window.dashboardCharts) {
+            window.dashboardCharts.showChart(chartType);
+        }
+    }
+    
+    // Set current date
+    document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    
+    // Theme Management
+    function setTheme(theme) {
+        document.body.className = document.body.className.replace(/theme-\w+/g, '');
+        if (theme !== 'light') {
+            document.body.classList.add('theme-' + theme);
+        }
+        localStorage.setItem('dashboard-theme', theme);
+        
+        // Update active button
+        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+        const themeBtn = document.getElementById('theme-' + theme);
+        if (themeBtn) {
+            themeBtn.classList.add('active');
+        }
+    }
+    
+    function loadTheme() {
+        const savedTheme = localStorage.getItem('dashboard-theme') || 'light';
+        setTheme(savedTheme);
+    }
+    
+    // Load theme on page load
+    loadTheme();
+</script>
 
 <script>
     // Set current date
