@@ -180,4 +180,15 @@
     <p class="text-muted">There are no leave requests to manage.</p>
 </div>
 {% endif %}
+
+<script>
+    // Calculate duration for each leave
+    document.querySelectorAll('[data-start][data-end]').forEach(function(el) {
+        const startDate = new Date(el.getAttribute('data-start'));
+        const endDate = new Date(el.getAttribute('data-end'));
+        const diffTime = Math.abs(endDate - startDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        el.textContent = diffDays + ' day' + (diffDays !== 1 ? 's' : '');
+    });
+</script>
 {% endblock %}
