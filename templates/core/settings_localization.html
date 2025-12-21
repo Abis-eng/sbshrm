@@ -194,7 +194,8 @@
     .input-group-icon {
         position: relative;
     }
-    .input-group-icon .form-control {
+    .input-group-icon .form-control,
+    .input-group-icon .form-select {
         padding-left: 45px;
     }
     .input-group-icon i {
@@ -203,10 +204,16 @@
         top: 50%;
         transform: translateY(-50%);
         color: #64748b;
-        z-index: 5;
+        z-index: 1;
+        pointer-events: none;
     }
-    .input-group-icon .form-control:focus + i {
+    .input-group-icon .form-control:focus ~ i,
+    .input-group-icon .form-select:focus ~ i {
         color: #14b8a6;
+    }
+    .input-group-icon select.form-select {
+        z-index: 2;
+        position: relative;
     }
     .btn-save {
         background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
@@ -306,7 +313,7 @@
                                 <div class="row g-4">
                                     <div class="col-md-6">
                                         <div class="form-group-enhanced">
-                                            <label class="form-label">
+                                            <label class="form-label" for="{{ form.default_language.id_for_label }}">
                                                 <i class="fas fa-language"></i> Default Language
                                             </label>
                                             <div class="input-group-icon">
@@ -317,7 +324,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group-enhanced">
-                                            <label class="form-label">
+                                            <label class="form-label" for="{{ form.timezone.id_for_label }}">
                                                 <i class="fas fa-clock"></i> Timezone
                                             </label>
                                             <div class="input-group-icon">
@@ -337,7 +344,7 @@
                                 <div class="row g-4">
                                     <div class="col-md-6">
                                         <div class="form-group-enhanced">
-                                            <label class="form-label">
+                                            <label class="form-label" for="{{ form.date_format.id_for_label }}">
                                                 <i class="fas fa-calendar"></i> Date Format
                                             </label>
                                             <div class="input-group-icon">
@@ -348,7 +355,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group-enhanced">
-                                            <label class="form-label">
+                                            <label class="form-label" for="{{ form.time_format.id_for_label }}">
                                                 <i class="fas fa-clock"></i> Time Format
                                             </label>
                                             <div class="input-group-icon">
@@ -368,7 +375,7 @@
                                 <div class="row g-4">
                                     <div class="col-md-6">
                                         <div class="form-group-enhanced">
-                                            <label class="form-label">
+                                            <label class="form-label" for="{{ form.currency.id_for_label }}">
                                                 <i class="fas fa-coins"></i> Currency
                                             </label>
                                             <div class="input-group-icon">
@@ -379,7 +386,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group-enhanced">
-                                            <label class="form-label">
+                                            <label class="form-label" for="{{ form.currency_symbol.id_for_label }}">
                                                 <i class="fas fa-dollar-sign"></i> Currency Symbol
                                             </label>
                                             <div class="input-group-icon">
@@ -390,7 +397,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group-enhanced">
-                                            <label class="form-label">
+                                            <label class="form-label" for="{{ form.thousand_separator.id_for_label }}">
                                                 <i class="fas fa-comma"></i> Thousand Separator
                                             </label>
                                             <div class="input-group-icon">
@@ -401,7 +408,7 @@
                                     </div>
                                     <div class="col-md-6">
                                         <div class="form-group-enhanced">
-                                            <label class="form-label">
+                                            <label class="form-label" for="{{ form.decimal_separator.id_for_label }}">
                                                 <i class="fas fa-circle"></i> Decimal Separator
                                             </label>
                                             <div class="input-group-icon">

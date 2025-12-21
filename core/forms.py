@@ -124,7 +124,17 @@ class CompanySettingsForm(forms.ModelForm):
 class LocalizationSettingsForm(forms.ModelForm):
     class Meta:
         model = LocalizationSettings
-        fields = ['default_language', 'timezone', 'date_format', 'time_format', 'currency', 'currency_symbol', 'thousand_separator', 'decimal_separator'] 
+        fields = ['default_language', 'timezone', 'date_format', 'time_format', 'currency', 'currency_symbol', 'thousand_separator', 'decimal_separator']
+        widgets = {
+            'default_language': forms.Select(attrs={'class': 'form-control form-select'}),
+            'timezone': forms.Select(attrs={'class': 'form-control form-select'}),
+            'date_format': forms.TextInput(attrs={'class': 'form-control'}),
+            'time_format': forms.TextInput(attrs={'class': 'form-control'}),
+            'currency': forms.TextInput(attrs={'class': 'form-control'}),
+            'currency_symbol': forms.TextInput(attrs={'class': 'form-control'}),
+            'thousand_separator': forms.TextInput(attrs={'class': 'form-control'}),
+            'decimal_separator': forms.TextInput(attrs={'class': 'form-control'}),
+        } 
 
 class InvoiceSettingsForm(forms.ModelForm):
     class Meta:
