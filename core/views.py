@@ -1062,6 +1062,17 @@ def all_attendance(request):
     
     records = Attendance.objects.select_related('employee__user').order_by('-date')
     
+    # Filter by employee if provided via GET parameter (from employee profile)
+    employee_id = request.GET.get('employee')
+    if employee_id:
+        try:
+            employee = Employee.objects.get(id=employee_id)
+            records = records.filter(employee=employee)
+            # Pre-fill form with employee
+            form = AttendanceFilterForm(initial={'employee': employee})
+        except Employee.DoesNotExist:
+            pass
+    
     if form.is_valid():
         if form.cleaned_data.get('employee'):
             records = records.filter(employee=form.cleaned_data['employee'])
@@ -1318,6 +1329,14 @@ def my_leaves(request):
 @user_passes_test(is_admin)
 def manage_leaves(request):
     leaves = Leave.objects.select_related('employee__user').order_by('-applied_at')
+    # Filter by employee if provided (from employee profile)
+    employee_id = request.GET.get('employee')
+    if employee_id:
+        try:
+            employee = Employee.objects.get(user_id=employee_id)
+            leaves = leaves.filter(employee=employee)
+        except Employee.DoesNotExist:
+            pass
     if request.method == 'POST':
         leave_id = request.POST.get('leave_id')
         action = request.POST.get('action')
@@ -1537,13 +1556,29 @@ def project_tasks(request, project_id):
 
 @login_required
 def my_tasks(request):
-    try:
-        employee = request.user.employee
-        if not employee.can_view_tasks:
-            return HttpResponse('You are restricted from accessing tasks.', status=403)
-    except Employee.DoesNotExist:
-        return render(request, 'core/no_employee.html')
-    tasks = Task.objects.filter(assigned_to=employee).select_related('project', 'assigned_by')
+    # If employee filter is provided and user is admin, show tasks for that employee
+    employee_id = request.GET.get('employee')
+    if employee_id and request.user.is_superuser:
+        try:
+            employee_user = User.objects.get(id=employee_id)
+            employee = Employee.objects.get(user=employee_user)
+            tasks = Task.objects.filter(assigned_to=employee).select_related('project', 'assigned_by')
+        except (User.DoesNotExist, Employee.DoesNotExist):
+            try:
+                employee = request.user.employee
+                if not employee.can_view_tasks:
+                    return HttpResponse('You are restricted from accessing tasks.', status=403)
+                tasks = Task.objects.filter(assigned_to=employee).select_related('project', 'assigned_by')
+            except Employee.DoesNotExist:
+                return render(request, 'core/no_employee.html')
+    else:
+        try:
+            employee = request.user.employee
+            if not employee.can_view_tasks:
+                return HttpResponse('You are restricted from accessing tasks.', status=403)
+        except Employee.DoesNotExist:
+            return render(request, 'core/no_employee.html')
+        tasks = Task.objects.filter(assigned_to=employee).select_related('project', 'assigned_by')
     return render(request, 'core/my_tasks.html', {'tasks': tasks})
 
 @login_required
