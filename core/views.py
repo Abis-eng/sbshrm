@@ -194,9 +194,13 @@ def dashboard(request):
         'total_salary': total_salary,
     })
 
-@user_passes_test(is_admin)
+@login_required
 def employee_list(request):
-    employees = Employee.objects.all()
+    if request.user.is_superuser:
+        employees = Employee.objects.all()
+    else:
+        # Employees can see all employees but with limited actions
+        employees = Employee.objects.all()
     departments = Department.objects.all()
     designations = Designation.objects.all()
     return render(request, 'core/employee_list.html', {'employees': employees, 'departments': departments, 'designations': designations})
@@ -417,7 +421,6 @@ def my_department(request):
         department = None
     return render(request, 'core/my_department.html', {'department': department})
 
-@permission_required('core.view_designation', raise_exception=True)
 @login_required
 def my_designation(request):
     try:
