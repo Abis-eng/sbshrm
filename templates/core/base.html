@@ -234,34 +234,24 @@
                         {% if user.is_superuser %}
                         <!-- Permissions and Roles & Permissions links removed -->
                         {% endif %}
-                        {% if user.is_superuser %}
                         <li class="nav-item">
                             <a class="nav-link text-white" data-bs-toggle="collapse" href="#projectsMenu" role="button" aria-expanded="false" aria-controls="projectsMenu">
                                 <i class="fas fa-project-diagram me-2"></i>Projects
+                                <i class="fas fa-chevron-down ms-auto float-end mt-1"></i>
                             </a>
                             <div class="collapse" id="projectsMenu">
                                 <ul class="nav flex-column ms-3">
+                                    {% if user.is_superuser %}
                                     <li class="nav-item"><a class="nav-link text-white" href="{% url 'project_list' %}"><i class="fas fa-list me-2"></i>Project List</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'select_project_for_task' %}"><i class="fas fa-tasks me-2"></i>To-Do Task</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'select_project_for_view_tasks' %}"><i class="fas fa-eye me-2"></i>View Tasks</a></li>
+                                    {% endif %}
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'my_tasks' %}"><i class="fas fa-tasks me-2"></i>My Tasks</a></li>
+                                    {% if user.is_superuser %}
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'select_project_for_task' %}"><i class="fas fa-user-plus me-2"></i>Assign Task</a></li>
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'select_project_for_view_tasks' %}"><i class="fas fa-eye me-2"></i>View All Tasks</a></li>
+                                    {% endif %}
                                 </ul>
                             </div>
                         </li>
-                        {% elif user.employee %}
-                            {% if user.employee.designation.name == 'Project Manager' %}
-                            <li class="nav-item">
-                                <a class="nav-link text-white" data-bs-toggle="collapse" href="#projectsMenu" role="button" aria-expanded="false" aria-controls="projectsMenu">
-                                    <i class="fas fa-project-diagram me-2"></i>Projects
-                                </a>
-                                <div class="collapse" id="projectsMenu">
-                                    <ul class="nav flex-column ms-3">
-                                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'select_project_for_task' %}"><i class="fas fa-tasks me-2"></i>To-Do Task</a></li>
-                                        <li class="nav-item"><a class="nav-link text-white" href="{% url 'select_project_for_view_tasks' %}"><i class="fas fa-eye me-2"></i>View Tasks</a></li>
-                                    </ul>
-                                </div>
-                            </li>
-                            {% endif %}
-                        {% endif %}
                         {% if user.is_superuser %}
                         <li class="nav-item">
                             <a class="nav-link text-white" data-bs-toggle="collapse" href="#accountingMenu" role="button" aria-expanded="false" aria-controls="accountingMenu">
@@ -881,6 +871,22 @@
                         chevron.style.transition = 'transform 0.3s ease';
                     });
                     ticketsMenu.addEventListener('hide.bs.collapse', function() {
+                        chevron.style.transform = 'rotate(0deg)';
+                        chevron.style.transition = 'transform 0.3s ease';
+                    });
+                }
+            }
+            
+            // Handle projects menu chevron
+            const projectsMenu = document.getElementById('projectsMenu');
+            if (projectsMenu) {
+                const chevron = projectsMenu.previousElementSibling.querySelector('.fa-chevron-down');
+                if (chevron) {
+                    projectsMenu.addEventListener('show.bs.collapse', function() {
+                        chevron.style.transform = 'rotate(180deg)';
+                        chevron.style.transition = 'transform 0.3s ease';
+                    });
+                    projectsMenu.addEventListener('hide.bs.collapse', function() {
                         chevron.style.transform = 'rotate(0deg)';
                         chevron.style.transition = 'transform 0.3s ease';
                     });

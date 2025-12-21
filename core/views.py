@@ -1664,11 +1664,30 @@ def assign_task(request, project_id):
 @login_required
 def project_tasks(request, project_id):
     project = get_object_or_404(Project, id=project_id)
-    # Permission check
-    if not request.user.is_superuser and not (project.manager and project.manager.user == request.user):
-        return HttpResponseForbidden('You do not have permission to view tasks.')
-    tasks = Task.objects.filter(project=project).select_related('assigned_to')
-    return render(request, 'core/project_tasks.html', {'project': project, 'tasks': tasks})
+    # Permission check - allow admin, project manager, or employees with tasks in this project
+    if not request.user.is_superuser:
+        try:
+            employee = request.user.employee
+            if project.manager != employee and not project.tasks.filter(assigned_to=employee).exists():
+                messages.error(request, 'You do not have permission to view tasks for this project.')
+                return redirect('project_list')
+        except:
+            messages.error(request, 'You do not have permission to view tasks for this project.')
+            return redirect('project_list')
+    tasks = Task.objects.filter(project=project).select_related('assigned_to', 'assigned_by').all()
+    
+    # Calculate statistics
+    tasks_pending = tasks.filter(status='pending').count()
+    tasks_in_progress = tasks.filter(status='in_progress').count()
+    tasks_completed = tasks.filter(status='completed').count()
+    
+    return render(request, 'core/project_tasks.html', {
+        'project': project, 
+        'tasks': tasks,
+        'tasks_pending': tasks_pending,
+        'tasks_in_progress': tasks_in_progress,
+        'tasks_completed': tasks_completed,
+    })
 
 @login_required
 def my_tasks(request):
