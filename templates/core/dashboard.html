@@ -581,186 +581,66 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-    // Chart configurations with professional styling
-    const chartOptions = {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    padding: 20,
-                    usePointStyle: true,
-                    font: {
-                        size: 12,
-                        weight: '600'
-                    }
-                }
-            },
-            tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                padding: 12,
-                titleFont: {
-                    size: 14,
-                    weight: '600'
-                },
-                bodyFont: {
-                    size: 13
-                },
-                borderColor: 'rgba(255, 255, 255, 0.1)',
-                borderWidth: 1,
-                cornerRadius: 8
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                grid: {
-                    color: 'rgba(0, 0, 0, 0.05)'
-                },
-                ticks: {
-                    font: {
-                        size: 11
-                    }
-                }
-            },
-            x: {
-                grid: {
-                    display: false
-                },
-                ticks: {
-                    font: {
-                        size: 11
-                    }
-                }
-            }
-        }
-    };
-    
-    // Attendance Chart
-    {% if attendance_stats %}
-    {{ attendance_stats|json_script:"attendance-stats-data" }}
-    const ctxA = document.getElementById('attendanceChart').getContext('2d');
-    const aStats = JSON.parse(document.getElementById('attendance-stats-data').textContent);
-    const aLabels = aStats.map(s => s.status.charAt(0).toUpperCase() + s.status.slice(1).replace('_', ' '));
-    const aCounts = aStats.map(s => s.count);
-    new Chart(ctxA, {
-        type: 'doughnut',
-        data: {
-            labels: aLabels,
-            datasets: [{
-                data: aCounts,
-                backgroundColor: [
-                    'rgba(16, 185, 129, 0.9)',
-                    'rgba(239, 68, 68, 0.9)',
-                    'rgba(245, 158, 11, 0.9)',
-                    'rgba(59, 130, 246, 0.9)',
-                    'rgba(139, 92, 246, 0.9)'
-                ],
-                borderWidth: 0,
-                hoverOffset: 8
-            }]
-        },
-        options: {
-            ...chartOptions,
-            cutout: '70%',
+    (function() {
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: true,
             plugins: {
-                ...chartOptions.plugins,
-                legend: {
-                    ...chartOptions.plugins.legend,
-                    position: 'bottom'
-                }
+                legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true, font: { size: 12, weight: '600' } } },
+                tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)', padding: 12, titleFont: { size: 14, weight: '600' }, bodyFont: { size: 13 }, borderColor: 'rgba(255, 255, 255, 0.1)', borderWidth: 1, cornerRadius: 8 }
+            },
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(0, 0, 0, 0.05)' }, ticks: { font: { size: 11 } } },
+                x: { grid: { display: false }, ticks: { font: { size: 11 } } }
             }
-        }
-    });
-    {% endif %}
-    
-    // Department Chart
-    {% if dept_counts %}
-    {{ dept_counts|json_script:"dept-counts-data" }}
-    const ctxD = document.getElementById('deptChart').getContext('2d');
-    const dStats = JSON.parse(document.getElementById('dept-counts-data').textContent);
-    const dLabels = dStats.map(d => d.name);
-    const dCounts = dStats.map(d => d.emp_count);
-    new Chart(ctxD, {
-        type: 'bar',
-        data: {
-            labels: dLabels,
-            datasets: [{
-                label: 'Employees',
-                data: dCounts,
-                backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                borderColor: '#667eea',
-                borderWidth: 2,
-                borderRadius: 8,
-                borderSkipped: false,
-            }]
-        },
-        options: chartOptions
-    });
-    {% endif %}
-    
-    // Revenue vs Expenses Chart
-    {% if expense_stats and revenue_stats %}
-    {{ expense_stats|json_script:"expense-stats-data" }}
-    {{ revenue_stats|json_script:"revenue-stats-data" }}
-    const ctxRE = document.getElementById('revenueExpenseChart').getContext('2d');
-    const expStats = JSON.parse(document.getElementById('expense-stats-data').textContent);
-    const revStats = JSON.parse(document.getElementById('revenue-stats-data').textContent);
-    
-    // Combine and format data
-    const months = [...new Set([...expStats.map(e => e.month), ...revStats.map(r => r.month)])].sort();
-    const expData = months.map(m => {
-        const stat = expStats.find(e => e.month === m);
-        return stat ? parseFloat(stat.total) : 0;
-    });
-    const revData = months.map(m => {
-        const stat = revStats.find(r => r.month === m);
-        return stat ? parseFloat(stat.total) : 0;
-    });
-    const monthLabels = months.map(m => {
-        if (m) {
-            const date = new Date(m);
-            return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-        }
-        return '';
-    });
-    
-    new Chart(ctxRE, {
-        type: 'line',
-        data: {
-            labels: monthLabels,
-            datasets: [{
-                label: 'Revenue',
-                data: revData,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                fill: true,
-                tension: 0.4,
-                borderWidth: 3,
-                pointRadius: 5,
-                pointHoverRadius: 7,
-                pointBackgroundColor: '#10b981',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2
-            }, {
-                label: 'Expenses',
-                data: expData,
-                borderColor: '#ef4444',
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                fill: true,
-                tension: 0.4,
-                borderWidth: 3,
-                pointRadius: 5,
-                pointHoverRadius: 7,
-                pointBackgroundColor: '#ef4444',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2
-            }]
-        },
-        options: chartOptions
-    });
-    {% endif %}
+        };
+        
+        {% if attendance_stats %}
+        {{ attendance_stats|json_script:"attendance-stats-data" }}
+        const aData = JSON.parse(document.getElementById('attendance-stats-data').textContent);
+        new Chart(document.getElementById('attendanceChart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: aData.map(s => s.status.charAt(0).toUpperCase() + s.status.slice(1).replace('_', ' ')),
+                datasets: [{ data: aData.map(s => s.count), backgroundColor: ['rgba(16, 185, 129, 0.9)', 'rgba(239, 68, 68, 0.9)', 'rgba(245, 158, 11, 0.9)', 'rgba(59, 130, 246, 0.9)', 'rgba(139, 92, 246, 0.9)'], borderWidth: 0, hoverOffset: 8 }]
+            },
+            options: { ...chartOptions, cutout: '70%', plugins: { ...chartOptions.plugins, legend: { ...chartOptions.plugins.legend, position: 'bottom' } } }
+        });
+        {% endif %}
+        
+        {% if dept_counts %}
+        {{ dept_counts|json_script:"dept-counts-data" }}
+        const dData = JSON.parse(document.getElementById('dept-counts-data').textContent);
+        new Chart(document.getElementById('deptChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: dData.map(d => d.name),
+                datasets: [{ label: 'Employees', data: dData.map(d => d.emp_count), backgroundColor: 'rgba(102, 126, 234, 0.8)', borderColor: '#667eea', borderWidth: 2, borderRadius: 8, borderSkipped: false }]
+            },
+            options: chartOptions
+        });
+        {% endif %}
+        
+        {% if expense_stats and revenue_stats %}
+        {{ expense_stats|json_script:"expense-stats-data" }}
+        {{ revenue_stats|json_script:"revenue-stats-data" }}
+        const expData = JSON.parse(document.getElementById('expense-stats-data').textContent);
+        const revData = JSON.parse(document.getElementById('revenue-stats-data').textContent);
+        const months = [...new Set([...expData.map(e => e.month), ...revData.map(r => r.month)])].sort();
+        const monthLabels = months.map(m => m ? new Date(m).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '');
+        new Chart(document.getElementById('revenueExpenseChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: monthLabels,
+                datasets: [
+                    { label: 'Revenue', data: months.map(m => { const s = revData.find(r => r.month === m); return s ? parseFloat(s.total) : 0; }), borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor: '#10b981', pointBorderColor: '#fff', pointBorderWidth: 2 },
+                    { label: 'Expenses', data: months.map(m => { const s = expData.find(e => e.month === m); return s ? parseFloat(s.total) : 0; }), borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor: '#ef4444', pointBorderColor: '#fff', pointBorderWidth: 2 }
+                ]
+            },
+            options: chartOptions
+        });
+        {% endif %}
+    })();
 </script>
 
 <script>
