@@ -176,6 +176,7 @@
                         <li class="nav-item">
                             <a class="nav-link text-white" data-bs-toggle="collapse" href="#employeeMenu" role="button" aria-expanded="false" aria-controls="employeeMenu">
                                 <i class="fas fa-users me-2"></i>Employees
+                                <i class="fas fa-chevron-down ms-auto float-end mt-1 employee-chevron"></i>
                             </a>
                             <div class="collapse" id="employeeMenu">
                                 <ul class="nav flex-column ms-3">
@@ -825,6 +826,59 @@
         // Initial load and periodic refresh
         loadNotifications();
         notificationCheckInterval = setInterval(loadNotifications, 30000); // Refresh every 30 seconds
+    </script>
+    
+    <!-- Chevron Toggle for Collapse Menus -->
+    <script>
+        // Handle chevron rotation for collapse menus
+        document.addEventListener('DOMContentLoaded', function() {
+            const employeeMenu = document.getElementById('employeeMenu');
+            const employeeChevron = document.querySelector('.employee-chevron');
+            
+            if (employeeMenu && employeeChevron) {
+                employeeMenu.addEventListener('show.bs.collapse', function() {
+                    employeeChevron.style.transform = 'rotate(180deg)';
+                    employeeChevron.style.transition = 'transform 0.3s ease';
+                });
+                
+                employeeMenu.addEventListener('hide.bs.collapse', function() {
+                    employeeChevron.style.transform = 'rotate(0deg)';
+                    employeeChevron.style.transition = 'transform 0.3s ease';
+                });
+            }
+            
+            // Handle tickets menu chevrons
+            const ticketsMenuAdmin = document.getElementById('ticketsMenuAdmin');
+            const ticketsMenu = document.getElementById('ticketsMenu');
+            
+            if (ticketsMenuAdmin) {
+                const chevron = ticketsMenuAdmin.previousElementSibling.querySelector('.fa-chevron-down');
+                if (chevron) {
+                    ticketsMenuAdmin.addEventListener('show.bs.collapse', function() {
+                        chevron.style.transform = 'rotate(180deg)';
+                        chevron.style.transition = 'transform 0.3s ease';
+                    });
+                    ticketsMenuAdmin.addEventListener('hide.bs.collapse', function() {
+                        chevron.style.transform = 'rotate(0deg)';
+                        chevron.style.transition = 'transform 0.3s ease';
+                    });
+                }
+            }
+            
+            if (ticketsMenu) {
+                const chevron = ticketsMenu.previousElementSibling.querySelector('.fa-chevron-down');
+                if (chevron) {
+                    ticketsMenu.addEventListener('show.bs.collapse', function() {
+                        chevron.style.transform = 'rotate(180deg)';
+                        chevron.style.transition = 'transform 0.3s ease';
+                    });
+                    ticketsMenu.addEventListener('hide.bs.collapse', function() {
+                        chevron.style.transform = 'rotate(0deg)';
+                        chevron.style.transition = 'transform 0.3s ease';
+                    });
+                }
+            }
+        });
     </script>
     
     {% block extra_js %}{% endblock %}
