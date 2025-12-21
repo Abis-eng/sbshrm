@@ -205,7 +205,7 @@ def employee_list(request):
     designations = Designation.objects.all()
     return render(request, 'core/employee_list.html', {'employees': employees, 'departments': departments, 'designations': designations})
 
-@user_passes_test(is_admin)
+@login_required
 def view_employee_profile(request, employee_id):
     employee = get_object_or_404(Employee.objects.select_related('user', 'department', 'designation'), id=employee_id)
     # Get related data
@@ -400,7 +400,7 @@ def department_employees(request, department_id):
         'employees': employees
     })
 
-@user_passes_test(is_admin)
+@login_required
 def designation_employees(request, designation_id):
     designation = get_object_or_404(Designation, id=designation_id)
     employees = Employee.objects.filter(designation=designation).select_related('user', 'department')
