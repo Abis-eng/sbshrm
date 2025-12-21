@@ -1,44 +1,304 @@
 {% extends 'core/base.html' %}
-{% block page_title %}Manage Advance Requests{% endblock %}
-{% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Advance Requests</h4>
-    <table class="table table-bordered">
-      <thead><tr><th>Employee</th><th>Amount</th><th>Installments</th><th>Status</th><th>Requested</th><th>Action</th></tr></thead>
-      <tbody>
-        {% for adv in advances %}
-        <tr>
-          <td>{{ adv.employee }}</td>
-          <td>{{ adv.amount }}</td>
-          <td>{{ adv.desired_installments|default:'-' }}</td>
-          <td>{{ adv.get_status_display }}</td>
-          <td>{{ adv.requested_at|date:'Y-m-d H:i' }}</td>
-          <td>
-            {% if adv.status == 'pending' %}
-            <form method="post" class="d-flex align-items-center" style="gap:8px;">
-              {% csrf_token %}
-              <input type="hidden" name="advance_id" value="{{ adv.id }}" />
-              <input type="number" name="desired_installments" class="form-control" style="width:120px" placeholder="Installments" min="1" />
-              <select name="action" class="form-select" style="width:140px">
-                <option value="approve">Approve</option>
-                <option value="reject">Reject</option>
-              </select>
-              <input name="admin_comment" class="form-control" style="width:220px" placeholder="Comment" />
-              <button class="btn btn-primary">Submit</button>
-            </form>
-            {% else %}
-              <em>No action</em>
-            {% endif %}
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="6">No advance requests.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+{% load static %}
+
+{% block title %}Manage Advance Requests - HRM System{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="flex-grow-1">
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-clipboard-check me-2"></i>Advance Approval Management
+        </h1>
+        <p class="text-muted mb-0 small">Review and manage all employee advance requests</p>
+    </div>
 </div>
 {% endblock %}
 
+{% block content %}
+<style>
+    .advance-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        background: white;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+    .advance-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    .advance-header {
+        padding: 1.5rem;
+        border-bottom: 2px solid #e9ecef;
+        background: #f8f9fa;
+    }
+    .advance-body {
+        padding: 1.5rem;
+    }
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .status-approved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .status-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .amount-display {
+        background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    .amount-value {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    .action-form {
+        background: #f8f9ff;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-top: 1rem;
+        border-left: 4px solid #0e7490;
+    }
+    .stats-card {
+        background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(14, 116, 144, 0.3);
+    }
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .search-bar {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+    }
+</style>
 
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-number">{{ total_count }}</div>
+            <div class="stats-label">
+                <i class="fas fa-list me-2"></i>Total Requests
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+            <div class="stats-number">{{ pending_count }}</div>
+            <div class="stats-label">
+                <i class="fas fa-clock me-2"></i>Pending
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <div class="stats-number">{{ approved_count }}</div>
+            <div class="stats-label">
+                <i class="fas fa-check-circle me-2"></i>Approved
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+            <div class="stats-number">{{ rejected_count }}</div>
+            <div class="stats-label">
+                <i class="fas fa-times-circle me-2"></i>Rejected
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="search-bar">
+    <label class="form-label fw-bold">
+        <i class="fas fa-search me-2"></i>Search Advance Requests
+    </label>
+    <input type="text" id="searchInput" class="form-control" placeholder="Search by employee name, amount, or status..." 
+           style="border-radius: 10px; border: 2px solid #e9ecef; padding: 0.75rem;">
+</div>
+
+<!-- Advance Requests List -->
+{% if advances %}
+<form method="post" id="advancesForm">
+    {% csrf_token %}
+    <div id="advancesContainer">
+        {% for adv in advances %}
+        <div class="advance-card advance-item" 
+             data-employee="{{ adv.employee.user.get_full_name|default:adv.employee.user.username|lower }}"
+             data-amount="{{ adv.amount }}"
+             data-status="{{ adv.status }}">
+            <div class="advance-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <div class="employee-avatar me-3" style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700;">
+                        {{ adv.employee.user.first_name|first|default:adv.employee.user.username|first|upper }}{{ adv.employee.user.last_name|first|upper|default:'' }}
+                    </div>
+                    <div>
+                        <h5 class="mb-1 fw-bold">
+                            {{ adv.employee.user.get_full_name|default:adv.employee.user.username }}
+                        </h5>
+                        <small class="text-muted">
+                            <i class="fas fa-envelope me-1"></i>{{ adv.employee.user.email|default:"No email" }}
+                            {% if adv.employee.department %}
+                            <span class="ms-2">
+                                <i class="fas fa-building me-1"></i>{{ adv.employee.department.name }}
+                            </span>
+                            {% endif %}
+                        </small>
+                    </div>
+                </div>
+                <span class="status-badge status-{{ adv.status }}">
+                    {{ adv.get_status_display }}
+                </span>
+            </div>
+            <div class="advance-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <div class="amount-display">
+                            <div class="small opacity-90 mb-1">Requested Amount</div>
+                            <div class="amount-value">${{ adv.amount|floatformat:2 }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3" style="background: #f8f9fa; border-radius: 10px;">
+                            <div class="small text-muted mb-1">Installments</div>
+                            <div class="fw-bold fs-5">{{ adv.desired_installments|default:"N/A" }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3" style="background: #f8f9fa; border-radius: 10px;">
+                            <div class="small text-muted mb-1">Requested On</div>
+                            <div class="fw-bold">{{ adv.requested_at|date:"M d, Y" }}</div>
+                            <div class="small text-muted">{{ adv.requested_at|date:"H:i" }}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3" style="background: #f8f9fa; border-radius: 10px;">
+                            <div class="small text-muted mb-1">Monthly Payment</div>
+                            <div class="fw-bold fs-5">
+                                {% for item in advances_with_monthly %}
+                                    {% if item.advance.id == adv.id %}
+                                        {% if item.monthly_payment %}
+                                            ${{ item.monthly_payment|floatformat:2 }}
+                                        {% else %}
+                                            ${{ adv.amount|floatformat:2 }}
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if adv.reason %}
+                <div class="mb-3">
+                    <label class="fw-bold text-muted small d-block mb-2">Reason:</label>
+                    <p class="mb-0">{{ adv.reason }}</p>
+                </div>
+                {% endif %}
+                
+                {% if adv.admin_comment %}
+                <div class="mb-3">
+                    <label class="fw-bold text-muted small d-block mb-2">Admin Comment:</label>
+                    <p class="mb-0">{{ adv.admin_comment }}</p>
+                </div>
+                {% endif %}
+                
+                {% if adv.status == 'pending' %}
+                <div class="action-form">
+                    <div class="row g-2 align-items-end">
+                        <input type="hidden" name="advance_id" value="{{ adv.id }}">
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">Installments</label>
+                            <input type="number" name="desired_installments" class="form-control" 
+                                   value="{{ adv.desired_installments|default:1 }}" min="1" 
+                                   style="border-radius: 10px; border: 2px solid #e9ecef;">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Action</label>
+                            <select name="action" class="form-select" style="border-radius: 10px; border: 2px solid #e9ecef;">
+                                <option value="approve">Approve</option>
+                                <option value="reject">Reject</option>
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold">Comment</label>
+                            <input type="text" name="admin_comment" class="form-control" 
+                                   placeholder="Optional comment" 
+                                   style="border-radius: 10px; border: 2px solid #e9ecef;">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100" style="border-radius: 10px;">
+                                <i class="fas fa-check me-1"></i>Submit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="mt-2">
+                    <small class="text-muted">
+                        <i class="fas fa-user-check me-1"></i>Reviewed by {{ adv.reviewed_by.get_full_name|default:adv.reviewed_by.username }} on {{ adv.reviewed_at|date:"M d, Y H:i" }}
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endwith %}
+        {% endfor %}
+    </div>
+</form>
+{% else %}
+<div class="text-center py-5">
+    <i class="fas fa-clipboard-check fa-4x text-muted mb-3"></i>
+    <h5 class="text-muted">No advance requests found</h5>
+    <p class="text-muted">There are no advance requests to manage.</p>
+</div>
+{% endif %}
+
+<script>
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const items = document.querySelectorAll('.advance-item');
+        items.forEach(item => {
+            const employee = item.getAttribute('data-employee');
+            const amount = item.getAttribute('data-amount');
+            const status = item.getAttribute('data-status');
+            
+            const matchesSearch = !searchTerm || 
+                employee.includes(searchTerm) || 
+                amount.includes(searchTerm) ||
+                status.includes(searchTerm);
+            
+            if (matchesSearch) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -137,36 +137,44 @@
 <!-- Statistics Cards -->
 <div class="row g-4 mb-4">
     <div class="col-md-3">
-        <div class="stats-card">
-            <div class="stats-number">{{ attendance_count }}</div>
-            <div class="stats-label">
-                <i class="fas fa-calendar-check me-2"></i>Attendance Records
+        <a href="{% url 'all_attendance' %}?employee={{ employee.id }}" class="text-decoration-none">
+            <div class="stats-card" style="cursor: pointer; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div class="stats-number">{{ attendance_count }}</div>
+                <div class="stats-label">
+                    <i class="fas fa-calendar-check me-2"></i>Attendance Records
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-md-3">
-        <div class="stats-card" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
-            <div class="stats-number">{{ leaves_count }}</div>
-            <div class="stats-label">
-                <i class="fas fa-plane-departure me-2"></i>Leave Requests
+        <a href="{% url 'manage_leaves' %}?employee={{ employee.user.id }}" class="text-decoration-none">
+            <div class="stats-card" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); cursor: pointer; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div class="stats-number">{{ leaves_count }}</div>
+                <div class="stats-label">
+                    <i class="fas fa-plane-departure me-2"></i>Leave Requests
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-md-3">
-        <div class="stats-card" style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);">
-            <div class="stats-number">{{ projects_count }}</div>
-            <div class="stats-label">
-                <i class="fas fa-project-diagram me-2"></i>Projects
+        <a href="{% url 'manage_advances' %}?employee={{ employee.id }}" class="text-decoration-none">
+            <div class="stats-card" style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); cursor: pointer; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div class="stats-number">{{ advances_count }}</div>
+                <div class="stats-label">
+                    <i class="fas fa-money-bill-wave me-2"></i>Advance Requests
+                </div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-md-3">
-        <div class="stats-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-            <div class="stats-number">{{ tasks_count }}</div>
-            <div class="stats-label">
-                <i class="fas fa-tasks me-2"></i>Tasks
+        <a href="{% url 'my_tasks' %}?employee={{ employee.user.id }}" class="text-decoration-none">
+            <div class="stats-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); cursor: pointer; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div class="stats-number">{{ tasks_count }}</div>
+                <div class="stats-label">
+                    <i class="fas fa-tasks me-2"></i>Tasks
+                </div>
             </div>
-        </div>
+        </a>
     </div>
 </div>
 

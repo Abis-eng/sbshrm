@@ -207,6 +207,7 @@ def view_employee_profile(request, employee_id):
     # Get related data
     attendance_count = Attendance.objects.filter(employee=employee).count()
     leaves_count = Leave.objects.filter(employee=employee).count()
+    advances_count = AdvanceRequest.objects.filter(employee=employee).count()
     # Check if Project and Task models have assigned_to field
     try:
         projects_count = Project.objects.filter(manager=employee).count()
@@ -223,6 +224,7 @@ def view_employee_profile(request, employee_id):
         'leaves_count': leaves_count,
         'projects_count': projects_count,
         'tasks_count': tasks_count,
+        'advances_count': advances_count,
     })
 
 @user_passes_test(is_admin)
@@ -581,7 +583,29 @@ def my_advances(request):
 
 @user_passes_test(is_admin)
 def manage_advances(request):
-    advances = AdvanceRequest.objects.select_related('employee__user').order_by('-requested_at')
+    advances = AdvanceRequest.objects.select_related('employee__user', 'employee__department', 'reviewed_by').order_by('-requested_at')
+    # Filter by employee if provided
+    employee_id = request.GET.get('employee')
+    if employee_id:
+        advances = advances.filter(employee_id=employee_id)
+    
+    # Calculate statistics
+    total_count = advances.count()
+    pending_count = advances.filter(status='pending').count()
+    approved_count = advances.filter(status='approved').count()
+    rejected_count = advances.filter(status='rejected').count()
+    
+    # Calculate monthly payments for each advance
+    advances_with_monthly = []
+    for adv in advances:
+        monthly_payment = None
+        if adv.desired_installments and adv.desired_installments > 0:
+            monthly_payment = float(adv.amount) / adv.desired_installments
+        advances_with_monthly.append({
+            'advance': adv,
+            'monthly_payment': monthly_payment
+        })
+    
     if request.method == 'POST':
         advance_id = request.POST.get('advance_id')
         action = request.POST.get('action')
@@ -626,8 +650,16 @@ def manage_advances(request):
         adv.reviewed_at = timezone.now()
         adv.admin_comment = admin_comment
         adv.save()
+        messages.success(request, f'Advance request {action}d successfully!')
         return redirect('manage_advances')
-    return render(request, 'core/manage_advances.html', {'advances': advances})
+    return render(request, 'core/manage_advances.html', {
+        'advances': advances,
+        'advances_with_monthly': advances_with_monthly,
+        'total_count': total_count,
+        'pending_count': pending_count,
+        'approved_count': approved_count,
+        'rejected_count': rejected_count,
+    })
 
 @login_required
 def submit_ticket(request):
