@@ -17,19 +17,24 @@
     <style>
         .sidebar {
             min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
         }
         .main-content {
-            background-color: #f8f9fa;
+            background-color: #f1f5f9;
         }
         .card {
             border: none;
             border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            box-shadow: 0 0 20px rgba(0,0,0,0.08);
         }
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
             border: none;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(14, 116, 144, 0.3);
         }
         .chat-bubble {
             max-width: 75%;
@@ -63,7 +68,7 @@
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            background: #764ba2;
+            background: #0891b2;
             color: #fff;
             display: inline-flex;
             align-items: center;
@@ -593,7 +598,7 @@
                                 </span>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-lg" aria-labelledby="notificationDropdown" style="width: 350px; max-height: 500px; overflow-y: auto; border: none; border-radius: 10px; padding: 0;">
-                                <li class="dropdown-header d-flex justify-content-between align-items-center p-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px 10px 0 0;">
+                                <li class="dropdown-header d-flex justify-content-between align-items-center p-3" style="background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%); color: white; border-radius: 10px 10px 0 0;">
                                     <h6 class="mb-0 fw-bold">Notifications</h6>
                                     <button type="button" class="btn btn-sm btn-light" id="mark-all-read-btn" style="font-size: 11px; padding: 2px 8px;">Mark all read</button>
                                 </li>

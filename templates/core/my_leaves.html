@@ -60,7 +60,7 @@
         color: #991b1b;
     }
     .date-range {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
         color: white;
         padding: 1rem;
         border-radius: 10px;
@@ -103,13 +103,13 @@
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="date-range" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <div class="date-range" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
                             <div class="date-label">To Date</div>
                             <div class="date-value">{{ leave.end_date|date:"M d, Y" }}</div>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="date-range" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <div class="date-range" style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);">
                             <div class="date-label">Duration</div>
                             <div class="date-value">
                                 {% if leave.start_date and leave.end_date %}
