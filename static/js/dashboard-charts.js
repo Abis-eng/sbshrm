@@ -372,8 +372,21 @@
         }, { once: true });
     }
     
-    // Don't auto-initialize charts - they'll be shown in modals
-    // Charts will be initialized when modals are opened
+    // Initialize all charts when DOM is ready
+    function initializeAllCharts() {
+        initAttendanceChart();
+        initDepartmentChart();
+        initDesignationChart();
+        initRevenueExpenseChart();
+        initExpenseChart();
+        initRevenueChart();
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeAllCharts);
+    } else {
+        initializeAllCharts();
+    }
     
     // Export for global use
     window.dashboardCharts = {

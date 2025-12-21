@@ -364,7 +364,7 @@
     </div>
     
     <!-- Departments -->
-    <div class="dashboard-card" onclick="showChart('department')" style="cursor: pointer;">
+    <div class="dashboard-card" onclick="window.location.href='{% url 'manage_departments' %}'">
         <div class="card-body p-4">
             <div class="stat-icon-wrapper success">
                 <i class="fas fa-building stat-icon"></i>
@@ -373,7 +373,7 @@
             <div class="stat-label">Departments</div>
             <div class="mt-3 pt-3 border-top">
                 <small class="text-muted d-flex align-items-center">
-                    <i class="fas fa-chart-bar me-2"></i>View department chart
+                    <i class="fas fa-arrow-right me-2"></i>Manage departments
                 </small>
             </div>
         </div>
@@ -454,7 +454,7 @@
     </div>
     
     <!-- Today's Attendance -->
-    <div class="dashboard-card" onclick="showChart('attendance')" style="cursor: pointer;">
+    <div class="dashboard-card" onclick="window.location.href='{% url 'all_attendance' %}'">
         <div class="card-body p-4">
             <div class="stat-icon-wrapper success">
                 <i class="fas fa-calendar-check stat-icon"></i>
@@ -476,129 +476,93 @@
             </div>
             <div class="mt-3 pt-3 border-top">
                 <small class="text-muted d-flex align-items-center">
-                    <i class="fas fa-chart-pie me-2"></i>View attendance chart
+                    <i class="fas fa-arrow-right me-2"></i>View attendance
                 </small>
             </div>
         </div>
     </div>
     
-    <!-- Active Projects -->
-    <div class="dashboard-card" onclick="showChart('department')" style="cursor: pointer;">
-        <div class="card-body p-4">
-            <div class="stat-icon-wrapper info">
-                <i class="fas fa-building stat-icon"></i>
+</div>
+
+<!-- Charts Section -->
+<div class="row g-4 mt-3">
+    <!-- Attendance Chart -->
+    <div class="col-xl-6">
+        <div class="chart-card card">
+            <div class="card-header">
+                <i class="fas fa-chart-bar"></i>
+                <h5 class="mb-0">Attendance Overview</h5>
             </div>
-            <div class="stat-number">{{ total_departments }}</div>
-            <div class="stat-label">Departments</div>
-            <div class="mt-2">
-                <span class="badge bg-info badge-modern">{{ total_employees }} Employees</span>
-            </div>
-            <div class="mt-3 pt-3 border-top">
-                <small class="text-muted d-flex align-items-center">
-                    <i class="fas fa-chart-bar me-2"></i>View department chart
-                </small>
+            <div class="card-body">
+                <canvas id="attendanceChart" height="120"></canvas>
             </div>
         </div>
     </div>
     
-    <!-- Designation -->
-    <div class="dashboard-card" onclick="showChart('designation')" style="cursor: pointer;">
-        <div class="card-body p-4">
-            <div class="stat-icon-wrapper secondary">
-                <i class="fas fa-briefcase stat-icon"></i>
+    <!-- Department Chart -->
+    <div class="col-xl-6">
+        <div class="chart-card card">
+            <div class="card-header">
+                <i class="fas fa-chart-bar"></i>
+                <h5 class="mb-0">Department Distribution</h5>
             </div>
-            <div class="stat-number">{{ desig_counts|length }}</div>
-            <div class="stat-label">Designations</div>
-            <div class="mt-2">
-                <span class="badge bg-secondary badge-modern">{{ total_employees }} Employees</span>
-            </div>
-            <div class="mt-3 pt-3 border-top">
-                <small class="text-muted d-flex align-items-center">
-                    <i class="fas fa-chart-bar me-2"></i>View designation chart
-                </small>
+            <div class="card-body">
+                <canvas id="deptChart" height="120"></canvas>
             </div>
         </div>
     </div>
     
-    <!-- Revenue/Expenses Combined -->
-    <div class="dashboard-card" onclick="showChart('revenue')" style="cursor: pointer;">
-        <div class="card-body p-4">
-            <div class="stat-icon-wrapper primary">
-                <i class="fas fa-chart-line stat-icon"></i>
+    <!-- Designation Chart -->
+    <div class="col-xl-6">
+        <div class="chart-card card">
+            <div class="card-header">
+                <i class="fas fa-chart-bar"></i>
+                <h5 class="mb-0">Designation Distribution</h5>
             </div>
-            <div class="stat-number">${{ current_month_revenue|floatformat:0 }}</div>
-            <div class="stat-label">Revenue vs Expenses</div>
-            <div class="mt-2">
-                <span class="badge bg-success badge-modern">Revenue: ${{ current_month_revenue|floatformat:0 }}</span>
-                <span class="badge bg-danger badge-modern ms-2">Expenses: ${{ current_month_expenses|floatformat:0 }}</span>
-            </div>
-            <div class="mt-3 pt-3 border-top">
-                <small class="text-muted d-flex align-items-center">
-                    <i class="fas fa-chart-bar me-2"></i>View revenue vs expenses chart
-                </small>
+            <div class="card-body">
+                <canvas id="designationChart" height="120"></canvas>
             </div>
         </div>
     </div>
     
-    <!-- Expenses Only -->
-    <div class="dashboard-card" onclick="showChart('expense')" style="cursor: pointer;">
-        <div class="card-body p-4">
-            <div class="stat-icon-wrapper danger">
-                <i class="fas fa-arrow-down stat-icon"></i>
+    <!-- Revenue vs Expenses Chart -->
+    <div class="col-xl-6">
+        <div class="chart-card card">
+            <div class="card-header">
+                <i class="fas fa-chart-bar"></i>
+                <h5 class="mb-0">Revenue vs Expenses</h5>
             </div>
-            <div class="stat-number">${{ current_month_expenses|floatformat:0 }}</div>
-            <div class="stat-label">Monthly Expenses</div>
-            <div class="mt-2">
-                <span class="badge bg-danger badge-modern">This Month</span>
-            </div>
-            <div class="mt-3 pt-3 border-top">
-                <small class="text-muted d-flex align-items-center">
-                    <i class="fas fa-chart-bar me-2"></i>View expenses chart
-                </small>
+            <div class="card-body">
+                <canvas id="revenueExpenseChart" height="120"></canvas>
             </div>
         </div>
     </div>
     
-    <!-- Revenue Only -->
-    <div class="dashboard-card" onclick="showChart('revenue-only')" style="cursor: pointer;">
-        <div class="card-body p-4">
-            <div class="stat-icon-wrapper success">
-                <i class="fas fa-arrow-up stat-icon"></i>
+    <!-- Expense Chart -->
+    <div class="col-xl-6">
+        <div class="chart-card card">
+            <div class="card-header">
+                <i class="fas fa-chart-bar"></i>
+                <h5 class="mb-0">Monthly Expenses</h5>
             </div>
-            <div class="stat-number">${{ current_month_revenue|floatformat:0 }}</div>
-            <div class="stat-label">Monthly Revenue</div>
-            <div class="mt-2">
-                <span class="badge bg-success badge-modern">This Month</span>
-            </div>
-            <div class="mt-3 pt-3 border-top">
-                <small class="text-muted d-flex align-items-center">
-                    <i class="fas fa-chart-bar me-2"></i>View revenue chart
-                </small>
+            <div class="card-body">
+                <canvas id="expenseChart" height="120"></canvas>
             </div>
         </div>
     </div>
     
-    <!-- Tasks -->
-    {% if active_tasks or completed_tasks %}
-    <div class="dashboard-card" onclick="showChart('task')" style="cursor: pointer;">
-        <div class="card-body p-4">
-            <div class="stat-icon-wrapper warning">
-                <i class="fas fa-tasks stat-icon"></i>
+    <!-- Revenue Chart -->
+    <div class="col-xl-6">
+        <div class="chart-card card">
+            <div class="card-header">
+                <i class="fas fa-chart-bar"></i>
+                <h5 class="mb-0">Monthly Revenue</h5>
             </div>
-            <div class="stat-number">{{ active_tasks }}</div>
-            <div class="stat-label">Active Tasks</div>
-            <div class="mt-2">
-                <span class="badge bg-warning badge-modern">{{ active_tasks }} Active</span>
-                <span class="badge bg-success badge-modern ms-2">{{ completed_tasks }} Completed</span>
-            </div>
-            <div class="mt-3 pt-3 border-top">
-                <small class="text-muted d-flex align-items-center">
-                    <i class="fas fa-chart-pie me-2"></i>View task chart
-                </small>
+            <div class="card-body">
+                <canvas id="revenueChart" height="120"></canvas>
             </div>
         </div>
     </div>
-    {% endif %}
 </div>
 
 <!-- Recent Activities -->
@@ -655,28 +619,6 @@
     </div>
 </div>
 
-<!-- Chart Modal -->
-<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="chartModalLabel">Chart</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="modalChartContainer" style="position: relative; height: 400px;">
-                    <canvas id="attendanceChart" style="display: none;"></canvas>
-                    <canvas id="deptChart" style="display: none;"></canvas>
-                    <canvas id="designationChart" style="display: none;"></canvas>
-                    <canvas id="revenueExpenseChart" style="display: none;"></canvas>
-                    <canvas id="expenseChart" style="display: none;"></canvas>
-                    <canvas id="revenueChart" style="display: none;"></canvas>
-                    <canvas id="taskChart" data-active="{{ active_tasks }}" data-completed="{{ completed_tasks }}" style="display: none;"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Hidden data for charts -->
 {% if attendance_stats %}
@@ -698,12 +640,6 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="{% static 'js/dashboard-charts.js' %}"></script>
 <script>
-    function showChart(chartType) {
-        if (window.dashboardCharts) {
-            window.dashboardCharts.showChart(chartType);
-        }
-    }
-    
     // Set current date
     document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', { 
         weekday: 'long', 
