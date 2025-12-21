@@ -93,7 +93,7 @@
 <div class="row g-4 mb-4">
     {% for desig in designations %}
     <div class="col-lg-4 col-md-6">
-        <div class="desig-card">
+        <div class="desig-card" onclick="window.location.href='{% url 'designation_employees' desig.id %}'" style="cursor: pointer;">
             <div class="desig-header">
                 <h5 class="mb-0">
                     <i class="fas fa-id-badge me-2"></i>{{ desig.name }}
@@ -107,7 +107,7 @@
                     <div class="desig-count">{{ desig.employee_set.count }}</div>
                     <div class="text-muted">Employees</div>
                 </div>
-                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                <div class="d-flex justify-content-center gap-2 flex-wrap" onclick="event.stopPropagation();">
                     <a href="{% url 'designation_employees' desig.id %}" 
                        class="btn btn-sm btn-primary" 
                        title="View Employees">
@@ -121,7 +121,7 @@
                     <a href="{% url 'delete_designation' desig.id %}" 
                        class="btn btn-sm btn-danger" 
                        title="Delete Designation"
-                       onclick="return confirm('Are you sure you want to delete {{ desig.name }}? This will affect all employees with this designation.');">
+                       onclick="event.stopPropagation(); return confirm('Are you sure you want to delete {{ desig.name }}? This will affect all employees with this designation.');">
                         <i class="fas fa-trash me-1"></i>Delete
                     </a>
                 </div>
