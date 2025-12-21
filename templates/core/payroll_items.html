@@ -1,51 +1,416 @@
 {% extends 'core/base.html' %}
 {% block page_title %}Payroll Items{% endblock %}
 {% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Payroll Items (Admin)</h4>
-    <form method="post" class="mb-4">
-      {% csrf_token %}
-      <div class="row g-2">
-        <div class="col-md-2">{{ form.employee }}</div>
-        <div class="col-md-2">{{ form.date }}</div>
-        <div class="col-md-2">{{ form.name }}</div>
-        <div class="col-md-2">{{ form.item_type }}</div>
-        <div class="col-md-2">{{ form.category }}</div>
-        <div class="col-md-1">{{ form.amount }}</div>
-        <div class="col-md-1"><button type="submit" class="btn btn-primary w-100">Add</button></div>
-      </div>
-      <div class="row mt-2">
-        <div class="col-md-3">{{ form.is_recurring }} <label class="form-check-label">Recurring</label></div>
-        <div class="col-md-2">{{ form.start_date }}</div>
-        <div class="col-md-2">{{ form.end_date }}</div>
-        <div class="col">{{ form.description }}</div>
-      </div>
-    </form>
-    <table class="table table-bordered">
-      <thead><tr><th>Name</th><th>Type</th><th>Category</th><th>Recurring</th><th>Amount</th><th>Description</th><th>Actions</th></tr></thead>
-      <tbody>
-        {% for item in items %}
-        <tr>
-          <td>{{ item.name }}</td>
-          <td>{{ item.get_item_type_display }}</td>
-          <td>{{ item.get_category_display }}</td>
-          <td>{{ item.is_recurring|yesno:"Yes,No" }}</td>
-          <td>{{ item.amount }}</td>
-          <td>{{ item.description }}</td>
-          <td>
-            <a href="{% url 'edit_payroll_item' item.id %}" class="btn btn-sm btn-warning">Edit</a>
-            <form action="{% url 'delete_payroll_item' item.id %}" method="post" style="display:inline;">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this item?');">Delete</button>
-            </form>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="4">No payroll items found.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<style>
+    body {
+        background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+        min-height: 100vh;
+    }
+    .page-header {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
+        border-radius: 20px;
+        padding: 30px;
+        color: #fff;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(139, 92, 246, 0.3);
+    }
+    .stats-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border: 2px solid #ede9fe;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(139, 92, 246, 0.2);
+        border-color: #8b5cf6;
+    }
+    .stats-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin-bottom: 15px;
+    }
+    .stats-icon.primary {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: #fff;
+    }
+    .stats-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #334155;
+        margin: 10px 0;
+    }
+    .stats-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    .form-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 30px;
+        border: 2px solid #ede9fe;
+    }
+    .form-label {
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+    }
+    .form-control, .form-select {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 10px 15px;
+        transition: all 0.3s ease;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+        outline: none;
+    }
+    .item-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border-left: 4px solid #8b5cf6;
+        border: 2px solid #ede9fe;
+        transition: all 0.3s ease;
+        margin-bottom: 15px;
+    }
+    .item-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(139, 92, 246, 0.2);
+        border-color: #8b5cf6;
+    }
+    .item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #ede9fe;
+    }
+    .item-name {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #8b5cf6;
+        margin: 0;
+    }
+    .item-badge {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-left: 10px;
+    }
+    .badge-earning {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .badge-deduction {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .badge-recurring {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    .item-amount {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #8b5cf6;
+    }
+    .item-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+        margin-top: 10px;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+    .btn-action {
+        border-radius: 10px;
+        padding: 6px 15px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+        font-size: 0.85rem;
+    }
+    .btn-edit {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: #fff;
+    }
+    .btn-edit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(245, 158, 11, 0.3);
+        color: #fff;
+    }
+    .btn-delete {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: #fff;
+    }
+    .btn-delete:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+        color: #fff;
+    }
+    .btn-submit {
+        background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        color: #fff;
+        border-radius: 50px;
+        padding: 12px 30px;
+        font-weight: 700;
+        border: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+    }
+    .btn-submit:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+        color: #fff;
+    }
+    .search-bar {
+        background: #fff;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 30px;
+        border: 2px solid #ede9fe;
+    }
+    .search-input {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 12px 20px 12px 50px;
+        transition: all 0.3s ease;
+    }
+    .search-input:focus {
+        border-color: #8b5cf6;
+        box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+        outline: none;
+    }
+    .search-icon {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #64748b;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="page-header">
+        <h2><i class="fas fa-list me-2"></i>Payroll Items</h2>
+        <p class="subtitle mb-0 mt-2">Manage earnings and deductions for employees</p>
+    </div>
+
+    <!-- Statistics -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon primary">
+                    <i class="fas fa-list"></i>
+                </div>
+                <div class="stats-value">{{ items|length }}</div>
+                <div class="stats-label">Total Items</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    <i class="fas fa-arrow-up"></i>
+                </div>
+                <div class="stats-value">
+                    {% with total=0 %}
+                        {% for item in items %}
+                            {% if item.item_type == 'earning' %}
+                                {{ item.amount|add:total }}
+                            {% endif %}
+                        {% endfor %}
+                    {% endwith %}
+                </div>
+                <div class="stats-label">Total Earnings</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon primary" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+                <div class="stats-value">
+                    {% with total=0 %}
+                        {% for item in items %}
+                            {% if item.item_type == 'deduction' %}
+                                {{ item.amount|add:total }}
+                            {% endif %}
+                        {% endfor %}
+                    {% endwith %}
+                </div>
+                <div class="stats-label">Total Deductions</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Item Form -->
+    <div class="form-card">
+        <h4 class="mb-4"><i class="fas fa-plus-circle me-2 text-primary"></i>Add Payroll Item</h4>
+        <form method="post">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Employee</label>
+                    {{ form.employee }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date</label>
+                    {{ form.date }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Name</label>
+                    {{ form.name }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Type</label>
+                    {{ form.item_type }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Category</label>
+                    {{ form.category }}
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Amount</label>
+                    {{ form.amount }}
+                </div>
+            </div>
+            <div class="row g-3 mt-2">
+                <div class="col-md-2">
+                    <div class="form-check form-switch mt-4">
+                        {{ form.is_recurring }}
+                        <label class="form-check-label">Recurring</label>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Start Date</label>
+                    {{ form.start_date }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">End Date</label>
+                    {{ form.end_date }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Description</label>
+                    {{ form.description }}
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="submit" class="btn btn-submit w-100">
+                        <i class="fas fa-plus me-2"></i>Add Item
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+        <div class="position-relative">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" class="form-control search-input" id="searchInput" placeholder="Search items by name, employee, or type...">
+        </div>
+    </div>
+
+    <!-- Items List -->
+    <div id="itemsList">
+        {% if items %}
+            {% for item in items %}
+            <div class="item-card" data-name="{{ item.name|lower }}" data-employee="{{ item.employee.user.get_full_name|default:item.employee.user.username|lower }}" data-type="{{ item.item_type|lower }}">
+                <div class="item-header">
+                    <div>
+                        <h3 class="item-name">
+                            <i class="fas fa-{% if item.item_type == 'earning' %}arrow-up{% else %}arrow-down{% endif %} me-2"></i>{{ item.name }}
+                            <span class="item-badge badge-{{ item.item_type }}">{{ item.get_item_type_display }}</span>
+                            {% if item.is_recurring %}
+                            <span class="item-badge badge-recurring"><i class="fas fa-sync me-1"></i>Recurring</span>
+                            {% endif %}
+                        </h3>
+                        <p class="text-muted mb-0"><i class="fas fa-user me-2"></i>{{ item.employee.user.get_full_name|default:item.employee.user.username }}</p>
+                    </div>
+                    <div class="text-end">
+                        <div class="item-amount">${{ item.amount }}</div>
+                        <div class="mt-2">
+                            <a href="{% url 'edit_payroll_item' item.id %}" class="btn btn-action btn-edit me-2">
+                                <i class="fas fa-edit me-1"></i>Edit
+                            </a>
+                            <form action="{% url 'delete_payroll_item' item.id %}" method="post" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-action btn-delete" onclick="return confirm('Delete this item?');">
+                                    <i class="fas fa-trash me-1"></i>Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="item-info">
+                    <div><i class="fas fa-calendar me-2"></i><strong>Date:</strong> {{ item.date|date:"M d, Y" }}</div>
+                    <div><i class="fas fa-tag me-2"></i><strong>Category:</strong> {{ item.get_category_display }}</div>
+                    {% if item.is_recurring %}
+                    <div><i class="fas fa-calendar-alt me-2"></i><strong>Period:</strong> 
+                        {% if item.start_date %}{{ item.start_date|date:"M d, Y" }}{% else %}N/A{% endif %} - 
+                        {% if item.end_date %}{{ item.end_date|date:"M d, Y" }}{% else %}Ongoing{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% if item.description %}
+                <div class="mt-3">
+                    <p class="text-muted mb-0"><i class="fas fa-sticky-note me-2"></i>{{ item.description }}</p>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="item-card text-center py-5">
+                <i class="fas fa-list fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No Payroll Items Found</h4>
+                <p class="text-muted">Get started by adding your first payroll item</p>
+            </div>
+        {% endif %}
+    </div>
 </div>
-{% endblock %} 
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const itemsList = document.getElementById('itemsList');
+        const itemCards = itemsList.querySelectorAll('.item-card');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase().trim();
+                
+                itemCards.forEach(card => {
+                    const name = card.getAttribute('data-name') || '';
+                    const employee = card.getAttribute('data-employee') || '';
+                    const type = card.getAttribute('data-type') || '';
+                    
+                    if (name.includes(searchTerm) || employee.includes(searchTerm) || type.includes(searchTerm)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -280,6 +280,7 @@
                         <li class="nav-item">
                             <a class="nav-link text-white" data-bs-toggle="collapse" href="#payrollMenu" role="button" aria-expanded="false" aria-controls="payrollMenu">
                                 <i class="fas fa-money-check-alt me-2"></i>Payroll
+                                <i class="fas fa-chevron-down ms-auto float-end mt-1 payroll-chevron"></i>
                             </a>
                             <div class="collapse" id="payrollMenu">
                                 <ul class="nav flex-column ms-3">
@@ -904,6 +905,22 @@
                         chevron.style.transition = 'transform 0.3s ease';
                     });
                     accountingMenu.addEventListener('hide.bs.collapse', function() {
+                        chevron.style.transform = 'rotate(0deg)';
+                        chevron.style.transition = 'transform 0.3s ease';
+                    });
+                }
+            }
+            
+            // Handle payroll menu chevron
+            const payrollMenu = document.getElementById('payrollMenu');
+            if (payrollMenu) {
+                const chevron = payrollMenu.previousElementSibling.querySelector('.payroll-chevron');
+                if (chevron) {
+                    payrollMenu.addEventListener('show.bs.collapse', function() {
+                        chevron.style.transform = 'rotate(180deg)';
+                        chevron.style.transition = 'transform 0.3s ease';
+                    });
+                    payrollMenu.addEventListener('hide.bs.collapse', function() {
                         chevron.style.transform = 'rotate(0deg)';
                         chevron.style.transition = 'transform 0.3s ease';
                     });
