@@ -203,33 +203,25 @@
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="stats-card">
-                <p class="stat-value">{{ projects|length }}</p>
+                <p class="stat-value">{{ total_projects }}</p>
                 <p class="stat-label"><i class="fas fa-project-diagram me-2"></i>Total Projects</p>
             </div>
         </div>
         <div class="col-md-3">
             <div class="stats-card">
-                <p class="stat-value">
-                    {% for project in projects %}
-                        {% if project.manager %}{% if forloop.first %}1{% endif %}{% endif %}
-                    {% empty %}0{% endfor %}
-                </p>
+                <p class="stat-value">{{ projects_with_managers }}</p>
                 <p class="stat-label"><i class="fas fa-user-tie me-2"></i>With Managers</p>
             </div>
         </div>
         <div class="col-md-3">
             <div class="stats-card">
-                <p class="stat-value">{{ projects|length }}</p>
+                <p class="stat-value">{{ unique_clients }}</p>
                 <p class="stat-label"><i class="fas fa-building me-2"></i>Active Clients</p>
             </div>
         </div>
         <div class="col-md-3">
             <div class="stats-card">
-                <p class="stat-value">
-                    {% for project in projects %}
-                        {% if project.tasks.all %}{{ project.tasks.count }}{% endif %}
-                    {% empty %}0{% endfor %}
-                </p>
+                <p class="stat-value">{{ total_tasks }}</p>
                 <p class="stat-label"><i class="fas fa-tasks me-2"></i>Total Tasks</p>
             </div>
         </div>

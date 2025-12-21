@@ -1579,7 +1579,20 @@ def project_list(request):
             ).select_related('client', 'manager__department', 'manager__designation').prefetch_related('tasks').distinct()
         except:
             projects = Project.objects.none()
-    return render(request, 'core/project_list.html', {'projects': projects})
+    
+    # Calculate statistics
+    total_projects = projects.count()
+    projects_with_managers = projects.exclude(manager__isnull=True).count()
+    unique_clients = projects.values('client').distinct().count()
+    total_tasks = sum(project.tasks.count() for project in projects)
+    
+    return render(request, 'core/project_list.html', {
+        'projects': projects,
+        'total_projects': total_projects,
+        'projects_with_managers': projects_with_managers,
+        'unique_clients': unique_clients,
+        'total_tasks': total_tasks,
+    })
 
 @login_required
 def add_project(request):
@@ -1682,7 +1695,18 @@ def my_tasks(request):
         except Employee.DoesNotExist:
             return render(request, 'core/no_employee.html')
         tasks = Task.objects.filter(assigned_to=employee).select_related('project', 'assigned_by')
-    return render(request, 'core/my_tasks.html', {'tasks': tasks})
+    
+    # Calculate statistics
+    tasks_pending = tasks.filter(status='pending').count()
+    tasks_in_progress = tasks.filter(status='in_progress').count()
+    tasks_completed = tasks.filter(status='completed').count()
+    
+    return render(request, 'core/my_tasks.html', {
+        'tasks': tasks,
+        'tasks_pending': tasks_pending,
+        'tasks_in_progress': tasks_in_progress,
+        'tasks_completed': tasks_completed,
+    })
 
 @login_required
 def project_detail(request, project_id):
@@ -1718,12 +1742,21 @@ def project_detail(request, project_id):
             return redirect('project_detail', project_id=project.id)
     else:
         form = TaskForm()
+    # Get task statistics
+    tasks = project.tasks.all()
+    tasks_pending = tasks.filter(status='pending').count()
+    tasks_in_progress = tasks.filter(status='in_progress').count()
+    tasks_completed = tasks.filter(status='completed').count()
+    
     return render(request, 'core/project_detail.html', {
         'project': project,
         'can_assign': can_assign,
         'departments': departments,
         'employees_by_dept': employees_by_dept,
         'form': form,
+        'tasks_pending': tasks_pending,
+        'tasks_in_progress': tasks_in_progress,
+        'tasks_completed': tasks_completed,
     })
 
 @login_required

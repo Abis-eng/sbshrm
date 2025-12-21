@@ -1,83 +1,260 @@
 {% extends 'core/base.html' %}
-{% block page_title %}Edit Project{% endblock %}
+{% block page_title %}Edit Project - {{ project.name }}{% endblock %}
 {% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Edit Project</h4>
-    <form method="post">
-      {% csrf_token %}
-      {% if form.errors %}
-        <div class="alert alert-danger">
-          <ul>
-            {% for field in form %}
-              {% for error in field.errors %}
-                <li>{{ field.label }}: {{ error }}</li>
-              {% endfor %}
-            {% endfor %}
-            {% for error in form.non_field_errors %}
-              <li>{{ error }}</li>
-            {% endfor %}
-          </ul>
-        </div>
-      {% endif %}
-      <div class="mb-3">
-        {{ form.name.label_tag }}
-        {{ form.name }}
-      </div>
-      <div class="mb-3">
+<style>
+    body {
+        background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+        min-height: 100vh;
+    }
+    .page-header {
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%);
+        border-radius: 20px;
+        padding: 30px;
+        color: #fff;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(20, 184, 166, 0.3);
+    }
+    .page-header h2 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 2rem;
+    }
+    .form-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+    .form-section {
+        margin-bottom: 35px;
+        padding-bottom: 30px;
+        border-bottom: 2px solid #f1f5f9;
+    }
+    .form-section:last-of-type {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    .form-section-title {
+        color: #14b8a6;
+        font-weight: 700;
+        font-size: 1.3rem;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 3px solid #e6fffa;
+        display: flex;
+        align-items: center;
+    }
+    .form-section-title i {
+        margin-right: 12px;
+        font-size: 1.4rem;
+    }
+    .form-label {
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 10px;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+    }
+    .form-label i {
+        margin-right: 8px;
+        color: #14b8a6;
+        font-size: 0.9rem;
+    }
+    .form-control, .form-select {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 12px 18px;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+        background: #fff;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #14b8a6;
+        box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1);
+        background: #f0fdfa;
+        outline: none;
+    }
+    .input-group-icon {
+        position: relative;
+    }
+    .input-group-icon .form-control {
+        padding-left: 45px;
+    }
+    .input-group-icon i {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #64748b;
+        z-index: 1;
+        pointer-events: none;
+    }
+    .input-group-icon .form-control:focus ~ i {
+        color: #14b8a6;
+    }
+    .btn-add-client {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: #fff;
+        border-radius: 10px;
+        padding: 8px 20px;
+        font-weight: 600;
+        border: none;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+    }
+    .btn-add-client:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        color: #fff;
+    }
+    .btn-submit {
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        color: #fff;
+        border-radius: 50px;
+        padding: 15px 50px;
+        font-weight: 700;
+        font-size: 1rem;
+        border: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);
+    }
+    .btn-submit:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(20, 184, 166, 0.4);
+        color: #fff;
+    }
+    .btn-cancel {
+        background: #64748b;
+        color: #fff;
+        border-radius: 50px;
+        padding: 15px 50px;
+        font-weight: 600;
+        font-size: 1rem;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    .btn-cancel:hover {
+        background: #475569;
+        color: #fff;
+    }
+    .alert-danger {
+        background: #fee2e2;
+        border: 2px solid #fca5a5;
+        border-radius: 12px;
+        padding: 20px;
+        color: #991b1b;
+        margin-bottom: 25px;
+    }
+    .alert-danger ul {
+        margin: 0;
+        padding-left: 20px;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="page-header">
         <div class="d-flex justify-content-between align-items-center">
-          <div>{{ form.client.label_tag }}</div>
-          <a href="{% url 'add_client' %}" class="btn btn-sm btn-outline-success">+ Add New Client</a>
+            <div>
+                <h2><i class="fas fa-edit me-2"></i>Edit Project: {{ project.name }}</h2>
+                <p class="mb-0 mt-2" style="opacity: 0.9;">Update project information</p>
+            </div>
+            <a href="{% url 'project_list' %}" class="btn btn-cancel">
+                <i class="fas fa-times me-2"></i>Cancel
+            </a>
         </div>
-        {{ form.client }}
-      </div>
-      <div class="mb-3">
-        {{ form.manager.label_tag }}
-        {{ form.manager }}
-      </div>
-      <hr/>
-      <h5>Selected Team Members</h5>
-      <table class="table table-bordered">
-        <thead><tr><th>Name</th><th>Department</th><th>Designation</th></tr></thead>
-        <tbody id="selected-team-body">
-          <!-- Will be filled by JS -->
-        </tbody>
-      </table>
-      <button type="submit" class="btn btn-primary">Save Changes</button>
-      <a href="{% url 'project_list' %}" class="btn btn-secondary">Cancel</a>
-    </form>
-  </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="form-card">
+                <form method="post" id="editProjectForm">
+                    {% csrf_token %}
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <strong><i class="fas fa-exclamation-triangle me-2"></i>Please fix the following errors:</strong>
+                        <ul class="mt-2">
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                    <li>{{ field.label }}: {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <!-- Basic Information -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-info-circle"></i> Basic Information
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-12">
+                                <label class="form-label" for="{{ form.name.id_for_label }}">
+                                    <i class="fas fa-project-diagram"></i> Project Name
+                                </label>
+                                <div class="input-group-icon">
+                                    {{ form.name }}
+                                    <i class="fas fa-project-diagram"></i>
+                                </div>
+                                <small class="form-text text-muted mt-2">
+                                    <i class="fas fa-info-circle me-1"></i> Enter a descriptive name for your project
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Client & Manager -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-users"></i> Client & Management
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ form.client.id_for_label }}">
+                                    <i class="fas fa-building"></i> Client
+                                </label>
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    {{ form.client }}
+                                    <a href="{% url 'add_client' %}" target="_blank" class="btn btn-add-client">
+                                        <i class="fas fa-plus me-1"></i>Add Client
+                                    </a>
+                                </div>
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-info-circle me-1"></i> Select the client for this project
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="{{ form.manager.id_for_label }}">
+                                    <i class="fas fa-user-tie"></i> Project Manager
+                                </label>
+                                {{ form.manager }}
+                                <small class="form-text text-muted mt-2">
+                                    <i class="fas fa-info-circle me-1"></i> Assign a project manager (optional)
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Buttons -->
+                    <div class="text-center mt-5 pt-4">
+                        <button type="submit" class="btn btn-submit me-3">
+                            <i class="fas fa-save me-2"></i>Save Changes
+                        </button>
+                        <a href="{% url 'project_list' %}" class="btn btn-cancel">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
-{% block extra_js %}
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const teamField = document.getElementsByName('team')[0];
-    const checkboxes = document.querySelectorAll('.emp-checkbox');
-    const teamBody = document.getElementById('selected-team-body');
-    function updateTeamField() {
-      const selected = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
-      teamField.value = selected.join(',');
-    }
-    function updateTeamTable() {
-      const selected = Array.from(checkboxes).filter(cb => cb.checked);
-      teamBody.innerHTML = '';
-      if (selected.length === 0) {
-        teamBody.innerHTML = '<tr><td colspan="3">No team members selected.</td></tr>';
-      } else {
-        selected.forEach(cb => {
-          const row = document.createElement('tr');
-          row.innerHTML = `<td>${cb.dataset.name}</td><td>${cb.dataset.dept}</td><td>${cb.dataset.desig}</td>`;
-          teamBody.appendChild(row);
-        });
-      }
-    }
-    checkboxes.forEach(cb => cb.addEventListener('change', function() {
-      updateTeamField();
-      updateTeamTable();
-    }));
-    updateTeamField();
-    updateTeamTable();
-  });
-</script>
-{% endblock %} 
