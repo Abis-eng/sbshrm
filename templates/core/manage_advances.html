@@ -143,14 +143,12 @@
 
 <!-- Advance Requests List -->
 {% if advances %}
-<form method="post" id="advancesForm">
-    {% csrf_token %}
-    <div id="advancesContainer">
-        {% for adv in advances %}
-        <div class="advance-card advance-item" 
-             data-employee="{{ adv.employee.user.get_full_name|default:adv.employee.user.username|lower }}"
-             data-amount="{{ adv.amount }}"
-             data-status="{{ adv.status }}">
+<div id="advancesContainer">
+    {% for adv in advances %}
+    <div class="advance-card advance-item" 
+         data-employee="{{ adv.employee.user.get_full_name|default:adv.employee.user.username|lower }}"
+         data-amount="{{ adv.amount }}"
+         data-status="{{ adv.status }}">
             <div class="advance-header d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
                     <div class="employee-avatar me-3" style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700;">
@@ -228,7 +226,8 @@
                 {% endif %}
                 
                 {% if adv.status == 'pending' %}
-                <div class="action-form">
+                <form method="post" class="action-form">
+                    {% csrf_token %}
                     <div class="row g-2 align-items-end">
                         <input type="hidden" name="advance_id" value="{{ adv.id }}">
                         <div class="col-md-2">
@@ -277,7 +276,7 @@
                             </button>
                         </div>
                     </div>
-                </div>
+                </form>
                 {% else %}
                 <div class="mt-2">
                     <small class="text-muted">
@@ -287,9 +286,8 @@
                 {% endif %}
             </div>
         </div>
-        {% endfor %}
-    </div>
-</form>
+    {% endfor %}
+</div>
 {% else %}
 <div class="text-center py-5">
     <i class="fas fa-clipboard-check fa-4x text-muted mb-3"></i>
