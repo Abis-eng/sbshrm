@@ -1,33 +1,357 @@
 {% extends 'core/base.html' %}
 {% block page_title %}Budget Categories{% endblock %}
 {% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Budget Categories</h4>
-    <a href="{% url 'budget_category_add' %}" class="btn btn-primary mb-3">Add Category</a>
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Description</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for cat in categories %}
-        <tr>
-          <td>{{ cat.name }}</td>
-          <td>{{ cat.description }}</td>
-          <td>
-            <a href="{% url 'budget_category_edit' cat.pk %}" class="btn btn-sm btn-warning">Edit</a>
-            <a href="{% url 'budget_category_delete' cat.pk %}" class="btn btn-sm btn-danger">Delete</a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="3">No categories found.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<style>
+    body {
+        background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+        min-height: 100vh;
+    }
+    .page-header {
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%);
+        border-radius: 20px;
+        padding: 30px;
+        color: #fff;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(20, 184, 166, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: pulse 3s ease-in-out infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+    .page-header h2 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 2rem;
+        position: relative;
+        z-index: 1;
+    }
+    .stats-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border: 2px solid #e6fffa;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(20, 184, 166, 0.2);
+        border-color: #14b8a6;
+    }
+    .stats-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin-bottom: 15px;
+    }
+    .stats-icon.primary {
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        color: #fff;
+    }
+    .stats-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #334155;
+        margin: 10px 0;
+    }
+    .stats-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    .search-bar {
+        background: #fff;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 30px;
+        border: 2px solid #e6fffa;
+    }
+    .search-input {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 12px 20px 12px 50px;
+        transition: all 0.3s ease;
+    }
+    .search-input:focus {
+        border-color: #14b8a6;
+        box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1);
+        outline: none;
+    }
+    .search-icon {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #64748b;
+    }
+    .category-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border: 2px solid #e6fffa;
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+    }
+    .category-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(20, 184, 166, 0.2);
+        border-color: #14b8a6;
+    }
+    .category-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    .category-name {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #14b8a6;
+        margin: 0;
+    }
+    .category-description {
+        color: #64748b;
+        margin: 0;
+        line-height: 1.6;
+    }
+    .btn-action {
+        border-radius: 10px;
+        padding: 8px 20px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    .btn-edit {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: #fff;
+    }
+    .btn-edit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(245, 158, 11, 0.3);
+        color: #fff;
+    }
+    .btn-delete {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: #fff;
+    }
+    .btn-delete:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+        color: #fff;
+    }
+    .btn-add {
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        color: #fff;
+        border-radius: 50px;
+        padding: 12px 30px;
+        font-weight: 700;
+        border: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);
+    }
+    .btn-add:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(20, 184, 166, 0.4);
+        color: #fff;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: #fff;
+        border-radius: 15px;
+        border: 2px dashed #e2e8f0;
+    }
+    .empty-state i {
+        font-size: 4rem;
+        color: #cbd5e1;
+        margin-bottom: 20px;
+    }
+    .empty-state h4 {
+        color: #64748b;
+        margin-bottom: 10px;
+    }
+    .empty-state p {
+        color: #94a3b8;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-tags me-2"></i>Budget Categories</h2>
+                <p class="subtitle mb-0 mt-2">Manage and organize your budget categories</p>
+            </div>
+            <a href="{% url 'budget_category_add' %}" class="btn btn-add">
+                <i class="fas fa-plus me-2"></i>Add Category
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon primary">
+                    <i class="fas fa-tags"></i>
+                </div>
+                <div class="stats-value">{{ categories|length }}</div>
+                <div class="stats-label">Total Categories</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon primary" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                    <i class="fas fa-wallet"></i>
+                </div>
+                <div class="stats-value">
+                    {% with total_budgets=0 %}
+                        {% for category in categories %}
+                            {% with budgets_count=category.budgets.count %}
+                                {% if budgets_count %}
+                                    {{ budgets_count|add:total_budgets }}
+                                {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                    {% endwith %}
+                </div>
+                <div class="stats-label">Total Budgets</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stats-value">{{ categories|length }}</div>
+                <div class="stats-label">Active Categories</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-bar">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <div class="position-relative">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" class="form-control search-input" id="searchInput" placeholder="Search categories by name or description...">
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{% url 'budget_category_add' %}" class="btn btn-add">
+                    <i class="fas fa-plus me-2"></i>Add New Category
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Categories List -->
+    <div id="categoriesList">
+        {% if categories %}
+            {% for category in categories %}
+            <div class="category-card" data-name="{{ category.name|lower }}" data-description="{{ category.description|lower }}">
+                <div class="category-header">
+                    <h3 class="category-name">
+                        <i class="fas fa-tag me-2"></i>{{ category.name }}
+                    </h3>
+                    <div>
+                        <a href="{% url 'budget_category_edit' category.pk %}" class="btn btn-action btn-edit me-2">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </a>
+                        <a href="{% url 'budget_category_delete' category.pk %}" class="btn btn-action btn-delete">
+                            <i class="fas fa-trash me-1"></i>Delete
+                        </a>
+                    </div>
+                </div>
+                {% if category.description %}
+                <p class="category-description">
+                    <i class="fas fa-info-circle me-2 text-primary"></i>{{ category.description }}
+                </p>
+                {% else %}
+                <p class="category-description text-muted">
+                    <i class="fas fa-info-circle me-2"></i>No description provided
+                </p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-tags"></i>
+                <h4>No Categories Found</h4>
+                <p>Get started by creating your first budget category</p>
+                <a href="{% url 'budget_category_add' %}" class="btn btn-add mt-3">
+                    <i class="fas fa-plus me-2"></i>Add Category
+                </a>
+            </div>
+        {% endif %}
+    </div>
 </div>
-{% endblock %} 
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const categoriesList = document.getElementById('categoriesList');
+        const categoryCards = categoriesList.querySelectorAll('.category-card');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase().trim();
+                
+                categoryCards.forEach(card => {
+                    const name = card.getAttribute('data-name') || '';
+                    const description = card.getAttribute('data-description') || '';
+                    
+                    if (name.includes(searchTerm) || description.includes(searchTerm)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                
+                // Show empty state if no results
+                const visibleCards = Array.from(categoryCards).filter(card => card.style.display !== 'none');
+                let emptyState = categoriesList.querySelector('.empty-state-search');
+                
+                if (visibleCards.length === 0 && searchTerm !== '') {
+                    if (!emptyState) {
+                        emptyState = document.createElement('div');
+                        emptyState.className = 'empty-state empty-state-search';
+                        emptyState.innerHTML = `
+                            <i class="fas fa-search"></i>
+                            <h4>No Results Found</h4>
+                            <p>Try adjusting your search terms</p>
+                        `;
+                        categoriesList.appendChild(emptyState);
+                    }
+                    emptyState.style.display = 'block';
+                } else {
+                    if (emptyState) {
+                        emptyState.style.display = 'none';
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

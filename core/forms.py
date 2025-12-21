@@ -82,28 +82,55 @@ class TaskForm(forms.ModelForm):
 class BudgetCategoryForm(forms.ModelForm):
     class Meta:
         model = BudgetCategory
-        fields = ['name', 'description'] 
+        fields = ['name', 'description']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter category name...'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Enter category description...'}),
+        } 
 
 class BudgetForm(forms.ModelForm):
     period_start = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
     period_end = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
     class Meta:
         model = Budget
-        fields = ['type', 'name', 'category', 'project', 'tax', 'period_start', 'period_end', 'attachment', 'note'] 
+        fields = ['type', 'name', 'category', 'project', 'tax', 'period_start', 'period_end', 'attachment', 'note']
+        widgets = {
+            'type': forms.Select(attrs={'class': 'form-control form-select'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter budget name...'}),
+            'category': forms.Select(attrs={'class': 'form-control form-select'}),
+            'project': forms.Select(attrs={'class': 'form-control form-select'}),
+            'tax': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
+            'note': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Enter notes...'}),
+            'attachment': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        } 
 
 class BudgetExpenseForm(forms.ModelForm):
     start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}), required=False)
     end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}), required=False)
     class Meta:
         model = BudgetExpense
-        fields = ['title', 'budget', 'amount', 'description', 'start_date', 'end_date', 'attachment'] 
+        fields = ['title', 'budget', 'amount', 'description', 'start_date', 'end_date', 'attachment']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter expense title...'}),
+            'budget': forms.Select(attrs={'class': 'form-control form-select'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Enter description...'}),
+            'attachment': forms.ClearableFileInput(attrs={'class': 'form-control', 'style': 'display: none;'}),
+        } 
 
 class BudgetRevenueForm(forms.ModelForm):
     start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}), required=False)
     end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}), required=False)
     class Meta:
         model = BudgetRevenue
-        fields = ['title', 'budget', 'amount', 'description', 'start_date', 'end_date', 'attachment'] 
+        fields = ['title', 'budget', 'amount', 'description', 'start_date', 'end_date', 'attachment']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter revenue title...'}),
+            'budget': forms.Select(attrs={'class': 'form-control form-select'}),
+            'amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Enter description...'}),
+            'attachment': forms.ClearableFileInput(attrs={'class': 'form-control', 'style': 'display: none;'}),
+        } 
 
 class AssetForm(forms.ModelForm):
     purchase_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}), required=False)

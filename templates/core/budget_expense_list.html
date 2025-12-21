@@ -1,41 +1,329 @@
 {% extends 'core/base.html' %}
 {% block page_title %}Budget Expenses{% endblock %}
 {% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Budget Expenses</h4>
-    <a href="{% url 'budget_expense_add' %}" class="btn btn-primary mb-3">Add Expense</a>
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Budget</th>
-          <th>Amount</th>
-          <th>Start Date</th>
-          <th>End Date</th>
-          <th>Attachment</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for expense in expenses %}
-        <tr>
-          <td>{{ expense.title }}</td>
-          <td>{{ expense.budget.name }}</td>
-          <td>{{ expense.amount }}</td>
-          <td>{{ expense.start_date }}</td>
-          <td>{{ expense.end_date }}</td>
-          <td>{% if expense.attachment %}<a href="{{ expense.attachment.url }}" target="_blank">View</a>{% else %}-{% endif %}</td>
-          <td>
-            <a href="{% url 'budget_expense_edit' expense.pk %}" class="btn btn-sm btn-warning">Edit</a>
-            <a href="{% url 'budget_expense_delete' expense.pk %}" class="btn btn-sm btn-danger">Delete</a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="7">No expenses found.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<style>
+    body {
+        background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+        min-height: 100vh;
+    }
+    .page-header {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%);
+        border-radius: 20px;
+        padding: 30px;
+        color: #fff;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(239, 68, 68, 0.3);
+    }
+    .stats-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border: 2px solid #fee2e2;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(239, 68, 68, 0.2);
+        border-color: #ef4444;
+    }
+    .stats-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin-bottom: 15px;
+    }
+    .stats-icon.expense {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: #fff;
+    }
+    .stats-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #334155;
+        margin: 10px 0;
+    }
+    .stats-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    .expense-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border-left: 4px solid #ef4444;
+        border: 2px solid #fee2e2;
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+    }
+    .expense-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(239, 68, 68, 0.2);
+        border-color: #ef4444;
+    }
+    .expense-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #fee2e2;
+    }
+    .expense-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #ef4444;
+        margin: 0;
+    }
+    .expense-amount {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #ef4444;
+    }
+    .expense-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+    .info-item {
+        display: flex;
+        align-items: center;
+        color: #64748b;
+    }
+    .info-item i {
+        margin-right: 10px;
+        color: #ef4444;
+        width: 20px;
+    }
+    .btn-add {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: #fff;
+        border-radius: 50px;
+        padding: 12px 30px;
+        font-weight: 700;
+        border: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    }
+    .btn-add:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+        color: #fff;
+    }
+    .btn-action {
+        border-radius: 10px;
+        padding: 8px 20px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    .btn-edit {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: #fff;
+    }
+    .btn-edit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(245, 158, 11, 0.3);
+        color: #fff;
+    }
+    .btn-delete {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: #fff;
+    }
+    .btn-delete:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+        color: #fff;
+    }
+    .search-bar {
+        background: #fff;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 30px;
+        border: 2px solid #fee2e2;
+    }
+    .search-input {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 12px 20px 12px 50px;
+        transition: all 0.3s ease;
+    }
+    .search-input:focus {
+        border-color: #ef4444;
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+        outline: none;
+    }
+    .search-icon {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #64748b;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-arrow-down me-2"></i>Budget Expenses</h2>
+                <p class="subtitle mb-0 mt-2">Track and manage your budget expenses</p>
+            </div>
+            <a href="{% url 'budget_expense_add' %}" class="btn btn-add">
+                <i class="fas fa-plus me-2"></i>Add Expense
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon expense">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+                <div class="stats-value">{{ expenses|length }}</div>
+                <div class="stats-label">Total Expenses</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon expense" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <div class="stats-value">
+                    {% with total=0 %}
+                        {% for expense in expenses %}
+                            {{ expense.amount|add:total }}
+                        {% endfor %}
+                    {% endwith %}
+                </div>
+                <div class="stats-label">Total Amount</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon expense" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                    <i class="fas fa-wallet"></i>
+                </div>
+                <div class="stats-value">
+                    {% with budgets=expenses|length %}
+                        {{ budgets }}
+                    {% endwith %}
+                </div>
+                <div class="stats-label">Active Budgets</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+        <div class="position-relative">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" class="form-control search-input" id="searchInput" placeholder="Search expenses by title, budget, or amount...">
+        </div>
+    </div>
+
+    <!-- Expenses List -->
+    <div id="expensesList">
+        {% if expenses %}
+            {% for expense in expenses %}
+            <div class="expense-card" data-title="{{ expense.title|lower }}" data-budget="{{ expense.budget.name|lower }}" data-amount="{{ expense.amount }}">
+                <div class="expense-header">
+                    <div>
+                        <h3 class="expense-title">
+                            <i class="fas fa-arrow-down me-2"></i>{{ expense.title }}
+                        </h3>
+                        <p class="text-muted mb-0"><i class="fas fa-wallet me-2"></i>{{ expense.budget.name }}</p>
+                    </div>
+                    <div class="text-end">
+                        <div class="expense-amount">${{ expense.amount }}</div>
+                        <div class="mt-2">
+                            <a href="{% url 'budget_expense_edit' expense.pk %}" class="btn btn-action btn-edit me-2">
+                                <i class="fas fa-edit me-1"></i>Edit
+                            </a>
+                            <a href="{% url 'budget_expense_delete' expense.pk %}" class="btn btn-action btn-delete">
+                                <i class="fas fa-trash me-1"></i>Delete
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="expense-info">
+                    {% if expense.start_date %}
+                    <div class="info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span><strong>Start:</strong> {{ expense.start_date|date:"M d, Y" }}</span>
+                    </div>
+                    {% endif %}
+                    {% if expense.end_date %}
+                    <div class="info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span><strong>End:</strong> {{ expense.end_date|date:"M d, Y" }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="info-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span><strong>Date:</strong> {{ expense.date|date:"M d, Y" }}</span>
+                    </div>
+                    {% if expense.attachment %}
+                    <div class="info-item">
+                        <i class="fas fa-paperclip"></i>
+                        <span><a href="{{ expense.attachment.url }}" target="_blank">View Attachment</a></span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if expense.description %}
+                <div class="mt-3">
+                    <p class="text-muted mb-0"><i class="fas fa-sticky-note me-2"></i>{{ expense.description }}</p>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="expense-card text-center py-5">
+                <i class="fas fa-arrow-down fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No Expenses Found</h4>
+                <p class="text-muted">Get started by adding your first expense</p>
+                <a href="{% url 'budget_expense_add' %}" class="btn btn-add mt-3">
+                    <i class="fas fa-plus me-2"></i>Add Expense
+                </a>
+            </div>
+        {% endif %}
+    </div>
 </div>
-{% endblock %} 
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const expensesList = document.getElementById('expensesList');
+        const expenseCards = expensesList.querySelectorAll('.expense-card');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase().trim();
+                
+                expenseCards.forEach(card => {
+                    const title = card.getAttribute('data-title') || '';
+                    const budget = card.getAttribute('data-budget') || '';
+                    const amount = card.getAttribute('data-amount') || '';
+                    
+                    if (title.includes(searchTerm) || budget.includes(searchTerm) || amount.includes(searchTerm)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

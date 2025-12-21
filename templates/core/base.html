@@ -256,13 +256,14 @@
                         <li class="nav-item">
                             <a class="nav-link text-white" data-bs-toggle="collapse" href="#accountingMenu" role="button" aria-expanded="false" aria-controls="accountingMenu">
                                 <i class="fas fa-file-invoice-dollar me-2"></i>Accounting
+                                <i class="fas fa-chevron-down ms-auto float-end mt-1 accounting-chevron"></i>
                             </a>
                             <div class="collapse" id="accountingMenu">
                                 <ul class="nav flex-column ms-3">
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'budget_category_list' %}">Categories</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'budget_list' %}">Budgets</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'budget_expense_list' %}">Budget Expenses</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'budget_revenue_list' %}">Budget Revenue</a></li>
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'budget_category_list' %}"><i class="fas fa-tags me-2"></i>Categories</a></li>
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'budget_list' %}"><i class="fas fa-wallet me-2"></i>Budgets</a></li>
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'budget_expense_list' %}"><i class="fas fa-arrow-down me-2"></i>Budget Expenses</a></li>
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'budget_revenue_list' %}"><i class="fas fa-arrow-up me-2"></i>Budget Revenue</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -887,6 +888,22 @@
                         chevron.style.transition = 'transform 0.3s ease';
                     });
                     projectsMenu.addEventListener('hide.bs.collapse', function() {
+                        chevron.style.transform = 'rotate(0deg)';
+                        chevron.style.transition = 'transform 0.3s ease';
+                    });
+                }
+            }
+            
+            // Handle accounting menu chevron
+            const accountingMenu = document.getElementById('accountingMenu');
+            if (accountingMenu) {
+                const chevron = accountingMenu.previousElementSibling.querySelector('.accounting-chevron');
+                if (chevron) {
+                    accountingMenu.addEventListener('show.bs.collapse', function() {
+                        chevron.style.transform = 'rotate(180deg)';
+                        chevron.style.transition = 'transform 0.3s ease';
+                    });
+                    accountingMenu.addEventListener('hide.bs.collapse', function() {
                         chevron.style.transform = 'rotate(0deg)';
                         chevron.style.transition = 'transform 0.3s ease';
                     });
