@@ -139,8 +139,21 @@ class AssetForm(forms.ModelForm):
         model = Asset
         fields = ['asset_name', 'asset_id', 'purchase_date', 'purchase_from', 'manufacturer', 'model', 'serial_number', 'brand', 'supplier', 'condition', 'warranty', 'warranty_end', 'cost', 'asset_user', 'status', 'description', 'files']
         widgets = {
-            'status': forms.Select(attrs={'class': 'form-control'}),
-            'asset_user': forms.Select(attrs={'class': 'form-control'}),
+            'asset_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter asset name...'}),
+            'asset_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter unique asset ID...'}),
+            'purchase_from': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter purchase source...'}),
+            'manufacturer': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter manufacturer...'}),
+            'model': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter model...'}),
+            'serial_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter serial number...'}),
+            'brand': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter brand...'}),
+            'supplier': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter supplier...'}),
+            'condition': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter condition...'}),
+            'warranty': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter warranty details...'}),
+            'cost': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': '0.00'}),
+            'status': forms.Select(attrs={'class': 'form-control form-select'}),
+            'asset_user': forms.Select(attrs={'class': 'form-control form-select'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'Enter description...'}),
+            'files': forms.ClearableFileInput(attrs={'class': 'form-control', 'style': 'display: none;'}),
         } 
 
 class CompanySettingsForm(forms.ModelForm):

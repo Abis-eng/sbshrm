@@ -1,14 +1,136 @@
 {% extends 'core/base.html' %}
 {% block page_title %}Delete Asset{% endblock %}
 {% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Delete Asset</h4>
-    <p>Are you sure you want to delete the asset <strong>{{ asset.asset_name }}</strong>?</p>
-    <form method="post">{% csrf_token %}
-      <button type="submit" class="btn btn-danger">Delete</button>
-      <a href="{% url 'asset_list' %}" class="btn btn-secondary">Cancel</a>
-    </form>
-  </div>
+<style>
+    body {
+        background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+        min-height: 100vh;
+    }
+    .delete-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.1);
+        border: 2px solid #fee2e2;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .warning-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        color: #ef4444;
+        margin: 0 auto 30px;
+    }
+    .asset-info {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 20px;
+        margin: 20px 0;
+        border-left: 4px solid #6366f1;
+    }
+    .info-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+        color: #64748b;
+    }
+    .info-item:last-child {
+        margin-bottom: 0;
+    }
+    .info-item i {
+        margin-right: 10px;
+        color: #6366f1;
+        width: 20px;
+    }
+    .btn-delete {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: #fff;
+        border-radius: 50px;
+        padding: 15px 60px;
+        font-weight: 700;
+        border: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    }
+    .btn-delete:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+        color: #fff;
+    }
+    .btn-cancel {
+        background: #64748b;
+        color: #fff;
+        border-radius: 50px;
+        padding: 15px 50px;
+        font-weight: 600;
+        border: none;
+        transition: all 0.3s ease;
+    }
+    .btn-cancel:hover {
+        background: #475569;
+        color: #fff;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="delete-card">
+        <div class="text-center mb-4">
+            <div class="warning-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <h2 class="text-danger mb-3">Delete Asset</h2>
+            <p class="text-muted">Are you sure you want to delete this asset? This action cannot be undone.</p>
+        </div>
+        
+        <div class="asset-info">
+            <h4 class="mb-3"><i class="fas fa-box me-2 text-primary"></i>Asset Details</h4>
+            <div class="info-item">
+                <i class="fas fa-box"></i>
+                <span><strong>Name:</strong> {{ asset.asset_name }}</span>
+            </div>
+            <div class="info-item">
+                <i class="fas fa-hashtag"></i>
+                <span><strong>ID:</strong> {{ asset.asset_id }}</span>
+            </div>
+            {% if asset.brand %}
+            <div class="info-item">
+                <i class="fas fa-tag"></i>
+                <span><strong>Brand:</strong> {{ asset.brand }}</span>
+            </div>
+            {% endif %}
+            {% if asset.model %}
+            <div class="info-item">
+                <i class="fas fa-cube"></i>
+                <span><strong>Model:</strong> {{ asset.model }}</span>
+            </div>
+            {% endif %}
+            {% if asset.asset_user %}
+            <div class="info-item">
+                <i class="fas fa-user"></i>
+                <span><strong>Assigned To:</strong> {{ asset.asset_user.user.get_full_name|default:asset.asset_user.user.username }}</span>
+            </div>
+            {% endif %}
+            <div class="info-item">
+                <i class="fas fa-info-circle"></i>
+                <span><strong>Status:</strong> {{ asset.get_status_display }}</span>
+            </div>
+        </div>
+        
+        <form method="post" class="text-center mt-4">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-delete me-3">
+                <i class="fas fa-trash me-2"></i>Delete Asset
+            </button>
+            <a href="{% url 'asset_list' %}" class="btn btn-cancel">
+                <i class="fas fa-times me-2"></i>Cancel
+            </a>
+        </form>
+    </div>
 </div>
-{% endblock %} 
+{% endblock %}

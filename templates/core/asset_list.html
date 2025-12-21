@@ -1,43 +1,372 @@
 {% extends 'core/base.html' %}
 {% block page_title %}Assets{% endblock %}
 {% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Assets</h4>
-    <a href="{% url 'asset_add' %}" class="btn btn-primary mb-3">Add Asset</a>
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>Asset Name</th>
-          <th>Asset ID</th>
-          <th>Purchase Date</th>
-          <th>Brand</th>
-          <th>Model</th>
-          <th>Asset User</th>
-          <th>Status</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for asset in assets %}
-        <tr>
-          <td>{{ asset.asset_name }}</td>
-          <td>{{ asset.asset_id }}</td>
-          <td>{{ asset.purchase_date }}</td>
-          <td>{{ asset.brand }}</td>
-          <td>{{ asset.model }}</td>
-          <td>{% if asset.asset_user %}{{ asset.asset_user.user.get_full_name|default:asset.asset_user.user.username }}{% endif %}</td>
-          <td>{{ asset.get_status_display }}</td>
-          <td>
-            <a href="{% url 'asset_edit' asset.pk %}" class="btn btn-sm btn-warning">Edit</a>
-            <a href="{% url 'asset_delete' asset.pk %}" class="btn btn-sm btn-danger">Delete</a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="8">No assets found.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+<style>
+    body {
+        background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+        min-height: 100vh;
+    }
+    .page-header {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 50%, #4338ca 100%);
+        border-radius: 20px;
+        padding: 30px;
+        color: #fff;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(99, 102, 241, 0.3);
+    }
+    .stats-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border: 2px solid #e0e7ff;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
+        border-color: #6366f1;
+    }
+    .stats-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        margin-bottom: 15px;
+    }
+    .stats-icon.primary {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: #fff;
+    }
+    .stats-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #334155;
+        margin: 10px 0;
+    }
+    .stats-label {
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    .asset-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border-left: 4px solid #6366f1;
+        border: 2px solid #e0e7ff;
+        transition: all 0.3s ease;
+        margin-bottom: 20px;
+    }
+    .asset-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
+        border-color: #6366f1;
+    }
+    .asset-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e0e7ff;
+    }
+    .asset-name {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #6366f1;
+        margin: 0;
+    }
+    .asset-id {
+        font-size: 0.9rem;
+        color: #64748b;
+        font-weight: 600;
+    }
+    .asset-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+    .info-item {
+        display: flex;
+        align-items: center;
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+    .info-item i {
+        margin-right: 10px;
+        color: #6366f1;
+        width: 20px;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 6px 15px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .status-approved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .status-returned {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .btn-add {
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        color: #fff;
+        border-radius: 50px;
+        padding: 12px 30px;
+        font-weight: 700;
+        border: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+    .btn-add:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+        color: #fff;
+    }
+    .btn-action {
+        border-radius: 10px;
+        padding: 8px 20px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        border: none;
+        font-size: 0.85rem;
+    }
+    .btn-edit {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: #fff;
+    }
+    .btn-edit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(245, 158, 11, 0.3);
+        color: #fff;
+    }
+    .btn-delete {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: #fff;
+    }
+    .btn-delete:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(239, 68, 68, 0.3);
+        color: #fff;
+    }
+    .search-bar {
+        background: #fff;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 30px;
+        border: 2px solid #e0e7ff;
+    }
+    .search-input {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 12px 20px 12px 50px;
+        transition: all 0.3s ease;
+    }
+    .search-input:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+    .search-icon {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #64748b;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="page-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-boxes me-2"></i>Assets</h2>
+                <p class="subtitle mb-0 mt-2">Manage company assets and equipment</p>
+            </div>
+            <a href="{% url 'asset_add' %}" class="btn btn-add">
+                <i class="fas fa-plus me-2"></i>Add Asset
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon primary">
+                    <i class="fas fa-boxes"></i>
+                </div>
+                <div class="stats-value">{{ assets|length }}</div>
+                <div class="stats-label">Total Assets</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stats-value">
+                    {% with approved=0 %}
+                        {% for asset in assets %}
+                            {% if asset.status == 'approved' %}
+                                {{ forloop.counter }}
+                            {% endif %}
+                        {% endfor %}
+                    {% endwith %}
+                </div>
+                <div class="stats-label">Approved</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stats-card">
+                <div class="stats-icon primary" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stats-value">
+                    {% for asset in assets %}
+                        {% if asset.status == 'pending' %}
+                            {{ forloop.counter }}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="stats-label">Pending</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+        <div class="position-relative">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" class="form-control search-input" id="searchInput" placeholder="Search assets by name, ID, brand, model, or assigned user...">
+        </div>
+    </div>
+
+    <!-- Assets List -->
+    <div id="assetsList">
+        {% if assets %}
+            {% for asset in assets %}
+            <div class="asset-card" data-name="{{ asset.asset_name|lower }}" data-id="{{ asset.asset_id|lower }}" data-brand="{{ asset.brand|lower }}" data-model="{{ asset.model|lower }}" data-user="{% if asset.asset_user %}{{ asset.asset_user.user.get_full_name|default:asset.asset_user.user.username|lower }}{% endif %}">
+                <div class="asset-header">
+                    <div>
+                        <h3 class="asset-name">
+                            <i class="fas fa-box me-2"></i>{{ asset.asset_name }}
+                        </h3>
+                        <p class="asset-id mb-0">
+                            <i class="fas fa-hashtag me-2"></i>ID: {{ asset.asset_id }}
+                        </p>
+                    </div>
+                    <div class="text-end">
+                        <span class="status-badge status-{{ asset.status }}">{{ asset.get_status_display }}</span>
+                        <div class="mt-2">
+                            <a href="{% url 'asset_edit' asset.pk %}" class="btn btn-action btn-edit me-2">
+                                <i class="fas fa-edit me-1"></i>Edit
+                            </a>
+                            <a href="{% url 'asset_delete' asset.pk %}" class="btn btn-action btn-delete">
+                                <i class="fas fa-trash me-1"></i>Delete
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="asset-info">
+                    {% if asset.brand %}
+                    <div class="info-item">
+                        <i class="fas fa-tag"></i>
+                        <span><strong>Brand:</strong> {{ asset.brand }}</span>
+                    </div>
+                    {% endif %}
+                    {% if asset.model %}
+                    <div class="info-item">
+                        <i class="fas fa-cube"></i>
+                        <span><strong>Model:</strong> {{ asset.model }}</span>
+                    </div>
+                    {% endif %}
+                    {% if asset.asset_user %}
+                    <div class="info-item">
+                        <i class="fas fa-user"></i>
+                        <span><strong>Assigned To:</strong> {{ asset.asset_user.user.get_full_name|default:asset.asset_user.user.username }}</span>
+                    </div>
+                    {% endif %}
+                    {% if asset.purchase_date %}
+                    <div class="info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span><strong>Purchase Date:</strong> {{ asset.purchase_date|date:"M d, Y" }}</span>
+                    </div>
+                    {% endif %}
+                    {% if asset.cost %}
+                    <div class="info-item">
+                        <i class="fas fa-dollar-sign"></i>
+                        <span><strong>Cost:</strong> ${{ asset.cost }}</span>
+                    </div>
+                    {% endif %}
+                    {% if asset.condition %}
+                    <div class="info-item">
+                        <i class="fas fa-info-circle"></i>
+                        <span><strong>Condition:</strong> {{ asset.condition }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if asset.description %}
+                <div class="mt-3">
+                    <p class="text-muted mb-0"><i class="fas fa-sticky-note me-2"></i>{{ asset.description }}</p>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="asset-card text-center py-5">
+                <i class="fas fa-boxes fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No Assets Found</h4>
+                <p class="text-muted">Get started by adding your first asset</p>
+                <a href="{% url 'asset_add' %}" class="btn btn-add mt-3">
+                    <i class="fas fa-plus me-2"></i>Add Asset
+                </a>
+            </div>
+        {% endif %}
+    </div>
 </div>
-{% endblock %} 
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const assetsList = document.getElementById('assetsList');
+        const assetCards = assetsList.querySelectorAll('.asset-card');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase().trim();
+                
+                assetCards.forEach(card => {
+                    const name = card.getAttribute('data-name') || '';
+                    const id = card.getAttribute('data-id') || '';
+                    const brand = card.getAttribute('data-brand') || '';
+                    const model = card.getAttribute('data-model') || '';
+                    const user = card.getAttribute('data-user') || '';
+                    
+                    if (name.includes(searchTerm) || id.includes(searchTerm) || brand.includes(searchTerm) || model.includes(searchTerm) || user.includes(searchTerm)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}
