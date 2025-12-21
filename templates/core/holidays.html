@@ -1,74 +1,139 @@
 {% extends 'core/base.html' %}
-{% block page_title %}Holidays{% endblock %}
-{% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Upcoming Holidays</h4>
-    <p class="text-muted">Loaded {{ holidays|length }} holidays.</p>
-    <table class="table table-bordered">
-      <thead><tr><th>Name</th><th>Date</th><th>Description</th></tr></thead>
-      <tbody>
-        {% for holiday in holidays %}
-        <tr>
-          <td>{{ holiday.name }}</td>
-          <td>{{ holiday.date }}</td>
-          <td>{{ holiday.description }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="3">No holidays found.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <div class="mt-4">
-      <h5>Holiday Calendar</h5>
-      <div id="holiday-calendar"></div>
+{% load static %}
+
+{% block title %}Holidays - HRM System{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="flex-grow-1">
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-umbrella-beach me-2"></i>Holidays
+        </h1>
+        <p class="text-muted mb-0 small">View all upcoming and past holidays</p>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-    <script>
-      document.addEventListener('DOMContentLoaded', function() {
+</div>
+{% endblock %}
+
+{% block content %}
+<style>
+    .holiday-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        background: white;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+    .holiday-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(255, 193, 7, 0.2);
+    }
+    .holiday-date {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        color: white;
+        padding: 1.5rem;
+        text-align: center;
+        min-width: 120px;
+    }
+    .holiday-day {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    .holiday-month {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    .holiday-content {
+        padding: 1.5rem;
+        flex-grow: 1;
+    }
+    .holiday-name {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 0.5rem;
+    }
+    .calendar-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        padding: 2rem;
+        background: white;
+        margin-top: 2rem;
+    }
+</style>
+
+<!-- Holidays List -->
+{% if holidays %}
+<div class="row g-4">
+    {% for holiday in holidays %}
+    <div class="col-12">
+        <div class="holiday-card d-flex">
+            <div class="holiday-date">
+                <div class="holiday-day">{{ holiday.date|date:"d" }}</div>
+                <div class="holiday-month">{{ holiday.date|date:"M Y" }}</div>
+            </div>
+            <div class="holiday-content">
+                <div class="holiday-name">
+                    <i class="fas fa-calendar-alt me-2 text-warning"></i>{{ holiday.name }}
+                </div>
+                {% if holiday.description %}
+                <p class="text-muted mb-0">{{ holiday.description }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+    <i class="fas fa-umbrella-beach fa-4x text-muted mb-3"></i>
+    <h5 class="text-muted">No holidays found</h5>
+    <p class="text-muted">No holidays have been added yet.</p>
+</div>
+{% endif %}
+
+<!-- Calendar View -->
+{% if holidays %}
+<div class="calendar-card">
+    <h5 class="mb-3 fw-bold">
+        <i class="fas fa-calendar me-2"></i>Holiday Calendar
+    </h5>
+    <div id="holiday-calendar"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
         var calendarEl = document.getElementById('holiday-calendar');
         var calendar = new FullCalendar.Calendar(calendarEl, {
-          initialView: 'dayGridMonth',
-          height: 500,
-          events: [
-            {% for holiday in holidays %}
-              {
-                title: '{{ holiday.name|escapejs }}',
-                start: '{{ holiday.date }}',
-                description: '{{ holiday.description|escapejs }}',
-                allDay: true
-              },
-            {% endfor %}
-          ],
-          eventDidMount: function(info) {
-            if (info.event.extendedProps.description) {
-              var tooltip = document.createElement('div');
-              tooltip.innerHTML = info.event.extendedProps.description;
-              tooltip.style.position = 'absolute';
-              tooltip.style.background = '#fff';
-              tooltip.style.border = '1px solid #ccc';
-              tooltip.style.padding = '5px';
-              tooltip.style.display = 'none';
-              tooltip.style.zIndex = 10000;
-              document.body.appendChild(tooltip);
-              info.el.addEventListener('mouseenter', function(e) {
-                tooltip.style.display = 'block';
-                tooltip.style.left = e.pageX + 10 + 'px';
-                tooltip.style.top = e.pageY + 10 + 'px';
-              });
-              info.el.addEventListener('mousemove', function(e) {
-                tooltip.style.left = e.pageX + 10 + 'px';
-                tooltip.style.top = e.pageY + 10 + 'px';
-              });
-              info.el.addEventListener('mouseleave', function() {
-                tooltip.style.display = 'none';
-              });
+            initialView: 'dayGridMonth',
+            height: 500,
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,listMonth'
+            },
+            events: [
+                {% for holiday in holidays %}
+                {
+                    title: '{{ holiday.name|escapejs }}',
+                    start: '{{ holiday.date|date:"Y-m-d" }}',
+                    description: '{{ holiday.description|escapejs }}',
+                    allDay: true,
+                    backgroundColor: '#fbbf24',
+                    borderColor: '#f59e0b'
+                },
+                {% endfor %}
+            ],
+            eventDidMount: function(info) {
+                if (info.event.extendedProps.description) {
+                    info.el.setAttribute('title', info.event.extendedProps.description);
+                }
             }
-          }
         });
         calendar.render();
-      });
-    </script>
-  </div>
-</div>
-{% endblock %} 
+    });
+</script>
+{% endif %}
+{% endblock %}

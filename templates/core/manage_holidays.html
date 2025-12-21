@@ -1,45 +1,139 @@
 {% extends 'core/base.html' %}
-{% block page_title %}Manage Holidays{% endblock %}
+{% load static %}
+
+{% block title %}Manage Holidays - HRM System{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="flex-grow-1">
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-umbrella-beach me-2"></i>Holiday Management
+        </h1>
+        <p class="text-muted mb-0 small">Create and manage holidays for your organization</p>
+    </div>
+</div>
+{% endblock %}
+
 {% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Add Holiday</h4>
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p|safe }}
-      <button type="submit" class="btn btn-primary">Add</button>
+<style>
+    .form-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        padding: 2rem;
+        background: white;
+        margin-bottom: 2rem;
+    }
+    .holiday-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        background: white;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+    .holiday-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(255, 193, 7, 0.2);
+    }
+    .holiday-date {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        color: white;
+        padding: 1.5rem;
+        text-align: center;
+        min-width: 120px;
+    }
+    .holiday-day {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    .holiday-month {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    .holiday-content {
+        padding: 1.5rem;
+        flex-grow: 1;
+    }
+    .holiday-name {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 0.5rem;
+    }
+</style>
+
+<!-- Add Holiday Form -->
+<div class="form-card">
+    <div class="d-flex align-items-center mb-3">
+        <div class="flex-grow-1">
+            <h5 class="mb-0 fw-bold">
+                <i class="fas fa-plus-circle me-2 text-primary"></i>Add New Holiday
+            </h5>
+        </div>
+    </div>
+    <form method="post" class="row g-3">
+        {% csrf_token %}
+        <div class="col-md-4">
+            <label for="id_name" class="form-label fw-bold">Holiday Name</label>
+            <input type="text" class="form-control" id="id_name" name="name" required 
+                   placeholder="Enter holiday name" style="border-radius: 10px; border: 2px solid #e9ecef; padding: 0.75rem;">
+        </div>
+        <div class="col-md-4">
+            <label for="id_date" class="form-label fw-bold">Date</label>
+            <input type="date" class="form-control" id="id_date" name="date" required 
+                   style="border-radius: 10px; border: 2px solid #e9ecef; padding: 0.75rem;">
+        </div>
+        <div class="col-md-3">
+            <label for="id_description" class="form-label fw-bold">Description</label>
+            <input type="text" class="form-control" id="id_description" name="description" 
+                   placeholder="Optional description" style="border-radius: 10px; border: 2px solid #e9ecef; padding: 0.75rem;">
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100" style="border-radius: 10px;">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
     </form>
-    <script>
-      // Enhance the date input with a calendar picker if not already type='date'
-      document.addEventListener('DOMContentLoaded', function() {
-        var dateInputs = document.querySelectorAll('input[name$="date"]');
-        dateInputs.forEach(function(input) {
-          input.type = 'date';
-        });
-      });
-    </script>
-  </div>
 </div>
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">All Holidays</h4>
-    <table class="table table-bordered">
-      <thead><tr><th>Name</th><th>Date</th><th>Description</th><th>Actions</th></tr></thead>
-      <tbody>
-        {% for holiday in holidays %}
-        <tr>
-          <td>{{ holiday.name }}</td>
-          <td>{{ holiday.date }}</td>
-          <td>{{ holiday.description }}</td>
-          <td>
-            <a href="{% url 'delete_holiday' holiday.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Delete this holiday?')">Delete</a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="4">No holidays found.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+
+<!-- Holidays List -->
+{% if holidays %}
+<div class="row g-4">
+    {% for holiday in holidays %}
+    <div class="col-12">
+        <div class="holiday-card d-flex">
+            <div class="holiday-date">
+                <div class="holiday-day">{{ holiday.date|date:"d" }}</div>
+                <div class="holiday-month">{{ holiday.date|date:"M Y" }}</div>
+            </div>
+            <div class="holiday-content d-flex justify-content-between align-items-center">
+                <div class="flex-grow-1">
+                    <div class="holiday-name">
+                        <i class="fas fa-calendar-alt me-2 text-warning"></i>{{ holiday.name }}
+                    </div>
+                    {% if holiday.description %}
+                    <p class="text-muted mb-0">{{ holiday.description }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <a href="{% url 'delete_holiday' holiday.id %}" 
+                       class="btn btn-sm btn-danger" 
+                       onclick="return confirm('Are you sure you want to delete {{ holiday.name }}?');">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
 </div>
-{% endblock %} 
+{% else %}
+<div class="text-center py-5">
+    <i class="fas fa-umbrella-beach fa-4x text-muted mb-3"></i>
+    <h5 class="text-muted">No holidays found</h5>
+    <p class="text-muted">Start by adding your first holiday.</p>
+</div>
+{% endif %}
+{% endblock %}

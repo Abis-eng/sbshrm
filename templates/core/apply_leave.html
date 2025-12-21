@@ -1,23 +1,130 @@
 {% extends 'core/base.html' %}
-{% block page_title %}Apply for Leave{% endblock %}
-{% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Apply for Leave</h4>
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p|safe }}
-      <script>
-        // Enhance the start and end date inputs with a calendar picker
-        document.addEventListener('DOMContentLoaded', function() {
-          var dateInputs = document.querySelectorAll('input[name$="date"]');
-          dateInputs.forEach(function(input) {
-            input.type = 'date';
-          });
-        });
-      </script>
-      <button type="submit" class="btn btn-primary">Apply</button>
-    </form>
-  </div>
+{% load static %}
+
+{% block title %}Apply for Leave - HRM System{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="flex-grow-1">
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-calendar-plus me-2"></i>Apply for Leave
+        </h1>
+        <p class="text-muted mb-0 small">Submit a new leave request</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <a href="{% url 'my_leaves' %}" class="btn btn-sm btn-light">
+            <i class="fas fa-arrow-left me-1"></i>Back to Leaves
+        </a>
+    </div>
 </div>
-{% endblock %} 
+{% endblock %}
+
+{% block content %}
+<style>
+    .form-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        padding: 2rem;
+        background: white;
+    }
+    .form-section {
+        background: #f8f9ff;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border-left: 4px solid #667eea;
+    }
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #667eea;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+    }
+    .section-title i {
+        margin-right: 0.5rem;
+    }
+    .form-label {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 0.5rem;
+    }
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        padding: 0.75rem;
+        transition: all 0.3s;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="form-card">
+            <form method="post" id="applyLeaveForm">
+                {% csrf_token %}
+                
+                <!-- Leave Details -->
+                <div class="form-section">
+                    <div class="section-title">
+                        <i class="fas fa-info-circle"></i>Leave Details
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="id_leave_type" class="form-label">Leave Type</label>
+                            <select class="form-select" id="id_leave_type" name="leave_type" required>
+                                <option value="">Select Leave Type</option>
+                                <option value="sick">Sick Leave</option>
+                                <option value="vacation">Vacation</option>
+                                <option value="personal">Personal</option>
+                                <option value="emergency">Emergency</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="id_start_date" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="id_start_date" name="start_date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="id_end_date" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="id_end_date" name="end_date" required>
+                        </div>
+                        <div class="col-12">
+                            <label for="id_reason" class="form-label">Reason</label>
+                            <textarea class="form-control" id="id_reason" name="reason" rows="4" required 
+                                      placeholder="Please provide a reason for your leave request..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Form Actions -->
+                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                    <a href="{% url 'my_leaves' %}" class="btn btn-light">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-paper-plane me-2"></i>Submit Leave Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('id_start_date').setAttribute('min', today);
+    document.getElementById('id_end_date').setAttribute('min', today);
+    
+    // Ensure end date is after start date
+    document.getElementById('id_start_date').addEventListener('change', function() {
+        document.getElementById('id_end_date').setAttribute('min', this.value);
+    });
+</script>
+{% endblock %}

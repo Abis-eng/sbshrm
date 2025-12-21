@@ -1,15 +1,78 @@
 {% extends 'core/base.html' %}
-{% block page_title %}My Designation{% endblock %}
-{% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">My Designation</h4>
-    {% if designation %}
-      <p><strong>Name:</strong> {{ designation.name }}</p>
-      <p><strong>Description:</strong> {{ designation.description }}</p>
-    {% else %}
-      <p class="text-muted">No designation assigned.</p>
-    {% endif %}
-  </div>
+{% load static %}
+
+{% block title %}My Designation - HRM System{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="flex-grow-1">
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-id-badge me-2"></i>My Designation
+        </h1>
+        <p class="text-muted mb-0 small">View your designation information</p>
+    </div>
 </div>
-{% endblock %} 
+{% endblock %}
+
+{% block content %}
+<style>
+    .info-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        padding: 2rem;
+        background: white;
+        text-align: center;
+    }
+    .desig-icon {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 3rem;
+        margin: 0 auto 1.5rem;
+        box-shadow: 0 10px 30px rgba(245, 87, 108, 0.3);
+    }
+    .desig-name {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 1rem;
+    }
+    .info-item {
+        background: #f8f9ff;
+        border-radius: 10px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="info-card">
+            {% if designation %}
+            <div class="desig-icon">
+                <i class="fas fa-id-badge"></i>
+            </div>
+            <div class="desig-name">{{ designation.name }}</div>
+            {% if designation.description %}
+            <div class="info-item">
+                <label class="fw-bold text-muted small d-block mb-2">Description:</label>
+                <p class="mb-0">{{ designation.description }}</p>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="desig-icon" style="background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%);">
+                <i class="fas fa-id-badge"></i>
+            </div>
+            <div class="desig-name text-muted">No Designation Assigned</div>
+            <p class="text-muted">You have not been assigned a designation yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

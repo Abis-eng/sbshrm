@@ -1,59 +1,181 @@
 {% extends 'core/base.html' %}
-{% block page_title %}Manage Designations{% endblock %}
+{% load static %}
+
+{% block title %}Manage Designations - HRM System{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="flex-grow-1">
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-id-badge me-2"></i>Designation Management
+        </h1>
+        <p class="text-muted mb-0 small">Create and manage designations in your organization</p>
+    </div>
+</div>
+{% endblock %}
+
 {% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Add Designation</h4>
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit" class="btn btn-primary">Add</button>
+<style>
+    .form-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        padding: 2rem;
+        background: white;
+        margin-bottom: 2rem;
+    }
+    .desig-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        background: white;
+        overflow: hidden;
+    }
+    .desig-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(139, 92, 246, 0.2);
+    }
+    .desig-header {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 1.5rem;
+    }
+    .desig-body {
+        padding: 1.5rem;
+    }
+    .desig-count {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #f5576c;
+    }
+    .chart-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        padding: 2rem;
+        background: white;
+    }
+</style>
+
+<!-- Add Designation Form -->
+<div class="form-card">
+    <div class="d-flex align-items-center mb-3">
+        <div class="flex-grow-1">
+            <h5 class="mb-0 fw-bold">
+                <i class="fas fa-plus-circle me-2 text-primary"></i>Add New Designation
+            </h5>
+        </div>
+    </div>
+    <form method="post" class="row g-3">
+        {% csrf_token %}
+        <div class="col-md-5">
+            <label for="id_name" class="form-label fw-bold">Designation Name</label>
+            <input type="text" class="form-control" id="id_name" name="name" required 
+                   placeholder="Enter designation name" style="border-radius: 10px; border: 2px solid #e9ecef; padding: 0.75rem;">
+        </div>
+        <div class="col-md-5">
+            <label for="id_description" class="form-label fw-bold">Description</label>
+            <input type="text" class="form-control" id="id_description" name="description" 
+                   placeholder="Enter description (optional)" style="border-radius: 10px; border: 2px solid #e9ecef; padding: 0.75rem;">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100" style="border-radius: 10px;">
+                <i class="fas fa-plus me-2"></i>Add
+            </button>
+        </div>
     </form>
-  </div>
 </div>
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Designations</h4>
-    <table class="table table-bordered">
-      <thead><tr><th>Name</th><th>Description</th><th>Employee Count</th><th>Actions</th></tr></thead>
-      <tbody>
-        {% for desig in designations %}
-        <tr>
-          <td>{{ desig.name }}</td>
-          <td>{{ desig.description }}</td>
-          <td>{{ desig.employee_set.count }}</td>
-          <td>
-            <a href="{% url 'delete_designation' desig.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this designation?');">Delete</a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="3">No designations found.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <h5 class="mt-4">Designation Employee Distribution</h5>
-    <canvas id="desigChart" width="400" height="120"></canvas>
-  </div>
+
+<!-- Designations Grid -->
+{% if designations %}
+<div class="row g-4 mb-4">
+    {% for desig in designations %}
+    <div class="col-lg-4 col-md-6">
+        <div class="desig-card">
+            <div class="desig-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-id-badge me-2"></i>{{ desig.name }}
+                </h5>
+            </div>
+            <div class="desig-body">
+                {% if desig.description %}
+                <p class="text-muted mb-3">{{ desig.description }}</p>
+                {% endif %}
+                <div class="text-center mb-3">
+                    <div class="desig-count">{{ desig.employee_set.count }}</div>
+                    <div class="text-muted">Employees</div>
+                </div>
+                <div class="d-flex justify-content-center">
+                    <a href="{% url 'delete_designation' desig.id %}" 
+                       class="btn btn-sm btn-danger" 
+                       onclick="return confirm('Are you sure you want to delete {{ desig.name }}? This will affect all employees with this designation.');">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
 </div>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% else %}
+<div class="text-center py-5">
+    <i class="fas fa-id-badge fa-4x text-muted mb-3"></i>
+    <h5 class="text-muted">No designations found</h5>
+    <p class="text-muted">Start by adding your first designation.</p>
+</div>
+{% endif %}
+
+<!-- Chart Section -->
+{% if desig_counts %}
+<div class="chart-card">
+    <h5 class="mb-3 fw-bold">
+        <i class="fas fa-chart-bar me-2"></i>Designation Employee Distribution
+    </h5>
+    <canvas id="desigChart" height="100"></canvas>
+</div>
 {{ desig_counts|json_script:"desig-counts-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-  const ctx = document.getElementById('desigChart').getContext('2d');
-  const desigData = JSON.parse(document.getElementById('desig-counts-data').textContent);
-  const labels = desigData.map(d => d.name);
-  const dataCounts = desigData.map(d => d.emp_count);
-  const data = {
-    labels: labels,
-    datasets: [{
-      label: 'Employees',
-      data: dataCounts,
-      backgroundColor: ['#6f42c1','#20c997','#fd7e14','#17a2b8','#ffc107','#dc3545','#007bff','#28a745'],
-    }]
-  };
-  new Chart(ctx, {
-    type: 'line',
-    data: data,
-    options: {responsive: true, plugins: {legend: {position: 'bottom'}}}
-  });
+    const ctx = document.getElementById('desigChart');
+    if (ctx) {
+        const desigData = JSON.parse(document.getElementById('desig-counts-data').textContent);
+        const labels = desigData.map(d => d.name);
+        const dataCounts = desigData.map(d => d.emp_count);
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Employees',
+                    data: dataCounts,
+                    backgroundColor: 'rgba(139, 92, 246, 0.8)',
+                    borderColor: '#8b5cf6',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
 </script>
-{% endblock %} 
+{% endif %}
+{% endblock %}
