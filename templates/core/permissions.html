@@ -1,37 +1,250 @@
 {% extends 'core/base.html' %}
+{% load static %}
 {% load core_extras %}
-{% block content %}
-<div class="container mt-4">
-    <h2>Employee Feature Permissions</h2>
-    <form method="post">
-        {% csrf_token %}
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>Employee</th>
-                    {% for field, label in features %}
-                        <th>{{ label }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for employee in employees %}
-                <tr>
-                    <td>{{ employee.user.get_full_name|default:employee.user.username }}</td>
-                    {% for field, label in features %}
-                    <td>
-                        <input type="checkbox" name="{{ employee.id }}_{{ field }}" {% if employee|attr:field %}checked{% endif %}>
-                    </td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <button type="submit" class="btn btn-primary">Save Permissions</button>
-    </form>
+
+{% block title %}Permissions Management - HRM System{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="flex-grow-1">
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-lock me-2"></i>Employee Permissions Management
+        </h1>
+        <p class="text-muted mb-0 small">Manage feature access permissions for employees</p>
+    </div>
 </div>
 {% endblock %}
-{% comment %}
-Helper filter to get attribute by name in template:
-{{ employee|attr:field }}
-{% endcomment %} 
+
+{% block content %}
+<style>
+    .permission-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        background: white;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    .permission-header {
+        background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+        color: white;
+        padding: 1.5rem;
+    }
+    .permission-body {
+        padding: 1.5rem;
+    }
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .feature-item {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 1rem;
+        border: 2px solid #e9ecef;
+        transition: all 0.3s;
+    }
+    .feature-item:hover {
+        border-color: #0e7490;
+        background: #f0f9ff;
+    }
+    .feature-item label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        margin: 0;
+        font-weight: 600;
+        color: #2d3748;
+    }
+    .feature-item input[type="checkbox"] {
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        accent-color: #0e7490;
+    }
+    .feature-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 0.75rem;
+        font-size: 1.2rem;
+    }
+    .employee-avatar {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-right: 1rem;
+    }
+    .stats-card {
+        background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(14, 116, 144, 0.3);
+    }
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .stats-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    .search-bar {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+    }
+</style>
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="stats-card">
+            <div class="stats-number">{{ employees|length }}</div>
+            <div class="stats-label">
+                <i class="fas fa-users me-2"></i>Total Employees
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stats-card" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+            <div class="stats-number">{{ features|length }}</div>
+            <div class="stats-label">
+                <i class="fas fa-shield-alt me-2"></i>Features
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stats-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <div class="stats-number">{{ employees|length|add:"0" }}</div>
+            <div class="stats-label">
+                <i class="fas fa-check-circle me-2"></i>Managed
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="search-bar">
+    <label class="form-label fw-bold">
+        <i class="fas fa-search me-2"></i>Search Employees
+    </label>
+    <input type="text" id="searchInput" class="form-control" placeholder="Search by employee name..." 
+           style="border-radius: 10px; border: 2px solid #e9ecef; padding: 0.75rem;">
+</div>
+
+<!-- Permissions Form -->
+<form method="post" id="permissionsForm">
+    {% csrf_token %}
+    <div id="permissionsContainer">
+        {% for employee in employees %}
+        <div class="permission-card employee-permission-card" 
+             data-name="{{ employee.user.get_full_name|default:employee.user.username|lower }}">
+            <div class="permission-header d-flex align-items-center">
+                <div class="employee-avatar">
+                    {{ employee.user.first_name|first|default:employee.user.username|first|upper }}{{ employee.user.last_name|first|upper|default:'' }}
+                </div>
+                <div class="flex-grow-1">
+                    <h5 class="mb-0">{{ employee.user.get_full_name|default:employee.user.username }}</h5>
+                    <small class="opacity-90">
+                        <i class="fas fa-envelope me-1"></i>{{ employee.user.email|default:"No email" }}
+                        {% if employee.department %}
+                        <span class="ms-2">
+                            <i class="fas fa-building me-1"></i>{{ employee.department.name }}
+                        </span>
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+            <div class="permission-body">
+                <div class="feature-grid">
+                    {% for field, label in features %}
+                    <div class="feature-item">
+                        <label>
+                            <div class="d-flex align-items-center">
+                                <div class="feature-icon">
+                                    {% if field == 'can_view_attendance' %}
+                                    <i class="fas fa-calendar-check"></i>
+                                    {% elif field == 'can_view_tasks' %}
+                                    <i class="fas fa-tasks"></i>
+                                    {% elif field == 'can_view_department' %}
+                                    <i class="fas fa-building"></i>
+                                    {% elif field == 'can_view_designation' %}
+                                    <i class="fas fa-id-badge"></i>
+                                    {% elif field == 'can_view_holidays' %}
+                                    <i class="fas fa-umbrella-beach"></i>
+                                    {% elif field == 'can_view_leaves' %}
+                                    <i class="fas fa-plane-departure"></i>
+                                    {% else %}
+                                    <i class="fas fa-check"></i>
+                                    {% endif %}
+                                </div>
+                                <span>{{ label }}</span>
+                            </div>
+                            <input type="checkbox" 
+                                   name="{{ employee.id }}_{{ field }}" 
+                                   {% if employee|attr:field %}checked{% endif %}
+                                   class="form-check-input">
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Save Button -->
+    <div class="d-flex justify-content-end mt-4">
+        <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-save me-2"></i>Save All Permissions
+        </button>
+    </div>
+</form>
+
+<script>
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        const cards = document.querySelectorAll('.employee-permission-card');
+        cards.forEach(card => {
+            const name = card.getAttribute('data-name');
+            if (name.includes(searchTerm)) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+    
+    // Form submission confirmation
+    document.getElementById('permissionsForm').addEventListener('submit', function(e) {
+        const checkedBoxes = document.querySelectorAll('input[type="checkbox"]:checked').length;
+        if (checkedBoxes === 0) {
+            if (!confirm('No permissions are selected. Are you sure you want to save?')) {
+                e.preventDefault();
+            }
+        }
+    });
+</script>
+{% endblock %}

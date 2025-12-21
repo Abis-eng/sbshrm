@@ -2119,7 +2119,7 @@ def permissions_management(request):
         ('can_view_holidays', 'Holidays'),
         ('can_view_leaves', 'Leaves'),
     ]
-    employees = Employee.objects.select_related('user').all()
+    employees = Employee.objects.select_related('user', 'department', 'designation').all().order_by('user__first_name', 'user__last_name')
     if request.method == 'POST':
         for employee in employees:
             for field, _ in features:
@@ -2127,6 +2127,7 @@ def permissions_management(request):
                 value = request.POST.get(key) == 'on'
                 setattr(employee, field, value)
             employee.save()
+        messages.success(request, 'Permissions updated successfully!')
         return redirect('permissions_management')
     return render(request, 'core/permissions.html', {
         'employees': employees,
