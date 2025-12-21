@@ -113,8 +113,8 @@
                             <div class="date-label">Duration</div>
                             <div class="date-value">
                                 {% if leave.start_date and leave.end_date %}
-                                    {% with days=leave.end_date|add:"-1"|timesince:leave.start_date %}
-                                        {{ days }} day{{ days|pluralize }}
+                                    {% with start=leave.start_date|date:"Y-m-d" end=leave.end_date|date:"Y-m-d" %}
+                                        <span data-start="{{ start }}" data-end="{{ end }}">Calculating...</span>
                                     {% endwith %}
                                 {% else %}
                                     N/A
@@ -150,4 +150,15 @@
     </a>
 </div>
 {% endif %}
+
+<script>
+    // Calculate duration for each leave
+    document.querySelectorAll('[data-start][data-end]').forEach(function(el) {
+        const startDate = new Date(el.getAttribute('data-start'));
+        const endDate = new Date(el.getAttribute('data-end'));
+        const diffTime = Math.abs(endDate - startDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        el.textContent = diffDays + ' day' + (diffDays !== 1 ? 's' : '');
+    });
+</script>
 {% endblock %}

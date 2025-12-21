@@ -121,8 +121,8 @@
                             <div class="date-label">Duration</div>
                             <div class="date-value">
                                 {% if leave.start_date and leave.end_date %}
-                                    {% with days=leave.end_date|add:"-1"|timesince:leave.start_date %}
-                                        {{ days }} day{{ days|pluralize }}
+                                    {% with start=leave.start_date|date:"Y-m-d" end=leave.end_date|date:"Y-m-d" %}
+                                        <span data-start="{{ start }}" data-end="{{ end }}">Calculating...</span>
                                     {% endwith %}
                                 {% else %}
                                     N/A
