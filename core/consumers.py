@@ -37,32 +37,72 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.set_offline()
 
     async def receive(self, text_data):
-        data = json.loads(text_data)
-        message = data['message']
-        recipient_username = data.get('recipient')
-        sender = self.user.username
-        timestamp = timezone.now()
-        # Save message
-        await self.save_message(sender, recipient_username, message, timestamp)
-        # Send to recipient and sender only
-        timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S')
-        for username in set([recipient_username, sender]):
-            await self.channel_layer.group_send(
-                f'user_{username}',
-                {
-                    'type': 'chat_message',
-                    'message': message,
-                    'user': sender,
-                    'timestamp': timestamp_str,
-                }
-            )
+        try:
+            data = json.loads(text_data)
+            message = data.get('message', '').strip()
+            recipient_username = data.get('recipient')
+            
+            if not message:
+                await self.send(text_data=json.dumps({'error': 'Message cannot be empty'}))
+                return
+            
+            if not recipient_username:
+                await self.send(text_data=json.dumps({'error': 'Recipient is required'}))
+                return
+            
+            sender = self.user.username
+            timestamp = timezone.now()
+            
+            # Save message
+            await self.save_message(sender, recipient_username, message, timestamp)
+            
+            # Send to recipient and sender only
+            timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            for username in set([recipient_username, sender]):
+                await self.channel_layer.group_send(
+                    f'user_{username}',
+                    {
+                        'type': 'chat_message',
+                        'message': message,
+                        'user': sender,
+                        'timestamp': timestamp_str,
+                        'recipient': recipient_username,
+                    }
+                )
+        except json.JSONDecodeError:
+            await self.send(text_data=json.dumps({'error': 'Invalid JSON format'}))
+        except Exception as e:
+            print(f"Error in receive: {e}")
+            await self.send(text_data=json.dumps({'error': 'Failed to send message'}))
 
     async def chat_message(self, event):
-        await self.send(text_data=json.dumps({
-            'message': event['message'],
-            'user': event['user'],
-            'timestamp': event['timestamp'],
-        }))
+        # Send message to user if it's relevant to them
+        recipient_username = self.scope['url_route']['kwargs'].get('recipient')
+        sender_username = event['user']
+        event_recipient = event.get('recipient', '')
+        current_user = self.user.username
+        
+        # Send message if:
+        # 1. User is viewing a chat and the message is from/to that recipient
+        # 2. Message is sent by current user (to show their own messages)
+        # 3. Message is sent to current user (to receive messages)
+        should_send = False
+        if recipient_username:
+            # User has a chat open - only show messages for that conversation
+            if (sender_username == recipient_username and event_recipient == current_user) or \
+               (event_recipient == recipient_username and sender_username == current_user):
+                should_send = True
+        else:
+            # No chat open, but still send if message is to/from current user
+            if sender_username == current_user or event_recipient == current_user:
+                should_send = True
+        
+        if should_send:
+            await self.send(text_data=json.dumps({
+                'message': event['message'],
+                'user': event['user'],
+                'timestamp': event['timestamp'],
+            }))
 
     @sync_to_async
     def save_message(self, sender_username, recipient_username, content, timestamp):

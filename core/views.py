@@ -6,13 +6,14 @@ from .models import Employee, Department, Designation, Attendance, AttendanceLog
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.contrib.auth.hashers import make_password
-from core.models import ChatMessage
+from core.models import ChatMessage, Notification
 from django.db.models import Q, Max
 from .models import OnlineUser
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from datetime import datetime
 from django.db.models import Count
+import json
 from .models import PayrollItem, Payslip, Employee
 from .models import TaxSlab, Loan
 from .models import AdvanceRequest
@@ -484,16 +485,15 @@ def logout_view(request):
     return redirect('login')
 
 @login_required
-@login_required
 def chat_user_list(request):
+    """Get list of all users for chat (everyone can see everyone, including admin)"""
     user = request.user
-    if user.is_superuser:
-        users = User.objects.exclude(id=user.id)
-    else:
-        users = User.objects.filter(is_superuser=False).exclude(id=user.id)
+    # Show all users except the current user (including admin)
+    users = User.objects.exclude(id=user.id).order_by('username')
     online_ids = set(OnlineUser.objects.values_list('user_id', flat=True))
     user_data = []
     for u in users:
+        # Get last message between current user and this user
         last_msg = ChatMessage.objects.filter(
             (Q(sender=user, recipient=u) | Q(sender=u, recipient=user))
         ).order_by('-timestamp').first()
@@ -508,6 +508,154 @@ def chat_user_list(request):
             'online': u.id in online_ids,
         })
     return JsonResponse({'users': user_data})
+
+@login_required
+@require_POST
+def send_chat_message(request):
+    """API endpoint to send a chat message"""
+    try:
+        # Try to parse JSON body, fallback to POST data
+        if request.content_type == 'application/json' and request.body:
+            data = json.loads(request.body.decode('utf-8'))
+        else:
+            data = request.POST
+        recipient_username = data.get('recipient')
+        message_content = data.get('message', '').strip()
+        
+        if not recipient_username:
+            return JsonResponse({'error': 'Recipient is required'}, status=400)
+        
+        if not message_content:
+            return JsonResponse({'error': 'Message cannot be empty'}, status=400)
+        
+        try:
+            recipient = User.objects.get(username=recipient_username)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Recipient not found'}, status=404)
+        
+        # Create message
+        message = ChatMessage.objects.create(
+            sender=request.user,
+            recipient=recipient,
+            content=message_content,
+            timestamp=timezone.now()
+        )
+        
+        # Verify message was created
+        if not message.id:
+            return JsonResponse({'error': 'Failed to save message'}, status=500)
+        
+        # Create notification
+        sender_name = request.user.get_full_name() or request.user.username
+        Notification.objects.create(
+            recipient=recipient,
+            sender=request.user,
+            notification_type='message',
+            title=f'New message from {sender_name}',
+            message=message_content[:100] + ('...' if len(message_content) > 100 else ''),
+            link=f'?chat_user={request.user.username}',
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': {
+                'id': message.id,
+                'user': message.sender.username,
+                'message': message.content,
+                'timestamp': message.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def get_chat_messages(request, recipient_username):
+    """API endpoint to get chat messages with a specific user"""
+    try:
+        # Get recipient user (case-insensitive lookup)
+        try:
+            recipient = User.objects.get(username__iexact=recipient_username)
+        except User.DoesNotExist:
+            return JsonResponse({'error': f'Recipient "{recipient_username}" not found'}, status=404)
+        except User.MultipleObjectsReturned:
+            recipient = User.objects.filter(username__iexact=recipient_username).first()
+        
+        # Get all messages between current user and recipient (bidirectional)
+        # This includes:
+        # 1. Messages sent BY current user TO recipient
+        # 2. Messages sent BY recipient TO current user
+        messages = ChatMessage.objects.filter(
+            Q(sender=request.user, recipient=recipient) | Q(sender=recipient, recipient=request.user)
+        ).exclude(recipient__isnull=True).order_by('timestamp')
+        
+        # Debug info
+        total_count = messages.count()
+        
+        messages_data = [
+            {
+                'id': msg.id,
+                'user': msg.sender.username,
+                'message': msg.content,
+                'timestamp': msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            }
+            for msg in messages
+        ]
+        
+        return JsonResponse({
+            'messages': messages_data, 
+            'count': len(messages_data),
+            'success': True
+        })
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'error': str(e), 
+            'success': False
+        }, status=500)
+
+@login_required
+def get_new_messages(request):
+    """API endpoint to get new messages since a given timestamp"""
+    try:
+        last_timestamp = request.GET.get('last_timestamp')
+        recipient_username = request.GET.get('recipient')
+        
+        if not recipient_username:
+            return JsonResponse({'error': 'Recipient is required'}, status=400)
+        
+        recipient = User.objects.get(username=recipient_username)
+        
+        # Get messages sent TO current user FROM recipient (new messages)
+        query = Q(sender=recipient, recipient=request.user)
+        if last_timestamp:
+            try:
+                from datetime import datetime
+                last_dt = datetime.strptime(last_timestamp, '%Y-%m-%d %H:%M:%S')
+                query &= Q(timestamp__gt=last_dt)
+            except:
+                pass
+        
+        messages = ChatMessage.objects.filter(query).order_by('timestamp')
+        
+        messages_data = [
+            {
+                'id': msg.id,
+                'user': msg.sender.username,
+                'message': msg.content,
+                'timestamp': msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            }
+            for msg in messages
+        ]
+        
+        return JsonResponse({
+            'messages': messages_data,
+            'success': True
+        })
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'Recipient not found'}, status=404)
+    except Exception as e:
+        import traceback
+        return JsonResponse({'error': str(e), 'traceback': traceback.format_exc()}, status=500)
 
 @login_required
 def my_tickets(request):
