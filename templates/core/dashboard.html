@@ -4,26 +4,28 @@
 {% block title %}Dashboard - HRM System{% endblock %}
 
 {% block page_title %}
-<div class="d-flex justify-content-between align-items-center">
+<div class="page-title-container d-flex justify-content-between align-items-center">
     <div>
-        <h1 class="h2 mb-1 fw-bold">Dashboard</h1>
-        <p class="text-muted mb-0">
+        <h1 class="h2 mb-1 fw-bold">
+            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+        </h1>
+        <p class="mb-0">
             <i class="fas fa-calendar-alt me-1"></i>
             <span id="current-date"></span> | Welcome back, <strong>{{ user.get_full_name|default:user.username }}</strong>
         </p>
     </div>
     <div>
         <div class="btn-group shadow-sm" role="group">
-            <button type="button" class="btn btn-sm btn-light border" onclick="setTheme('light')" title="Light Theme" id="theme-light">
+            <button type="button" class="btn btn-sm btn-light border theme-btn" onclick="setTheme('light')" title="Light Theme" id="theme-light">
                 <i class="fas fa-sun text-warning"></i>
             </button>
-            <button type="button" class="btn btn-sm btn-light border" onclick="setTheme('dark')" title="Dark Theme" id="theme-dark">
+            <button type="button" class="btn btn-sm btn-light border theme-btn" onclick="setTheme('dark')" title="Dark Theme" id="theme-dark">
                 <i class="fas fa-moon text-primary"></i>
             </button>
-            <button type="button" class="btn btn-sm btn-light border" onclick="setTheme('blue')" title="Blue Theme" id="theme-blue">
+            <button type="button" class="btn btn-sm btn-light border theme-btn" onclick="setTheme('blue')" title="Blue Theme" id="theme-blue">
                 <i class="fas fa-palette text-info"></i>
             </button>
-            <button type="button" class="btn btn-sm btn-light border" onclick="setTheme('green')" title="Green Theme" id="theme-green">
+            <button type="button" class="btn btn-sm btn-light border theme-btn" onclick="setTheme('green')" title="Green Theme" id="theme-green">
                 <i class="fas fa-leaf text-success"></i>
             </button>
         </div>
@@ -48,6 +50,50 @@
         --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
         --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
         --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
+    }
+    
+    /* Page Title Styling */
+    .page-title-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 25px 30px;
+        color: #fff;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .page-title-container::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: pulse 3s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+    
+    .page-title-container > * {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .page-title-container h1 {
+        color: #fff;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    
+    .page-title-container p {
+        color: rgba(255, 255, 255, 0.9);
+        margin: 0;
     }
     
     * {
@@ -92,6 +138,7 @@
         position: relative;
         overflow: hidden;
         border: 1px solid rgba(0,0,0,0.05);
+        backdrop-filter: blur(10px);
     }
     
     .dashboard-card::before {
@@ -116,6 +163,15 @@
         box-shadow: var(--shadow-xl);
     }
     
+    .dashboard-card:hover .mt-3.pt-3.border-top small {
+        color: var(--theme-primary) !important;
+        transform: translateX(5px);
+    }
+    
+    .dashboard-card:hover .mt-3.pt-3.border-top i {
+        transform: translateX(3px);
+    }
+    
     .dashboard-card:active {
         transform: translateY(-4px) scale(1.01);
     }
@@ -137,6 +193,10 @@
     .dashboard-card:hover .stat-icon-wrapper {
         transform: rotate(5deg) scale(1.1);
         box-shadow: 0 12px 24px rgba(102, 126, 234, 0.4);
+    }
+    
+    .dashboard-card:active {
+        transform: translateY(-4px) scale(1.01);
     }
     
     .stat-icon {
@@ -203,6 +263,12 @@
         overflow: hidden;
         background: white;
         border: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+    
+    .chart-card:hover {
+        transform: translateY(-5px);
+        box-shadow: var(--shadow-xl);
     }
     
     body.theme-dark .chart-card {
@@ -285,6 +351,24 @@
         gap: 25px;
     }
     
+    /* Enhanced body background */
+    body {
+        background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+        min-height: 100vh;
+    }
+    
+    body.theme-dark {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+    
+    body.theme-blue {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    }
+    
+    body.theme-green {
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    }
+    
     @keyframes fadeInUp {
         from {
             opacity: 0;
@@ -318,10 +402,22 @@
         }
     }
     
+    .theme-btn {
+        transition: all 0.3s ease;
+        border-radius: 8px !important;
+    }
+    .theme-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
     .theme-btn.active {
         background: var(--theme-primary) !important;
         color: white !important;
         border-color: var(--theme-primary) !important;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    .theme-btn.active i {
+        color: white !important;
     }
 </style>
 
@@ -340,7 +436,7 @@
             </div>
             {% endif %}
             <div class="mt-3 pt-3 border-top">
-                <small class="text-muted d-flex align-items-center">
+                <small class="text-muted d-flex align-items-center" style="cursor: pointer; transition: all 0.3s;">
                     <i class="fas fa-arrow-right me-2"></i>View all employees
                 </small>
             </div>
@@ -641,69 +737,43 @@
 <script src="{% static 'js/dashboard-charts.js' %}"></script>
 <script>
     // Set current date
-    document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    });
-    
-    // Theme Management
-    function setTheme(theme) {
-        document.body.className = document.body.className.replace(/theme-\w+/g, '');
-        if (theme !== 'light') {
-            document.body.classList.add('theme-' + theme);
+    document.addEventListener('DOMContentLoaded', function() {
+        const dateElement = document.getElementById('current-date');
+        if (dateElement) {
+            dateElement.textContent = new Date().toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
         }
-        localStorage.setItem('dashboard-theme', theme);
         
-        // Update active button
-        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
-        const themeBtn = document.getElementById('theme-' + theme);
-        if (themeBtn) {
-            themeBtn.classList.add('active');
+        // Theme Management
+        function setTheme(theme) {
+            document.body.className = document.body.className.replace(/theme-\w+/g, '');
+            if (theme !== 'light') {
+                document.body.classList.add('theme-' + theme);
+            }
+            localStorage.setItem('dashboard-theme', theme);
+            
+            // Update active button
+            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+            const themeBtn = document.getElementById('theme-' + theme);
+            if (themeBtn) {
+                themeBtn.classList.add('active');
+            }
         }
-    }
-    
-    function loadTheme() {
-        const savedTheme = localStorage.getItem('dashboard-theme') || 'light';
-        setTheme(savedTheme);
-    }
-    
-    // Load theme on page load
-    loadTheme();
-</script>
-
-<script>
-    // Set current date
-    document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-    });
-    
-    // Theme Management
-    function setTheme(theme) {
-        document.body.className = document.body.className.replace(/theme-\w+/g, '');
-        if (theme !== 'light') {
-            document.body.classList.add('theme-' + theme);
-        }
-        localStorage.setItem('dashboard-theme', theme);
         
-        // Update active button
-        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
-        const themeBtn = document.getElementById('theme-' + theme);
-        if (themeBtn) {
-            themeBtn.classList.add('active');
+        function loadTheme() {
+            const savedTheme = localStorage.getItem('dashboard-theme') || 'light';
+            setTheme(savedTheme);
         }
-    }
-    
-    function loadTheme() {
-        const savedTheme = localStorage.getItem('dashboard-theme') || 'light';
-        setTheme(savedTheme);
-    }
-    
-    // Load theme on page load
-    loadTheme();
+        
+        // Make setTheme globally available
+        window.setTheme = setTheme;
+        
+        // Load theme on page load
+        loadTheme();
+    });
 </script>
 {% endblock %}

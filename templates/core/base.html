@@ -27,6 +27,18 @@
             border-radius: 15px;
             box-shadow: 0 0 20px rgba(0,0,0,0.08);
         }
+        /* Equal height cards in row/column layouts */
+        .row.g-3 > [class*="col-"],
+        .row.g-4 > [class*="col-"] {
+            display: flex;
+        }
+        .row.g-3 > [class*="col-"] > *,
+        .row.g-4 > [class*="col-"] > * {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+        }
         .btn-primary {
             background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
             border: none;
@@ -160,11 +172,14 @@
                         {% endif %}
                     </div>
                     <ul class="nav flex-column">
+                        <!-- Dashboard -->
                         <li class="nav-item">
                             <a class="nav-link text-white" href="{% url user.is_superuser|yesno:'dashboard,employee_dashboard' %}">
                                 <i class="fas fa-tachometer-alt me-2"></i>Dashboard
                             </a>
                         </li>
+                        
+                        <!-- Toggle Buttons (Collapsible Menus) -->
                         {% if user.is_superuser %}
                         <li class="nav-item">
                             <a class="nav-link text-white" data-bs-toggle="collapse" href="#ticketsMenuAdmin" role="button" aria-expanded="false" aria-controls="ticketsMenuAdmin">
@@ -180,6 +195,7 @@
                             </div>
                         </li>
                         {% endif %}
+                        
                         <li class="nav-item">
                             <a class="nav-link text-white" data-bs-toggle="collapse" href="#employeeMenu" role="button" aria-expanded="false" aria-controls="employeeMenu">
                                 <i class="fas fa-users me-2"></i>Employees
@@ -199,43 +215,7 @@
                                 </ul>
                             </div>
                         </li>
-                        <!-- Client Button Start -->
-                        {% if user.is_superuser %}
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="{% url 'client_list' %}">
-                                <i class="fas fa-user-tie me-2"></i>Clients
-                            </a>
-                        </li>
-                        {% endif %}
-                        {% if user.is_superuser %}
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="{% url 'admin_user_list' %}">
-                                <i class="fas fa-user-cog me-2"></i>Users
-                            </a>
-                        </li>
-                        {% endif %}
-                        {% if user.is_superuser %}
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="{% url 'permissions_management' %}">
-                                <i class="fas fa-lock me-2"></i>Permissions
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="{% url 'manage_advances' %}">
-                                <i class="fas fa-clipboard-check me-2"></i>Advance Approvals
-                            </a>
-                        </li>
-                        {% endif %}
-                        {% if user.is_superuser %}
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="{% url 'settings_main' %}">
-                                <i class="fas fa-cog me-2"></i>Settings
-                            </a>
-                        </li>
-                        {% endif %}
-                        {% if user.is_superuser %}
-                        <!-- Permissions and Roles & Permissions links removed -->
-                        {% endif %}
+                        
                         <li class="nav-item">
                             <a class="nav-link text-white" data-bs-toggle="collapse" href="#projectsMenu" role="button" aria-expanded="false" aria-controls="projectsMenu">
                                 <i class="fas fa-project-diagram me-2"></i>Projects
@@ -254,6 +234,7 @@
                                 </ul>
                             </div>
                         </li>
+                        
                         {% if user.is_superuser %}
                         <li class="nav-item">
                             <a class="nav-link text-white" data-bs-toggle="collapse" href="#accountingMenu" role="button" aria-expanded="false" aria-controls="accountingMenu">
@@ -270,14 +251,7 @@
                             </div>
                         </li>
                         {% endif %}
-                        {% if user.is_superuser %}
-                        <li class="nav-item">
-                            <a class="nav-link text-white" href="{% url 'asset_list' %}">
-                                <i class="fas fa-boxes me-2"></i>Assets
-                            </a>
-                        </li>
-                        {% endif %}
-                        <!-- Client Button End -->
+                        
                         {% if user.is_superuser %}
                         <li class="nav-item">
                             <a class="nav-link text-white" data-bs-toggle="collapse" href="#payrollMenu" role="button" aria-expanded="false" aria-controls="payrollMenu">
@@ -300,6 +274,7 @@
                             </a>
                         </li>
                         {% endif %}
+                        
                         {% if not user.is_superuser %}
                         <li class="nav-item">
                             <a class="nav-link text-white" data-bs-toggle="collapse" href="#ticketsMenu" role="button" aria-expanded="false" aria-controls="ticketsMenu">
@@ -314,6 +289,56 @@
                             </div>
                         </li>
                         {% endif %}
+                        
+                        <li class="nav-item">
+                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#salesMenu" role="button" aria-expanded="false" aria-controls="salesMenu">
+                                <i class="fas fa-clone me-2"></i>Sales
+                                <i class="fas fa-chevron-down ms-auto float-end mt-1"></i>
+                            </a>
+                            <div class="collapse" id="salesMenu">
+                                <ul class="nav flex-column ms-3">
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'taxes' %}">Taxes</a></li>
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'expenses' %}">Expenses</a></li>
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'estimates' %}">Estimates</a></li>
+                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'invoices' %}">Invoices</a></li>
+                                </ul>
+                            </div>
+                        </li>
+                        
+                        <!-- Regular Links (Non-toggle) -->
+                        {% if user.is_superuser %}
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{% url 'client_list' %}">
+                                <i class="fas fa-user-tie me-2"></i>Clients
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{% url 'admin_user_list' %}">
+                                <i class="fas fa-user-cog me-2"></i>Users
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{% url 'permissions_management' %}">
+                                <i class="fas fa-lock me-2"></i>Permissions
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{% url 'manage_advances' %}">
+                                <i class="fas fa-clipboard-check me-2"></i>Advance Approvals
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{% url 'settings_main' %}">
+                                <i class="fas fa-cog me-2"></i>Settings
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{% url 'asset_list' %}">
+                                <i class="fas fa-boxes me-2"></i>Assets
+                            </a>
+                        </li>
+                        {% endif %}
+                        
                         {% if not user.is_superuser and user.employee and user.employee.designation.name != 'Project Manager' %}
                         <li class="nav-item">
                             <a class="nav-link text-white" href="{% url 'my_tasks' %}">
@@ -326,28 +351,18 @@
                             </a>
                         </li>
                         {% endif %}
+                        
                         <li class="nav-item">
                             <button id="chat-toggle" class="nav-link btn btn-link text-white" style="text-align:left;width:100%;">
                                 <i class="fas fa-comments me-2"></i>Chat
                             </button>
                         </li>
+                        
+                        <!-- Logout at the end -->
                         <li class="nav-item">
                             <a class="nav-link text-white" href="{% url 'logout' %}">
                                 <i class="fas fa-sign-out-alt me-2"></i>Logout
                             </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#salesMenu" role="button" aria-expanded="false" aria-controls="salesMenu">
-                                <i class="fas fa-clone me-2"></i>Sales
-                            </a>
-                            <div class="collapse" id="salesMenu">
-                                <ul class="nav flex-column ms-3">
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'taxes' %}">Taxes</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'expenses' %}">Expenses</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'estimates' %}">Estimates</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'invoices' %}">Invoices</a></li>
-                                </ul>
-                            </div>
                         </li>
                     </ul>
                 </div>

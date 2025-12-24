@@ -16,13 +16,16 @@
         <a href="{% url 'add_employee' %}" class="btn btn-primary">
             <i class="fas fa-plus me-2"></i>Add New Employee
         </a>
-    </div>
-    {% endif %}
+            </div>
+        {% endif %}
 </div>
 {% endblock %}
 
 {% block content %}
 <style>
+    .row.g-4 > [class*="col-"] {
+        display: flex;
+    }
     .employee-card {
         border: none;
         border-radius: 15px;
@@ -30,30 +33,36 @@
         transition: all 0.3s ease;
         overflow: hidden;
         background: white;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
     }
     .employee-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 8px 25px rgba(14, 116, 144, 0.2);
     }
     .employee-avatar {
-        width: 80px;
-        height: 80px;
+        width: 60px;
+        height: 60px;
         border-radius: 50%;
         background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
-        font-size: 2rem;
+        font-size: 1.5rem;
         font-weight: 700;
         margin: 0 auto;
         box-shadow: 0 4px 15px rgba(14, 116, 144, 0.3);
     }
     .employee-info {
-        padding: 1.5rem;
+        padding: 1rem;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
     }
     .employee-name {
-        font-size: 1.2rem;
+        font-size: 1rem;
         font-weight: 700;
         color: #2d3748;
         margin-bottom: 0.5rem;
@@ -80,7 +89,7 @@
         color: white;
     }
     .employee-actions {
-        padding: 1rem;
+        padding: 0.75rem;
         background: #f8f9fa;
         border-top: 1px solid #e9ecef;
         display: flex;
@@ -156,17 +165,17 @@
             <div class="stats-label">
                 <i class="fas fa-id-badge me-2"></i>Designations
             </div>
-        </div>
     </div>
+</div>
     <div class="col-md-3">
         <div class="stats-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
             <div class="stats-number">{{ employees|length|add:"0" }}</div>
             <div class="stats-label">
                 <i class="fas fa-user-check me-2"></i>Active
             </div>
-        </div>
-    </div>
-</div>
+                    </div>
+                    </div>
+                    </div>
 
 <!-- Search and Filter Bar -->
 <div class="search-filter-bar">
@@ -177,29 +186,29 @@
             </label>
             <input type="text" id="searchInput" class="form-control" placeholder="Search by name, email, department, or designation..." 
                    style="border-radius: 10px; border: 2px solid #e9ecef; padding: 0.75rem;">
-        </div>
+                    </div>
         <div class="col-md-3">
             <label class="form-label fw-bold">
                 <i class="fas fa-filter me-2"></i>Filter by Department
             </label>
             <select id="deptFilter" class="form-select" style="border-radius: 10px; border: 2px solid #e9ecef;">
                 <option value="">All Departments</option>
-                {% for dept in departments %}
+                            {% for dept in departments %}
                 <option value="{{ dept.name }}">{{ dept.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
+                            {% endfor %}
+                        </select>
+                    </div>
         <div class="col-md-3">
             <label class="form-label fw-bold">
                 <i class="fas fa-filter me-2"></i>Filter by Designation
             </label>
             <select id="desigFilter" class="form-select" style="border-radius: 10px; border: 2px solid #e9ecef;">
                 <option value="">All Designations</option>
-                {% for desig in designations %}
+                            {% for desig in designations %}
                 <option value="{{ desig.name }}">{{ desig.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
+                            {% endfor %}
+                        </select>
+                    </div>
     </div>
 </div>
 {% endif %}
@@ -208,7 +217,7 @@
 {% if employees %}
 <div class="row g-4" id="employeeGrid">
     {% for employee in employees %}
-    <div class="col-lg-4 col-md-6 employee-item" 
+    <div class="col-lg-3 col-md-4 employee-item" 
          data-name="{{ employee.user.get_full_name|default:employee.user.username|lower }}"
          data-email="{{ employee.user.email|lower }}"
          data-dept="{{ employee.department.name|default:''|lower }}"
@@ -218,7 +227,7 @@
                 <div class="employee-avatar mb-3">
                     {{ employee.user.first_name|first|default:employee.user.username|first|upper }}{{ employee.user.last_name|first|upper|default:'' }}
                 </div>
-                <div class="text-center">
+                <div class="text-center d-flex flex-column" style="flex-grow: 1;">
                     <div class="employee-name">
                         {{ employee.user.get_full_name|default:employee.user.username }}
                     </div>
@@ -230,7 +239,7 @@
                         <i class="fas fa-phone me-1"></i>{{ employee.phone }}
                     </div>
                     {% endif %}
-                    <div class="mt-3">
+                    <div class="mt-3 mt-auto">
                         {% if employee.department %}
                         {% if user.is_superuser %}
                         <a href="{% url 'department_employees' employee.department.id %}" class="text-decoration-none">
@@ -258,21 +267,22 @@
                         {% endif %}
                         {% endif %}
                     </div>
-                </div>
+                    </div>
             </div>
             <div class="employee-actions">
-                <a href="{% url 'view_employee_profile' employee.id %}" class="btn btn-sm btn-info action-btn" title="View Employee Details">
-                    <i class="fas fa-eye me-1"></i>View Details
+                <a href="{% url 'view_employee_profile' employee.id %}" class="btn btn-sm btn-info action-btn" title="View Employee Details" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
+                    <i class="fas fa-eye me-1"></i>View
                 </a>
                 {% if user.is_superuser %}
-                <a href="{% url 'edit_employee' employee.id %}" class="btn btn-sm btn-warning action-btn" title="Edit Employee">
+                <a href="{% url 'edit_employee' employee.id %}" class="btn btn-sm btn-warning action-btn" title="Edit Employee" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">
                     <i class="fas fa-edit me-1"></i>Edit
                 </a>
                 <a href="{% url 'delete_employee' employee.id %}" 
                    class="btn btn-sm btn-danger action-btn" 
                    title="Delete Employee"
+                   style="font-size: 0.75rem; padding: 0.25rem 0.5rem;"
                    onclick="return confirm('Are you sure you want to delete {{ employee.user.get_full_name|default:employee.user.username }}? This will also delete their user account.');">
-                    <i class="fas fa-trash me-1"></i>Delete
+                    <i class="fas fa-trash me-1"></i>Del
                 </a>
                 {% endif %}
             </div>
@@ -338,4 +348,4 @@
     }
 </script>
 {% endif %}
-{% endblock %}
+{% endblock %} 
