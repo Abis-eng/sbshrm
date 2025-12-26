@@ -69,4 +69,12 @@ urlpatterns = [
     path('payroll/loans/', views.loans, name='loans'),
     path('my-advances/', views.my_advances, name='my_advances'),
     path('manage-advances/', views.manage_advances, name='manage_advances'),
+    # Notice Board
+    path('notices/', views.notice_list, name='notice_list'),
+    path('notices/add/', views.notice_add, name='notice_add'),
+    path('notices/<int:notice_id>/edit/', views.notice_edit, name='notice_edit'),
+    path('notices/<int:notice_id>/delete/', views.notice_delete, name='notice_delete'),
+    # Dashboard Layout
+    path('dashboard/save-layout/', views.save_dashboard_layout, name='save_dashboard_layout'),
+    path('dashboard/get-layout/', views.get_dashboard_layout, name='get_dashboard_layout'),
 ] 

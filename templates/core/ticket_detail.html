@@ -216,6 +216,143 @@
         </div>
     </div>
     
+    <!-- Progress Section (Only shown when ticket is related to a task) -->
+    {% if ticket.related_task %}
+    <div class="col-12 mb-4">
+        <div class="card" style="border: none; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+            <div class="card-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border-radius: 15px 15px 0 0;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>Task Progress
+                        <small class="ms-2 opacity-75">(Linked to: {{ ticket.related_task.title }})</small>
+                    </h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-light text-dark">{{ ticket.progress_percentage }}%</span>
+                        {% if ticket.progress_locked %}
+                        <span class="badge bg-warning text-dark">
+                            <i class="fas fa-lock me-1"></i>Locked
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if ticket.progress_locked %}
+                <div class="alert alert-warning d-flex align-items-center mb-3">
+                    <i class="fas fa-lock fa-2x me-3"></i>
+                    <div class="flex-grow-1">
+                        <strong>Progress Locked</strong>
+                        <p class="mb-0">Progress is locked at 100% and cannot be changed by employees.</p>
+                        {% if request.user.is_superuser %}
+                        <form method="post" class="mt-2">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="unlock_progress">
+                            <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('Are you sure you want to unlock the progress? Employee will be able to modify it again.');">
+                                <i class="fas fa-unlock me-1"></i>Unlock Progress
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">Work Progress</span>
+                        <span class="text-muted">
+                            {{ ticket.progress_percentage }}% Complete
+                            {% if ticket.progress_locked %}
+                            <i class="fas fa-lock ms-1 text-warning" title="Locked"></i>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="progress" style="height: 30px; border-radius: 15px; overflow: hidden;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated 
+                                    {% if ticket.progress_percentage < 25 %}bg-danger
+                                    {% elif ticket.progress_percentage < 50 %}bg-warning
+                                    {% elif ticket.progress_percentage < 75 %}bg-info
+                                    {% else %}bg-success{% endif %}" 
+                             role="progressbar" 
+                             style="width: {{ ticket.progress_percentage }}%;" 
+                             aria-valuenow="{{ ticket.progress_percentage }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            {{ ticket.progress_percentage }}%
+                        </div>
+                    </div>
+                </div>
+                
+                {% if can_update_progress %}
+                <form method="post" class="mt-3" id="progressForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_progress">
+                    <input type="hidden" name="lock_progress" id="lock_progress" value="false">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label for="progress_percentage" class="form-label fw-bold">
+                                <i class="fas fa-sliders-h me-2"></i>Update Progress
+                            </label>
+                            <input type="range" 
+                                   class="form-range" 
+                                   id="progress_percentage" 
+                                   name="progress_percentage" 
+                                   min="0" 
+                                   max="100" 
+                                   value="{{ ticket.progress_percentage }}" 
+                                   oninput="updateProgressDisplay(this.value)">
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">0%</small>
+                                <small class="text-muted">50%</small>
+                                <small class="text-muted">100%</small>
+                            </div>
+                            <div id="lockWarning" class="alert alert-info mt-2" style="display: none;">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Reaching 100%!</strong> You can lock the progress to prevent further changes.
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="h4 mb-0" id="progressValue" style="color: #10b981; font-weight: bold;">
+                                    {{ ticket.progress_percentage }}%
+                                </div>
+                                <small class="text-muted">Current Progress</small>
+                            </div>
+                        </div>
+                        <div class="col-md-1">
+                            <button type="submit" class="btn btn-success w-100" id="submitProgress">
+                                <i class="fas fa-save"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="lockCheckboxContainer" class="mt-2" style="display: none;">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="lockCheckbox" name="lock_checkbox">
+                            <label class="form-check-label" for="lockCheckbox">
+                                <i class="fas fa-lock me-1"></i>Lock progress at 100% (prevent further changes)
+                            </label>
+                        </div>
+                    </div>
+                </form>
+                {% elif ticket.progress_locked and not request.user.is_superuser %}
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Progress is locked at 100% and cannot be modified. Contact admin if you need to make changes.
+                </div>
+                {% endif %}
+                
+                <div class="mt-3 p-3 bg-light rounded">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>Task Details:</strong> {{ ticket.related_task.title }} 
+                        (Project: {{ ticket.related_task.project.name }}, 
+                        Status: {{ ticket.related_task.get_status_display }})
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
     <!-- Admin Actions -->
     {% if request.user.is_superuser %}
     <div class="col-12 mb-4">
@@ -229,11 +366,11 @@
                 </div>
             </div>
             <div class="card-body">
-                <form method="post" class="row g-3">
+                <form method="post" id="adminTicketForm" class="row g-3">
                     {% csrf_token %}
                     <div class="col-md-3">
                         <label class="form-label fw-bold">Status</label>
-                        <select name="status" class="form-select" onchange="this.form.submit()" style="border-radius: 10px;">
+                        <select name="status" id="statusSelect" class="form-select" style="border-radius: 10px;">
                             <option value="new" {% if ticket.status == 'new' %}selected{% endif %}>New</option>
                             <option value="open" {% if ticket.status == 'open' %}selected{% endif %}>Open</option>
                             <option value="reopen" {% if ticket.status == 'reopen' %}selected{% endif %}>Reopen</option>
@@ -243,20 +380,18 @@
                             <option value="cancelled" {% if ticket.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
                             <option value="completed" {% if ticket.status == 'completed' %}selected{% endif %}>Completed</option>
                         </select>
-                        <input type="hidden" name="action" value="update_status">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-bold">Priority</label>
-                        <select name="priority" class="form-select" onchange="this.form.submit()" style="border-radius: 10px;">
+                        <select name="priority" id="prioritySelect" class="form-select" style="border-radius: 10px;">
                             <option value="low" {% if ticket.priority == 'low' %}selected{% endif %}>Low</option>
                             <option value="medium" {% if ticket.priority == 'medium' %}selected{% endif %}>Medium</option>
                             <option value="high" {% if ticket.priority == 'high' %}selected{% endif %}>High</option>
                         </select>
-                        <input type="hidden" name="action" value="update_priority">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Assign To</label>
-                        <select name="assigned_to" class="form-select" onchange="this.form.submit()" style="border-radius: 10px;">
+                        <select name="assigned_to" id="assignedToSelect" class="form-select" style="border-radius: 10px;">
                             <option value="">Unassigned</option>
                             {% for employee in employees %}
                             <option value="{{ employee.id }}" {% if ticket.assigned_to == employee %}selected{% endif %}>
@@ -264,7 +399,6 @@
                             </option>
                             {% endfor %}
                         </select>
-                        <input type="hidden" name="action" value="assign">
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
                         <a href="{% url 'delete_ticket' ticket.id %}" class="btn btn-danger w-100" 
@@ -272,6 +406,7 @@
                             <i class="fas fa-trash me-1"></i>Delete
                         </a>
                     </div>
+                    <input type="hidden" name="action" id="formAction" value="">
                 </form>
             </div>
         </div>
@@ -402,6 +537,82 @@
             clearInterval(refreshInterval);
         }
     });
+    
+    // Admin ticket management form handlers
+    const adminTicketForm = document.getElementById('adminTicketForm');
+    const statusSelect = document.getElementById('statusSelect');
+    const prioritySelect = document.getElementById('prioritySelect');
+    const assignedToSelect = document.getElementById('assignedToSelect');
+    const formAction = document.getElementById('formAction');
+    
+    if (statusSelect) {
+        statusSelect.addEventListener('change', function() {
+            formAction.value = 'update_status';
+            adminTicketForm.submit();
+        });
+    }
+    
+    if (prioritySelect) {
+        prioritySelect.addEventListener('change', function() {
+            formAction.value = 'update_priority';
+            adminTicketForm.submit();
+        });
+    }
+    
+    if (assignedToSelect) {
+        assignedToSelect.addEventListener('change', function() {
+            formAction.value = 'assign';
+            adminTicketForm.submit();
+        });
+    }
+    
+    // Progress update with lock confirmation
+    function updateProgressDisplay(value) {
+        const progressValue = document.getElementById('progressValue');
+        const lockWarning = document.getElementById('lockWarning');
+        const lockCheckboxContainer = document.getElementById('lockCheckboxContainer');
+        const lockCheckbox = document.getElementById('lockCheckbox');
+        const lockProgressInput = document.getElementById('lock_progress');
+        
+        if (progressValue) {
+            progressValue.textContent = value + '%';
+        }
+        
+        if (value == 100) {
+            if (lockWarning) lockWarning.style.display = 'block';
+            if (lockCheckboxContainer) lockCheckboxContainer.style.display = 'block';
+        } else {
+            if (lockWarning) lockWarning.style.display = 'none';
+            if (lockCheckboxContainer) lockCheckboxContainer.style.display = 'none';
+            if (lockCheckbox) lockCheckbox.checked = false;
+            if (lockProgressInput) lockProgressInput.value = 'false';
+        }
+    }
+    
+    // Handle form submission with lock confirmation
+    const progressForm = document.getElementById('progressForm');
+    if (progressForm) {
+        progressForm.addEventListener('submit', function(e) {
+            const progressInput = document.getElementById('progress_percentage');
+            const lockCheckbox = document.getElementById('lockCheckbox');
+            const lockProgressInput = document.getElementById('lock_progress');
+            
+            if (progressInput && progressInput.value == 100) {
+                if (lockCheckbox && lockCheckbox.checked) {
+                    if (!confirm('Are you sure you want to lock the progress at 100%? You will not be able to change it afterwards. Only admin can unlock it.')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                    if (lockProgressInput) lockProgressInput.value = 'true';
+                } else {
+                    if (lockProgressInput) lockProgressInput.value = 'false';
+                }
+            } else {
+                // If not 100%, ensure lock is false
+                if (lockProgressInput) lockProgressInput.value = 'false';
+            }
+        });
+    }
 </script>
 
 <!-- Attachments Section -->

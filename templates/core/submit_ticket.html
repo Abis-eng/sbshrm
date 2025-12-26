@@ -122,6 +122,23 @@
                         <small class="text-muted">Select who should receive this ticket</small>
                     </div>
                     
+                    {% if request.user.is_superuser %}
+                    <div class="mb-4">
+                        <label for="related_task" class="form-label">
+                            <i class="fas fa-tasks me-2"></i>Link to Task (Optional)
+                        </label>
+                        <select class="form-select" id="related_task" name="related_task">
+                            <option value="">No task linked</option>
+                            {% for task in tasks %}
+                            <option value="{{ task.id }}" {% if request.POST.related_task == task.id|stringformat:"s" %}selected{% endif %}>
+                                {{ task.title }} - {{ task.project.name }} (Assigned to: {{ task.assigned_to.user.get_full_name|default:task.assigned_to.user.username }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Link this ticket to a task. Employee will be able to update progress if linked.</small>
+                    </div>
+                    {% endif %}
+                    
                     <div class="mb-4">
                         <label for="priority" class="form-label">
                             <i class="fas fa-flag me-2"></i>Priority <span class="text-danger">*</span>

@@ -476,3 +476,14 @@ class AdvanceReviewForm(forms.ModelForm):
         widgets = {
             'admin_comment': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+
+class NoticeForm(forms.ModelForm):
+    class Meta:
+        model = Notice
+        fields = ['title', 'content', 'attachment', 'is_active']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter notice title'}),
+            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': 'Enter notice content (optional if file is attached)'}),
+            'attachment': forms.FileInput(attrs={'class': 'form-control', 'accept': '.pdf,.doc,.docx,.txt,.jpg,.jpeg,.png'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }

@@ -15,12 +15,162 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <style>
+        /* Global Font Sizes */
+        body {
+            font-size: 12px;
+        }
+        h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .nav-link, .sidebar .nav-link {
+            font-size: 12px;
+        }
+        .card-title, .card-header h5, .card-header h4 {
+            font-size: 14px;
+        }
+        .page-title, .page-title h1, .page-title h2, .page-title h3 {
+            font-size: 14px;
+        }
+        
         .sidebar {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+            background: linear-gradient(135deg, rgba(14, 116, 144, 0.85) 0%, rgba(8, 145, 178, 0.85) 100%);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            transition: all 0.3s ease;
+        }
+        
+        /* Sidebar Menu Styles */
+        .submenu-sidebar {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 300px;
+            height: 100vh;
+            background: linear-gradient(135deg, rgba(14, 116, 144, 0.85) 0%, rgba(8, 145, 178, 0.85) 100%);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            z-index: 1040;
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+            box-shadow: 5px 0 20px rgba(0,0,0,0.3);
+            overflow-y: auto;
+            opacity: 0;
+        }
+        
+        .submenu-sidebar.show {
+            opacity: 1;
+        }
+        
+        /* Position will be set dynamically via JavaScript based on main sidebar width */
+        
+        .submenu-sidebar-header {
+            padding: 20px;
+            background: rgba(0,0,0,0.15);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .submenu-sidebar-header h5 {
+            color: #fff;
+            margin: 0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .submenu-sidebar-close {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+        
+        .submenu-sidebar-close:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .submenu-sidebar-content {
+            padding: 15px 0;
+        }
+        
+        .submenu-sidebar-content .nav-link {
+            padding: 12px 20px;
+            color: #fff;
+            font-size: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+        }
+        
+        .submenu-sidebar-content .nav-link:hover {
+            background: rgba(255,255,255,0.1);
+            padding-left: 25px;
+        }
+        
+        .submenu-sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.3);
+            z-index: 1039;
+            display: none;
+            transition: opacity 0.3s;
+        }
+        
+        .submenu-sidebar-overlay.show {
+            display: block;
+        }
+        
+        /* Ensure main content doesn't overlap */
+        .main-content {
+            transition: margin-left 0.3s ease;
+        }
+        
+        .submenu-sidebar.show ~ .main-content {
+            margin-left: 300px;
+        }
+        
+        @media (max-width: 767px) {
+            .submenu-sidebar.show ~ .main-content {
+                margin-left: 0;
+            }
+        }
+        
+        .nav-link[data-toggle-sidebar] {
+            cursor: pointer;
+        }
+        
+        .nav-link[data-toggle-sidebar] .fa-chevron-down {
+            transition: transform 0.3s;
+        }
+        
+        .nav-link[data-toggle-sidebar].active .fa-chevron-down {
+            transform: rotate(-90deg);
         }
         .main-content {
             background-color: #f1f5f9;
+        }
+        
+        /* Override cursor for drag operations - keep default cursor */
+        .sortable-drag,
+        .sortable-drag *,
+        .sortable-ghost,
+        .sortable-ghost *,
+        body.sortable-dragging,
+        body.sortable-dragging * {
+            cursor: default !important;
         }
         .card {
             border: none;
@@ -179,93 +329,45 @@
                             </a>
                         </li>
                         
-                        <!-- Toggle Buttons (Collapsible Menus) -->
+                        <!-- Toggle Buttons (Sidebar Menus) -->
                         {% if user.is_superuser %}
                         <li class="nav-item">
-                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#ticketsMenuAdmin" role="button" aria-expanded="false" aria-controls="ticketsMenuAdmin">
+                            <a class="nav-link text-white" data-toggle-sidebar="ticketsMenuAdmin" role="button">
                                 <i class="fas fa-ticket-alt me-2"></i>Tickets
-                                <i class="fas fa-chevron-down ms-auto float-end mt-1"></i>
+                                <i class="fas fa-chevron-right ms-auto float-end mt-1"></i>
                             </a>
-                            <div class="collapse" id="ticketsMenuAdmin">
-                                <ul class="nav flex-column ms-3">
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'submit_ticket' %}"><i class="fas fa-plus me-2"></i>Send Ticket</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'all_tickets' %}"><i class="fas fa-list me-2"></i>All Tickets</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'my_tickets' %}?filter=received"><i class="fas fa-inbox me-2"></i>Received Tickets</a></li>
-                                </ul>
-                            </div>
                         </li>
                         {% endif %}
                         
                         <li class="nav-item">
-                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#employeeMenu" role="button" aria-expanded="false" aria-controls="employeeMenu">
+                            <a class="nav-link text-white" data-toggle-sidebar="employeeMenu" role="button">
                                 <i class="fas fa-users me-2"></i>Employees
-                                <i class="fas fa-chevron-down ms-auto float-end mt-1 employee-chevron"></i>
+                                <i class="fas fa-chevron-right ms-auto float-end mt-1"></i>
                             </a>
-                            <div class="collapse" id="employeeMenu">
-                                <ul class="nav flex-column ms-3">
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'employee_list' %}"><i class="fas fa-user me-2"></i>Employees</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'all_attendance' %}{% else %}{% url 'my_attendance' %}{% endif %}"><i class="fas fa-calendar-check me-2"></i>Attendance</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_departments' %}{% else %}{% url 'my_department' %}{% endif %}"><i class="fas fa-building me-2"></i>Departments</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_designations' %}{% else %}{% url 'my_designation' %}{% endif %}"><i class="fas fa-id-badge me-2"></i>Designations</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_holidays' %}{% else %}{% url 'holidays' %}{% endif %}"><i class="fas fa-umbrella-beach me-2"></i>Holidays</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_leaves' %}{% else %}{% url 'my_leaves' %}{% endif %}"><i class="fas fa-plane-departure me-2"></i>Leaves</a></li>
-                                    {% if not user.is_superuser %}
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'my_advances' %}"><i class="fas fa-money-bill-wave me-2"></i>Request Advance</a></li>
-                                    {% endif %}
-                                </ul>
-                            </div>
                         </li>
                         
                         <li class="nav-item">
-                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#projectsMenu" role="button" aria-expanded="false" aria-controls="projectsMenu">
+                            <a class="nav-link text-white" data-toggle-sidebar="projectsMenu" role="button">
                                 <i class="fas fa-project-diagram me-2"></i>Projects
-                                <i class="fas fa-chevron-down ms-auto float-end mt-1"></i>
+                                <i class="fas fa-chevron-right ms-auto float-end mt-1"></i>
                             </a>
-                            <div class="collapse" id="projectsMenu">
-                                <ul class="nav flex-column ms-3">
-                                    {% if user.is_superuser %}
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'project_list' %}"><i class="fas fa-list me-2"></i>Project List</a></li>
-                                    {% endif %}
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'my_tasks' %}"><i class="fas fa-tasks me-2"></i>My Tasks</a></li>
-                                    {% if user.is_superuser %}
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'select_project_for_task' %}"><i class="fas fa-user-plus me-2"></i>Assign Task</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'select_project_for_view_tasks' %}"><i class="fas fa-eye me-2"></i>View All Tasks</a></li>
-                                    {% endif %}
-                                </ul>
-                            </div>
                         </li>
                         
                         {% if user.is_superuser %}
                         <li class="nav-item">
-                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#accountingMenu" role="button" aria-expanded="false" aria-controls="accountingMenu">
+                            <a class="nav-link text-white" data-toggle-sidebar="accountingMenu" role="button">
                                 <i class="fas fa-file-invoice-dollar me-2"></i>Accounting
-                                <i class="fas fa-chevron-down ms-auto float-end mt-1 accounting-chevron"></i>
+                                <i class="fas fa-chevron-right ms-auto float-end mt-1"></i>
                             </a>
-                            <div class="collapse" id="accountingMenu">
-                                <ul class="nav flex-column ms-3">
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'budget_category_list' %}"><i class="fas fa-tags me-2"></i>Categories</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'budget_list' %}"><i class="fas fa-wallet me-2"></i>Budgets</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'budget_expense_list' %}"><i class="fas fa-arrow-down me-2"></i>Budget Expenses</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'budget_revenue_list' %}"><i class="fas fa-arrow-up me-2"></i>Budget Revenue</a></li>
-                                </ul>
-                            </div>
                         </li>
                         {% endif %}
                         
                         {% if user.is_superuser %}
                         <li class="nav-item">
-                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#payrollMenu" role="button" aria-expanded="false" aria-controls="payrollMenu">
+                            <a class="nav-link text-white" data-toggle-sidebar="payrollMenu" role="button">
                                 <i class="fas fa-money-check-alt me-2"></i>Payroll
-                                <i class="fas fa-chevron-down ms-auto float-end mt-1 payroll-chevron"></i>
+                                <i class="fas fa-chevron-right ms-auto float-end mt-1"></i>
                             </a>
-                            <div class="collapse" id="payrollMenu">
-                                <ul class="nav flex-column ms-3">
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'payroll_items' %}"><i class="fas fa-list me-2"></i>Payroll Items</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'admin_payslips' %}"><i class="fas fa-receipt me-2"></i>Payslips</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'tax_slabs' %}"><i class="fas fa-percent me-2"></i>Tax Slabs</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'loans' %}"><i class="fas fa-hand-holding-usd me-2"></i>Loans</a></li>
-                                </ul>
-                            </div>
                         </li>
                         {% else %}
                         <li class="nav-item">
@@ -277,36 +379,27 @@
                         
                         {% if not user.is_superuser %}
                         <li class="nav-item">
-                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#ticketsMenu" role="button" aria-expanded="false" aria-controls="ticketsMenu">
+                            <a class="nav-link text-white" data-toggle-sidebar="ticketsMenu" role="button">
                                 <i class="fas fa-ticket-alt me-2"></i>Tickets
-                                <i class="fas fa-chevron-down ms-auto float-end mt-1"></i>
+                                <i class="fas fa-chevron-right ms-auto float-end mt-1"></i>
                             </a>
-                            <div class="collapse" id="ticketsMenu">
-                                <ul class="nav flex-column ms-3">
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'submit_ticket' %}"><i class="fas fa-plus me-2"></i>Send Ticket</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'my_tickets' %}?filter=received"><i class="fas fa-inbox me-2"></i>Received Tickets</a></li>
-                                </ul>
-                            </div>
                         </li>
                         {% endif %}
                         
                         <li class="nav-item">
-                            <a class="nav-link text-white" data-bs-toggle="collapse" href="#salesMenu" role="button" aria-expanded="false" aria-controls="salesMenu">
+                            <a class="nav-link text-white" data-toggle-sidebar="salesMenu" role="button">
                                 <i class="fas fa-clone me-2"></i>Sales
-                                <i class="fas fa-chevron-down ms-auto float-end mt-1"></i>
+                                <i class="fas fa-chevron-right ms-auto float-end mt-1"></i>
                             </a>
-                            <div class="collapse" id="salesMenu">
-                                <ul class="nav flex-column ms-3">
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'taxes' %}">Taxes</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'expenses' %}">Expenses</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'estimates' %}">Estimates</a></li>
-                                    <li class="nav-item"><a class="nav-link text-white" href="{% url 'invoices' %}">Invoices</a></li>
-                                </ul>
-                            </div>
                         </li>
                         
                         <!-- Regular Links (Non-toggle) -->
                         {% if user.is_superuser %}
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{% url 'notice_list' %}">
+                                <i class="fas fa-bullhorn me-2"></i>Notice Board
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link text-white" href="{% url 'client_list' %}">
                                 <i class="fas fa-user-tie me-2"></i>Clients
@@ -367,6 +460,135 @@
                     </ul>
                 </div>
             </nav>
+            
+            <!-- Submenu Sidebars -->
+            <div class="submenu-sidebar-overlay" id="sidebarOverlay"></div>
+            
+            <!-- Tickets Admin Sidebar -->
+            {% if user.is_superuser %}
+            <div class="submenu-sidebar" id="ticketsMenuAdmin">
+                <div class="submenu-sidebar-header">
+                    <h5><i class="fas fa-ticket-alt me-2"></i>Tickets</h5>
+                    <button class="submenu-sidebar-close" onclick="closeSidebar('ticketsMenuAdmin')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="submenu-sidebar-content">
+                    <a class="nav-link text-white" href="{% url 'submit_ticket' %}"><i class="fas fa-plus me-2"></i>Send Ticket</a>
+                    <a class="nav-link text-white" href="{% url 'all_tickets' %}"><i class="fas fa-list me-2"></i>All Tickets</a>
+                    <a class="nav-link text-white" href="{% url 'my_tickets' %}?filter=received"><i class="fas fa-inbox me-2"></i>Received Tickets</a>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Employees Sidebar -->
+            <div class="submenu-sidebar" id="employeeMenu">
+                <div class="submenu-sidebar-header">
+                    <h5><i class="fas fa-users me-2"></i>Employees</h5>
+                    <button class="submenu-sidebar-close" onclick="closeSidebar('employeeMenu')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="submenu-sidebar-content">
+                    <a class="nav-link text-white" href="{% url 'employee_list' %}"><i class="fas fa-user me-2"></i>Employees</a>
+                    <a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'all_attendance' %}{% else %}{% url 'my_attendance' %}{% endif %}"><i class="fas fa-calendar-check me-2"></i>Attendance</a>
+                    <a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_departments' %}{% else %}{% url 'my_department' %}{% endif %}"><i class="fas fa-building me-2"></i>Departments</a>
+                    <a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_designations' %}{% else %}{% url 'my_designation' %}{% endif %}"><i class="fas fa-id-badge me-2"></i>Designations</a>
+                    <a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_holidays' %}{% else %}{% url 'holidays' %}{% endif %}"><i class="fas fa-umbrella-beach me-2"></i>Holidays</a>
+                    <a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_leaves' %}{% else %}{% url 'my_leaves' %}{% endif %}"><i class="fas fa-plane-departure me-2"></i>Leaves</a>
+                    {% if not user.is_superuser %}
+                    <a class="nav-link text-white" href="{% url 'my_advances' %}"><i class="fas fa-money-bill-wave me-2"></i>Request Advance</a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Projects Sidebar -->
+            <div class="submenu-sidebar" id="projectsMenu">
+                <div class="submenu-sidebar-header">
+                    <h5><i class="fas fa-project-diagram me-2"></i>Projects</h5>
+                    <button class="submenu-sidebar-close" onclick="closeSidebar('projectsMenu')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="submenu-sidebar-content">
+                    {% if user.is_superuser %}
+                    <a class="nav-link text-white" href="{% url 'project_list' %}"><i class="fas fa-list me-2"></i>Project List</a>
+                    {% endif %}
+                    <a class="nav-link text-white" href="{% url 'my_tasks' %}"><i class="fas fa-tasks me-2"></i>My Tasks</a>
+                    {% if user.is_superuser %}
+                    <a class="nav-link text-white" href="{% url 'select_project_for_task' %}"><i class="fas fa-user-plus me-2"></i>Assign Task</a>
+                    <a class="nav-link text-white" href="{% url 'select_project_for_view_tasks' %}"><i class="fas fa-eye me-2"></i>View All Tasks</a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Accounting Sidebar -->
+            {% if user.is_superuser %}
+            <div class="submenu-sidebar" id="accountingMenu">
+                <div class="submenu-sidebar-header">
+                    <h5><i class="fas fa-file-invoice-dollar me-2"></i>Accounting</h5>
+                    <button class="submenu-sidebar-close" onclick="closeSidebar('accountingMenu')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="submenu-sidebar-content">
+                    <a class="nav-link text-white" href="{% url 'budget_category_list' %}"><i class="fas fa-tags me-2"></i>Categories</a>
+                    <a class="nav-link text-white" href="{% url 'budget_list' %}"><i class="fas fa-wallet me-2"></i>Budgets</a>
+                    <a class="nav-link text-white" href="{% url 'budget_expense_list' %}"><i class="fas fa-arrow-down me-2"></i>Budget Expenses</a>
+                    <a class="nav-link text-white" href="{% url 'budget_revenue_list' %}"><i class="fas fa-arrow-up me-2"></i>Budget Revenue</a>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Payroll Sidebar -->
+            {% if user.is_superuser %}
+            <div class="submenu-sidebar" id="payrollMenu">
+                <div class="submenu-sidebar-header">
+                    <h5><i class="fas fa-money-check-alt me-2"></i>Payroll</h5>
+                    <button class="submenu-sidebar-close" onclick="closeSidebar('payrollMenu')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="submenu-sidebar-content">
+                    <a class="nav-link text-white" href="{% url 'payroll_items' %}"><i class="fas fa-list me-2"></i>Payroll Items</a>
+                    <a class="nav-link text-white" href="{% url 'admin_payslips' %}"><i class="fas fa-receipt me-2"></i>Payslips</a>
+                    <a class="nav-link text-white" href="{% url 'tax_slabs' %}"><i class="fas fa-percent me-2"></i>Tax Slabs</a>
+                    <a class="nav-link text-white" href="{% url 'loans' %}"><i class="fas fa-hand-holding-usd me-2"></i>Loans</a>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Tickets Employee Sidebar -->
+            {% if not user.is_superuser %}
+            <div class="submenu-sidebar" id="ticketsMenu">
+                <div class="submenu-sidebar-header">
+                    <h5><i class="fas fa-ticket-alt me-2"></i>Tickets</h5>
+                    <button class="submenu-sidebar-close" onclick="closeSidebar('ticketsMenu')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="submenu-sidebar-content">
+                    <a class="nav-link text-white" href="{% url 'submit_ticket' %}"><i class="fas fa-plus me-2"></i>Send Ticket</a>
+                    <a class="nav-link text-white" href="{% url 'my_tickets' %}?filter=received"><i class="fas fa-inbox me-2"></i>Received Tickets</a>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Sales Sidebar -->
+            <div class="submenu-sidebar" id="salesMenu">
+                <div class="submenu-sidebar-header">
+                    <h5><i class="fas fa-clone me-2"></i>Sales</h5>
+                    <button class="submenu-sidebar-close" onclick="closeSidebar('salesMenu')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="submenu-sidebar-content">
+                    <a class="nav-link text-white" href="{% url 'taxes' %}"><i class="fas fa-percent me-2"></i>Taxes</a>
+                    <a class="nav-link text-white" href="{% url 'expenses' %}"><i class="fas fa-minus-circle me-2"></i>Expenses</a>
+                    <a class="nav-link text-white" href="{% url 'estimates' %}"><i class="fas fa-file-invoice me-2"></i>Estimates</a>
+                    <a class="nav-link text-white" href="{% url 'invoices' %}"><i class="fas fa-receipt me-2"></i>Invoices</a>
+                </div>
+            </div>
 
             <!-- Chat Box (hidden by default, toggled by button) -->
             <div id="chat-box" style="display:none;position:fixed;bottom:0;right:0;width:400px;background:#fff;border-radius:10px 10px 0 0;box-shadow:0 0 10px rgba(0,0,0,0.2);border:1px solid #764ba2;z-index:1000;">
@@ -1140,105 +1362,122 @@
         notificationCheckInterval = setInterval(loadNotifications, 30000); // Refresh every 30 seconds
     </script>
     
-    <!-- Chevron Toggle for Collapse Menus -->
+    <!-- Sidebar Toggle Script -->
     <script>
-        // Handle chevron rotation for collapse menus
         document.addEventListener('DOMContentLoaded', function() {
-            const employeeMenu = document.getElementById('employeeMenu');
-            const employeeChevron = document.querySelector('.employee-chevron');
+            // Handle sidebar toggle buttons
+            const toggleButtons = document.querySelectorAll('[data-toggle-sidebar]');
+            const overlay = document.getElementById('sidebarOverlay');
             
-            if (employeeMenu && employeeChevron) {
-                employeeMenu.addEventListener('show.bs.collapse', function() {
-                    employeeChevron.style.transform = 'rotate(180deg)';
-                    employeeChevron.style.transition = 'transform 0.3s ease';
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const sidebarId = this.getAttribute('data-toggle-sidebar');
+                    openSidebar(sidebarId);
+                });
+            });
+            
+            // Close sidebar when overlay is clicked
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    closeAllSidebars();
+                });
+            }
+            
+            // Close sidebar on Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeAllSidebars();
+                }
+            });
+        });
+        
+        function openSidebar(sidebarId) {
+            const sidebar = document.getElementById(sidebarId);
+            const overlay = document.getElementById('sidebarOverlay');
+            const mainSidebar = document.querySelector('.sidebar');
+            
+            if (sidebar && overlay && mainSidebar) {
+                // Close any open sidebars first
+                closeAllSidebars();
+                
+                // Calculate and set position based on main sidebar width
+                const sidebarWidth = mainSidebar.offsetWidth;
+                sidebar.style.left = sidebarWidth + 'px';
+                
+                // Force reflow to ensure transition works
+                sidebar.offsetHeight;
+                
+                // Open the requested sidebar with smooth animation
+                requestAnimationFrame(() => {
+                    sidebar.classList.add('show');
+                    overlay.classList.add('show');
                 });
                 
-                employeeMenu.addEventListener('hide.bs.collapse', function() {
-                    employeeChevron.style.transform = 'rotate(0deg)';
-                    employeeChevron.style.transition = 'transform 0.3s ease';
-                });
-            }
-            
-            // Handle tickets menu chevrons
-            const ticketsMenuAdmin = document.getElementById('ticketsMenuAdmin');
-            const ticketsMenu = document.getElementById('ticketsMenu');
-            
-            if (ticketsMenuAdmin) {
-                const chevron = ticketsMenuAdmin.previousElementSibling.querySelector('.fa-chevron-down');
-                if (chevron) {
-                    ticketsMenuAdmin.addEventListener('show.bs.collapse', function() {
-                        chevron.style.transform = 'rotate(180deg)';
-                        chevron.style.transition = 'transform 0.3s ease';
-                    });
-                    ticketsMenuAdmin.addEventListener('hide.bs.collapse', function() {
-                        chevron.style.transform = 'rotate(0deg)';
-                        chevron.style.transition = 'transform 0.3s ease';
-                    });
+                // Mark the button as active
+                const button = document.querySelector(`[data-toggle-sidebar="${sidebarId}"]`);
+                if (button) {
+                    button.classList.add('active');
                 }
             }
+        }
+        
+        function closeSidebar(sidebarId) {
+            const sidebar = document.getElementById(sidebarId);
+            const overlay = document.getElementById('sidebarOverlay');
             
-            if (ticketsMenu) {
-                const chevron = ticketsMenu.previousElementSibling.querySelector('.fa-chevron-down');
-                if (chevron) {
-                    ticketsMenu.addEventListener('show.bs.collapse', function() {
-                        chevron.style.transform = 'rotate(180deg)';
-                        chevron.style.transition = 'transform 0.3s ease';
-                    });
-                    ticketsMenu.addEventListener('hide.bs.collapse', function() {
-                        chevron.style.transform = 'rotate(0deg)';
-                        chevron.style.transition = 'transform 0.3s ease';
-                    });
-                }
+            if (sidebar) {
+                // Remove show class for smooth closing animation
+                sidebar.classList.remove('show');
+                
+                // After animation completes, reset position
+                setTimeout(() => {
+                    if (!sidebar.classList.contains('show')) {
+                        sidebar.style.left = '';
+                    }
+                }, 400); // Match transition duration
             }
             
-            // Handle projects menu chevron
-            const projectsMenu = document.getElementById('projectsMenu');
-            if (projectsMenu) {
-                const chevron = projectsMenu.previousElementSibling.querySelector('.fa-chevron-down');
-                if (chevron) {
-                    projectsMenu.addEventListener('show.bs.collapse', function() {
-                        chevron.style.transform = 'rotate(180deg)';
-                        chevron.style.transition = 'transform 0.3s ease';
-                    });
-                    projectsMenu.addEventListener('hide.bs.collapse', function() {
-                        chevron.style.transform = 'rotate(0deg)';
-                        chevron.style.transition = 'transform 0.3s ease';
-                    });
-                }
+            // Close overlay if no sidebars are open
+            if (overlay) {
+                setTimeout(() => {
+                    const openSidebars = document.querySelectorAll('.submenu-sidebar.show');
+                    if (openSidebars.length === 0) {
+                        overlay.classList.remove('show');
+                    }
+                }, 400);
             }
             
-            // Handle accounting menu chevron
-            const accountingMenu = document.getElementById('accountingMenu');
-            if (accountingMenu) {
-                const chevron = accountingMenu.previousElementSibling.querySelector('.accounting-chevron');
-                if (chevron) {
-                    accountingMenu.addEventListener('show.bs.collapse', function() {
-                        chevron.style.transform = 'rotate(180deg)';
-                        chevron.style.transition = 'transform 0.3s ease';
-                    });
-                    accountingMenu.addEventListener('hide.bs.collapse', function() {
-                        chevron.style.transform = 'rotate(0deg)';
-                        chevron.style.transition = 'transform 0.3s ease';
-                    });
-                }
+            // Remove active class from button
+            const button = document.querySelector(`[data-toggle-sidebar="${sidebarId}"]`);
+            if (button) {
+                button.classList.remove('active');
+            }
+        }
+        
+        function closeAllSidebars() {
+            const sidebars = document.querySelectorAll('.submenu-sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const buttons = document.querySelectorAll('[data-toggle-sidebar]');
+            
+            sidebars.forEach(sidebar => {
+                sidebar.classList.remove('show');
+                // Reset position after animation
+                setTimeout(() => {
+                    if (!sidebar.classList.contains('show')) {
+                        sidebar.style.left = '';
+                    }
+                }, 400);
+            });
+            
+            if (overlay) {
+                overlay.classList.remove('show');
             }
             
-            // Handle payroll menu chevron
-            const payrollMenu = document.getElementById('payrollMenu');
-            if (payrollMenu) {
-                const chevron = payrollMenu.previousElementSibling.querySelector('.payroll-chevron');
-                if (chevron) {
-                    payrollMenu.addEventListener('show.bs.collapse', function() {
-                        chevron.style.transform = 'rotate(180deg)';
-                        chevron.style.transition = 'transform 0.3s ease';
-                    });
-                    payrollMenu.addEventListener('hide.bs.collapse', function() {
-                        chevron.style.transform = 'rotate(0deg)';
-                        chevron.style.transition = 'transform 0.3s ease';
-                    });
-                }
-            }
-        });
+            buttons.forEach(button => {
+                button.classList.remove('active');
+            });
+        }
     </script>
     
     {% block extra_js %}{% endblock %}

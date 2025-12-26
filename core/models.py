@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 # Create your models here.
 
@@ -91,6 +92,9 @@ class Ticket(models.Model):
     description = models.TextField()
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='tickets_created')
     assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets_assigned')
+    related_task = models.ForeignKey('Task', on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets', help_text='Link this ticket to a task (admin choice)')
+    progress_percentage = models.IntegerField(default=0, help_text='Work progress percentage (0-100)', validators=[MinValueValidator(0), MaxValueValidator(100)])
+    progress_locked = models.BooleanField(default=False, help_text='Lock progress at 100% to prevent further changes')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='new')
     priority = models.CharField(max_length=10, choices=PRIORITY_CHOICES, default='medium')
     end_date = models.DateTimeField(null=True, blank=True, help_text='Expected completion date')
@@ -999,3 +1003,33 @@ class SubTask(models.Model):
 
     def __str__(self):
         return f"{self.task.title} - {self.title}"
+
+class Notice(models.Model):
+    title = models.CharField(max_length=200)
+    content = models.TextField(blank=True, help_text="Written notice content")
+    attachment = models.FileField(upload_to='notices/', blank=True, null=True, help_text="Optional file attachment")
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_notices')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True, help_text="Active notices are visible to employees")
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Notice'
+        verbose_name_plural = 'Notices'
+    
+    def __str__(self):
+        return self.title
+
+class DashboardLayout(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='dashboard_layout')
+    layout_data = models.JSONField(default=dict, help_text="Stores the order and positions of dashboard widgets")
+    dashboard_type = models.CharField(max_length=20, choices=[('admin', 'Admin'), ('employee', 'Employee')], default='admin')
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Dashboard Layout'
+        verbose_name_plural = 'Dashboard Layouts'
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.dashboard_type} Dashboard"

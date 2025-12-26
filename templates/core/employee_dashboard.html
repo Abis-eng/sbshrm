@@ -1,31 +1,486 @@
 {% extends 'core/base.html' %}
-{% block page_title %}Employee Dashboard{% endblock %}
+{% load static %}
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="flex-grow-1">
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-tachometer-alt me-2"></i>Employee Dashboard
+        </h1>
+        <p class="text-muted mb-0 small">Welcome back, <strong>{{ user.get_full_name|default:user.username }}</strong></p>
+    </div>
+</div>
+{% endblock %}
 {% block content %}
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Welcome, {{ user.get_full_name|default:user.username }}!</h4>
-    <p class="card-text">This is your employee portal. You can chat with others using the chat box. If you need anything, contact your admin.</p>
-  </div>
-</div>
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">My Attendance Overview</h4>
-    <canvas id="attendanceChart" width="400" height="120"></canvas>
-  </div>
-</div>
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Department Distribution</h4>
-    <canvas id="deptChart" width="400" height="120"></canvas>
-  </div>
-</div>
-<div class="card mt-4">
-  <div class="card-body">
-    <h4 class="card-title">Designation Distribution</h4>
-    <canvas id="desigChart" width="400" height="120"></canvas>
-  </div>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    
+    body {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        min-height: 100vh;
+    }
+    
+    .welcome-card {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%);
+        border-radius: 20px;
+        padding: 30px;
+        color: #fff;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .welcome-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: pulse 3s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+    
+    .welcome-card > * {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .notice-board-section {
+        background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+        border-radius: 20px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(245, 158, 11, 0.2);
+        border: 2px solid #fed7aa;
+    }
+    
+    .notice-board-header {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+        border-radius: 15px;
+        padding: 20px;
+        color: #fff;
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .notice-board-header h3 {
+        margin: 0;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+    }
+    
+    .notice-item {
+        background: #fff;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        border-left: 5px solid #f59e0b;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+    }
+    
+    .notice-item:hover {
+        transform: translateX(5px);
+        box-shadow: 0 5px 15px rgba(245, 158, 11, 0.2);
+    }
+    
+    .notice-item-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .notice-item-content {
+        color: #475569;
+        line-height: 1.6;
+        margin-bottom: 15px;
+    }
+    
+    .notice-item-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 15px;
+        border-top: 1px solid #e2e8f0;
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+    
+    .file-attachment-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 15px;
+        background: #fef3c7;
+        border-radius: 8px;
+        color: #92400e;
+        text-decoration: none;
+        margin-top: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .file-attachment-link:hover {
+        background: #fde68a;
+        color: #78350f;
+        transform: translateX(5px);
+    }
+    
+    .no-notices {
+        text-align: center;
+        padding: 40px 20px;
+        color: #64748b;
+    }
+    
+    .no-notices i {
+        font-size: 3rem;
+        margin-bottom: 15px;
+        color: #cbd5e1;
+    }
+    
+    .chart-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .chart-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: linear-gradient(90deg, var(--chart-color, #3b82f6), var(--chart-color-secondary, #2563eb));
+    }
+    
+    .chart-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    }
+    
+    .chart-card-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f1f5f9;
+    }
+    
+    .chart-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: #fff;
+        margin-right: 15px;
+        background: linear-gradient(135deg, var(--chart-color, #3b82f6), var(--chart-color-secondary, #2563eb));
+    }
+    
+    .chart-card-title {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+    }
+    
+    .chart-container {
+        flex-grow: 1;
+        position: relative;
+        min-height: 300px;
+    }
+    
+    .chart-container canvas {
+        max-height: 300px !important;
+    }
+    
+    .row.g-4 > [class*="col-"] {
+        display: flex;
+    }
+    
+    /* Drag and Drop Styles */
+    .chart-card.sortable-ghost,
+    [data-widget-id].sortable-ghost {
+        opacity: 0.4;
+        background: #f0f0f0;
+    }
+    
+    .chart-card.sortable-drag,
+    [data-widget-id].sortable-drag {
+        opacity: 0.8;
+        transform: rotate(2deg);
+        cursor: default !important;
+    }
+    
+    .chart-card,
+    [data-widget-id] {
+        cursor: default;
+        position: relative;
+    }
+    
+    .chart-card::after {
+        content: '⋮⋮';
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        color: rgba(0,0,0,0.2);
+        font-size: 1.2rem;
+        line-height: 1;
+        opacity: 0;
+        transition: opacity 0.3s;
+        z-index: 10;
+    }
+    
+    .chart-card:hover::after {
+        opacity: 1;
+    }
+    
+    .notice-board-section {
+        position: relative;
+    }
+    
+    .notice-board-section::after {
+        content: '⋮⋮';
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        color: rgba(0,0,0,0.2);
+        font-size: 1.2rem;
+        line-height: 1;
+        opacity: 0;
+        transition: opacity 0.3s;
+        z-index: 10;
+    }
+    
+    .notice-board-section:hover::after {
+        opacity: 1;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Welcome Card -->
+    <div class="welcome-card">
+        <h2 class="mb-2 fw-bold">
+            <i class="fas fa-user-circle me-2"></i>Welcome, {{ user.get_full_name|default:user.username }}!
+        </h2>
+        <p class="mb-0 opacity-90">This is your employee portal. You can chat with others using the chat box. If you need anything, contact your admin.</p>
+    </div>
+
+    <!-- Notice Board Section -->
+    <div class="notice-board-section">
+        <div class="notice-board-header">
+            <h3>
+                <i class="fas fa-bullhorn me-2"></i>Notice Board
+            </h3>
+            <span class="badge bg-light text-dark">{{ notices|length }} Notice{{ notices|length|pluralize }}</span>
+        </div>
+        
+        {% if notices %}
+            {% for notice in notices %}
+            <div class="notice-item">
+                <div class="notice-item-title">
+                    <i class="fas fa-bullhorn me-2 text-warning"></i>{{ notice.title }}
+                </div>
+                {% if notice.content %}
+                <div class="notice-item-content">
+                    {{ notice.content|linebreaks }}
+                </div>
+                {% endif %}
+                {% if notice.attachment %}
+                <a href="{{ notice.attachment.url }}" target="_blank" class="file-attachment-link">
+                    <i class="fas fa-paperclip"></i>
+                    <span>Download Attachment: {{ notice.attachment.name|slice:"30:"|default:notice.attachment.name }}</span>
+                    <i class="fas fa-external-link-alt ms-2"></i>
+                </a>
+                {% endif %}
+                <div class="notice-item-meta">
+                    <div>
+                        <i class="fas fa-calendar me-1"></i>{{ notice.created_at|date:"F d, Y" }}
+                        <span class="ms-3">
+                            <i class="fas fa-clock me-1"></i>{{ notice.created_at|date:"h:i A" }}
+                        </span>
+                    </div>
+                    <div>
+                        <i class="fas fa-user-tie me-1"></i>Posted by: {{ notice.created_by.get_full_name|default:notice.created_by.username }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="no-notices">
+            <i class="fas fa-bullhorn"></i>
+            <p class="mb-0">No notices available at the moment.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Charts Grid - Two charts per row -->
+    <div class="row g-4" id="employee-charts-grid">
+        <!-- Attendance Chart -->
+        <div class="col-lg-6 col-md-6" id="emp-chart-attendance" data-widget-id="emp-chart-attendance">
+            <div class="chart-card" style="--chart-color: #10b981; --chart-color-secondary: #059669;">
+                <div class="chart-card-header">
+                    <div class="chart-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <h4 class="chart-card-title">My Attendance Overview</h4>
+                </div>
+                <div class="chart-container">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Department Chart -->
+        <div class="col-lg-6 col-md-6" id="emp-chart-departments" data-widget-id="emp-chart-departments">
+            <div class="chart-card" style="--chart-color: #3b82f6; --chart-color-secondary: #2563eb;">
+                <div class="chart-card-header">
+                    <div class="chart-icon">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <h4 class="chart-card-title">Department Distribution</h4>
+                </div>
+                <div class="chart-container">
+                    <canvas id="deptChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Designation Chart - Full width on mobile, half width on larger screens -->
+        <div class="col-lg-12 col-md-12" id="emp-chart-designations" data-widget-id="emp-chart-designations">
+            <div class="chart-card" style="--chart-color: #8b5cf6; --chart-color-secondary: #7c3aed;">
+                <div class="chart-card-header">
+                    <div class="chart-icon">
+                        <i class="fas fa-id-badge"></i>
+                    </div>
+                    <h4 class="chart-card-title">Designation Distribution</h4>
+                </div>
+                <div class="chart-container">
+                    <canvas id="desigChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load saved layout
+        fetch('{% url "get_dashboard_layout" %}?dashboard_type=employee')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.layout && data.layout.length > 0) {
+                    const chartsGrid = document.getElementById('employee-charts-grid');
+                    const noticeBoard = document.querySelector('.notice-board-section');
+                    
+                    // Reorder widgets based on saved layout
+                    data.layout.forEach(widgetId => {
+                        const widget = document.querySelector(`[data-widget-id="${widgetId}"]`);
+                        if (widget && chartsGrid) {
+                            chartsGrid.appendChild(widget);
+                        }
+                    });
+                }
+                
+                // Initialize Sortable for charts grid
+                if (document.getElementById('employee-charts-grid')) {
+                    new Sortable(document.getElementById('employee-charts-grid'), {
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        dragClass: 'sortable-drag',
+                        delay: 100,
+                        delayOnTouchStart: true,
+                        forceFallback: false,
+                        onStart: function(evt) {
+                            document.body.style.cursor = 'default';
+                        },
+                        onEnd: function(evt) {
+                            document.body.style.cursor = '';
+                            saveLayout();
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading layout:', error);
+                // Initialize Sortable even if loading fails
+                if (document.getElementById('employee-charts-grid')) {
+                    new Sortable(document.getElementById('employee-charts-grid'), {
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        dragClass: 'sortable-drag',
+                        handle: '.chart-card',
+                        onEnd: function(evt) {
+                            saveLayout();
+                        }
+                    });
+                }
+            });
+        
+        // Function to save layout
+        function saveLayout() {
+            const order = ['notice-board']; // Notice board always first
+            
+            // Get order from charts grid
+            const chartsGrid = document.getElementById('employee-charts-grid');
+            if (chartsGrid) {
+                Array.from(chartsGrid.children).forEach(child => {
+                    const widgetId = child.getAttribute('data-widget-id');
+                    if (widgetId) order.push(widgetId);
+                });
+            }
+            
+            // Save to server
+            fetch('{% url "save_dashboard_layout" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    dashboard_type: 'employee',
+                    order: order
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Layout saved successfully');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving layout:', error);
+            });
+        }
+    });
+</script>
 {% if attendance_stats %}
 {{ attendance_stats|json_script:"attendance-stats-data" }}
 <script>
@@ -35,8 +490,49 @@
   const aCounts = aStats.map(s => s.count);
   new Chart(ctxA, {
     type: 'line',
-    data: {labels: aLabels, datasets: [{label: 'Attendance', data: aCounts, backgroundColor: 'rgba(40,167,69,0.2)', borderColor: '#28a745', fill: true, tension: 0.4}]},
-    options: {responsive: true, plugins: {legend: {position: 'bottom'}}}
+    data: {
+      labels: aLabels, 
+      datasets: [{
+        label: 'Attendance', 
+        data: aCounts, 
+        backgroundColor: 'rgba(16, 185, 129, 0.2)', 
+        borderColor: '#10b981', 
+        fill: true, 
+        tension: 0.4,
+        borderWidth: 3,
+        pointRadius: 5,
+        pointHoverRadius: 7
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 15,
+            font: {
+              size: 12,
+              weight: '600'
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(0, 0, 0, 0.05)'
+          }
+        },
+        x: {
+          grid: {
+            color: 'rgba(0, 0, 0, 0.05)'
+          }
+        }
+      }
+    }
   });
 </script>
 {% endif %}
@@ -48,9 +544,41 @@
   const dLabels = dStats.map(d => d.name);
   const dCounts = dStats.map(d => d.emp_count);
   new Chart(ctxD, {
-    type: 'line',
-    data: {labels: dLabels, datasets: [{label: 'Employees', data: dCounts, backgroundColor: 'rgba(0,123,255,0.2)', borderColor: '#007bff', fill: true, tension: 0.4}]},
-    options: {responsive: true, plugins: {legend: {display: false}}}
+    type: 'bar',
+    data: {
+      labels: dLabels, 
+      datasets: [{
+        label: 'Employees', 
+        data: dCounts, 
+        backgroundColor: 'rgba(59, 130, 246, 0.6)', 
+        borderColor: '#3b82f6', 
+        fill: true,
+        borderWidth: 2,
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(0, 0, 0, 0.05)'
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          }
+        }
+      }
+    }
   });
 </script>
 {% endif %}
@@ -62,9 +590,39 @@
   const desigLabels = desigData.map(d => d.name);
   const desigCounts = desigData.map(d => d.emp_count);
   new Chart(ctxDesig, {
-    type: 'line',
-    data: {labels: desigLabels, datasets: [{label: 'Employees', data: desigCounts, backgroundColor: 'rgba(111,66,193,0.2)', borderColor: '#6f42c1', fill: true, tension: 0.4}]},
-    options: {responsive: true, plugins: {legend: {position: 'bottom'}}}
+    type: 'doughnut',
+    data: {
+      labels: desigLabels, 
+      datasets: [{
+        label: 'Employees', 
+        data: desigCounts, 
+        backgroundColor: [
+          'rgba(139, 92, 246, 0.8)',
+          'rgba(124, 58, 237, 0.8)',
+          'rgba(109, 40, 217, 0.8)',
+          'rgba(91, 33, 182, 0.8)',
+          'rgba(76, 29, 149, 0.8)'
+        ],
+        borderColor: '#8b5cf6',
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 15,
+            font: {
+              size: 12,
+              weight: '600'
+            }
+          }
+        }
+      }
+    }
   });
 </script>
 {% endif %}

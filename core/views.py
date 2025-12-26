@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test, permission_required
 from django.contrib import messages
-from .models import Employee, Department, Designation, Attendance, AttendanceLog, AttendanceMachine, Ticket, Client, Holiday, Leave
+from .models import Employee, Department, Designation, Attendance, AttendanceLog, AttendanceMachine, Ticket, Client, Holiday, Leave, Notice
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.contrib.auth.hashers import make_password
@@ -19,7 +19,7 @@ from .models import TaxSlab, Loan
 from .models import AdvanceRequest
 from django import forms
 from django.db.models import Sum
-from .forms import ClientForm, UserAdminForm, ProjectForm
+from .forms import ClientForm, UserAdminForm, ProjectForm, NoticeForm
 from django.forms import ModelForm
 from .models import Project, Department
 from .forms import TaskForm
@@ -471,11 +471,16 @@ def employee_dashboard(request):
     # Department bar chart: all departments and their employee counts
     dept_counts = Department.objects.annotate(emp_count=Count('employee')).values('name', 'emp_count')
     desig_counts = Designation.objects.annotate(emp_count=Count('employee')).values('name', 'emp_count')
+    
+    # Get active notices for notice board
+    notices = Notice.objects.filter(is_active=True).order_by('-created_at')[:10]
+    
     # Salary graph: Payroll and Payslip stats will be added here
     return render(request, 'core/employee_dashboard.html', {
         'attendance_stats': list(attendance_stats),
         'dept_counts': list(dept_counts),
         'desig_counts': list(desig_counts),
+        'notices': notices,
         # 'payroll_stats': ...
     })
 
@@ -920,6 +925,17 @@ def submit_ticket(request):
                 messages.error(request, 'Selected recipient not found.')
                 return redirect('submit_ticket')
         
+        # Get related task if admin is creating ticket and selected a task
+        related_task = None
+        if request.user.is_superuser:
+            related_task_id = request.POST.get('related_task', '')
+            if related_task_id:
+                try:
+                    from .models import Task
+                    related_task = Task.objects.get(id=related_task_id)
+                except Task.DoesNotExist:
+                    pass
+        
         # Create ticket with assigned user
         ticket = Ticket.objects.create(
             title=title,
@@ -928,6 +944,7 @@ def submit_ticket(request):
             priority=priority,
             created_by=request.user,
             assigned_to=assigned_to,
+            related_task=related_task,
             end_date=end_date,
             status='new'  # New tickets start as 'new'
         )
@@ -974,13 +991,18 @@ def submit_ticket(request):
     if request.user.is_superuser:
         employees = User.objects.filter(is_superuser=False, employee__isnull=False).select_related('employee')
         admins = []
+        # Get all tasks for admin to link to ticket
+        from .models import Task
+        tasks = Task.objects.select_related('project', 'assigned_to', 'assigned_by').all().order_by('-created_at')
     else:
         employees = []
         admins = User.objects.filter(is_superuser=True)
+        tasks = []
     
     return render(request, 'core/submit_ticket.html', {
         'employees': employees,
         'admins': admins,
+        'tasks': tasks,
     })
 
 @user_passes_test(is_admin)
@@ -1028,7 +1050,7 @@ def all_tickets(request):
 @login_required
 def ticket_detail(request, ticket_id):
     from .models import TicketReply
-    ticket = get_object_or_404(Ticket.objects.select_related('created_by', 'assigned_to'), id=ticket_id)
+    ticket = get_object_or_404(Ticket.objects.select_related('created_by', 'assigned_to', 'related_task', 'related_task__project', 'related_task__assigned_to', 'related_task__assigned_to__user'), id=ticket_id)
     
     # Check permissions - employees can only see their own tickets
     if not request.user.is_superuser:
@@ -1138,16 +1160,63 @@ def ticket_detail(request, ticket_id):
             ticket.save()
             messages.success(request, 'Ticket priority updated!')
         
+        elif action == 'update_progress':
+            # Only allow employee assigned to ticket to update progress if ticket is related to task
+            if ticket.related_task and ticket.assigned_to == request.user:
+                # Check if progress is locked
+                if ticket.progress_locked:
+                    messages.error(request, 'Progress is locked at 100% and cannot be changed. Contact admin to unlock it.')
+                else:
+                    try:
+                        progress = int(request.POST.get('progress_percentage', 0))
+                        if 0 <= progress <= 100:
+                            old_progress = ticket.progress_percentage
+                            ticket.progress_percentage = progress
+                            
+                            # If reaching 100%, check if user wants to lock it
+                            lock_progress = request.POST.get('lock_progress', 'false') == 'true'
+                            if progress == 100 and lock_progress:
+                                ticket.progress_locked = True
+                                messages.success(request, 'Progress updated to 100% and locked! You will not be able to change it anymore.')
+                            elif progress == 100:
+                                # Reached 100% but didn't lock - keep unlocked
+                                ticket.progress_locked = False
+                                messages.success(request, 'Progress updated to 100%! You can lock it to prevent further changes.')
+                            else:
+                                # Not 100%, ensure it's unlocked
+                                ticket.progress_locked = False
+                                messages.success(request, f'Progress updated to {progress}%!')
+                            
+                            ticket.save()
+                        else:
+                            messages.error(request, 'Progress must be between 0 and 100.')
+                    except ValueError:
+                        messages.error(request, 'Invalid progress value.')
+            else:
+                messages.error(request, 'You can only update progress for tickets related to tasks that are assigned to you.')
+        
+        elif action == 'unlock_progress' and request.user.is_superuser:
+            # Admin can unlock progress
+            ticket.progress_locked = False
+            ticket.save()
+            messages.success(request, 'Progress unlocked. Employee can now update it again.')
+        
         return redirect('ticket_detail', ticket_id=ticket.id)
     
     # Mark unread replies as read for current user
     ticket.replies.filter(is_read=False).exclude(created_by=request.user).update(is_read=True)
+    
+    # Check if employee can update progress (only if ticket is related to task and assigned to them, and not locked)
+    can_update_progress = False
+    if ticket.related_task and ticket.assigned_to == request.user and not request.user.is_superuser:
+        can_update_progress = not ticket.progress_locked
     
     return render(request, 'core/ticket_detail.html', {
         'ticket': ticket,
         'replies': replies,
         'files': files,
         'employees': employees,
+        'can_update_progress': can_update_progress,
     })
 
 @user_passes_test(is_admin)
@@ -1156,6 +1225,9 @@ def edit_ticket(request, ticket_id):
     from datetime import datetime
     ticket = get_object_or_404(Ticket, id=ticket_id)
     employees = User.objects.filter(is_superuser=False, employee__isnull=False).select_related('employee')
+    # Get all tasks for admin to link to ticket
+    from .models import Task
+    tasks = Task.objects.select_related('project', 'assigned_to', 'assigned_to__user').all().order_by('-created_at')
     
     if request.method == 'POST':
         ticket.title = request.POST.get('title', ticket.title)
@@ -1168,6 +1240,31 @@ def edit_ticket(request, ticket_id):
             ticket.assigned_to_id = request.POST.get('assigned_to')
         else:
             ticket.assigned_to = None
+        
+        # Handle related task
+        related_task_id = request.POST.get('related_task', '')
+        if related_task_id:
+            try:
+                from .models import Task
+                ticket.related_task = Task.objects.get(id=related_task_id)
+            except Task.DoesNotExist:
+                ticket.related_task = None
+        else:
+            ticket.related_task = None
+        
+        # Handle progress percentage
+        try:
+            progress = int(request.POST.get('progress_percentage', ticket.progress_percentage))
+            if 0 <= progress <= 100:
+                ticket.progress_percentage = progress
+        except (ValueError, TypeError):
+            pass
+        
+        # Handle progress locked (only if ticket is related to task)
+        if ticket.related_task:
+            ticket.progress_locked = request.POST.get('progress_locked') == 'on'
+        else:
+            ticket.progress_locked = False
         
         end_date_str = request.POST.get('end_date', '')
         if end_date_str:
@@ -1199,6 +1296,7 @@ def edit_ticket(request, ticket_id):
     return render(request, 'core/edit_ticket.html', {
         'ticket': ticket,
         'employees': employees,
+        'tasks': tasks,
     })
 
 @user_passes_test(is_admin)
@@ -2853,6 +2951,99 @@ def mark_notification_read(request, notification_id):
         if request.method == 'POST':
             return JsonResponse({'success': False, 'error': 'Notification not found'}, status=404)
         return redirect('all_notifications')
+
+# Notice Board Views
+@user_passes_test(is_admin)
+@login_required
+def notice_list(request):
+    """Admin view to list all notices"""
+    notices = Notice.objects.all().order_by('-created_at')
+    active_count = notices.filter(is_active=True).count()
+    with_attachments = notices.exclude(attachment='').count()
+    return render(request, 'core/notice_list.html', {
+        'notices': notices,
+        'active_count': active_count,
+        'with_attachments': with_attachments,
+    })
+
+@user_passes_test(is_admin)
+@login_required
+def notice_add(request):
+    """Admin view to add a new notice"""
+    if request.method == 'POST':
+        form = NoticeForm(request.POST, request.FILES)
+        if form.is_valid():
+            notice = form.save(commit=False)
+            notice.created_by = request.user
+            notice.save()
+            messages.success(request, 'Notice created successfully!')
+            return redirect('notice_list')
+    else:
+        form = NoticeForm()
+    return render(request, 'core/notice_form.html', {'form': form, 'title': 'Add Notice'})
+
+@user_passes_test(is_admin)
+@login_required
+def notice_edit(request, notice_id):
+    """Admin view to edit a notice"""
+    notice = get_object_or_404(Notice, id=notice_id)
+    if request.method == 'POST':
+        form = NoticeForm(request.POST, request.FILES, instance=notice)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Notice updated successfully!')
+            return redirect('notice_list')
+    else:
+        form = NoticeForm(instance=notice)
+    return render(request, 'core/notice_form.html', {'form': form, 'notice': notice, 'title': 'Edit Notice'})
+
+@user_passes_test(is_admin)
+@login_required
+def notice_delete(request, notice_id):
+    """Admin view to delete a notice"""
+    notice = get_object_or_404(Notice, id=notice_id)
+    if request.method == 'POST':
+        notice.delete()
+        messages.success(request, 'Notice deleted successfully!')
+        return redirect('notice_list')
+    return render(request, 'core/notice_confirm_delete.html', {'notice': notice})
+
+# Dashboard Layout Views
+@login_required
+@require_POST
+def save_dashboard_layout(request):
+    """Save dashboard layout preferences"""
+    try:
+        layout_data = json.loads(request.body)
+        dashboard_type = layout_data.get('dashboard_type', 'admin')
+        
+        layout, created = DashboardLayout.objects.get_or_create(
+            user=request.user,
+            dashboard_type=dashboard_type,
+            defaults={'layout_data': layout_data.get('order', [])}
+        )
+        
+        if not created:
+            layout.layout_data = layout_data.get('order', [])
+            layout.save()
+        
+        return JsonResponse({'success': True, 'message': 'Layout saved successfully'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+@login_required
+def get_dashboard_layout(request):
+    """Get saved dashboard layout preferences"""
+    try:
+        dashboard_type = request.GET.get('dashboard_type', 'admin')
+        layout = DashboardLayout.objects.filter(user=request.user, dashboard_type=dashboard_type).first()
+        
+        if layout:
+            return JsonResponse({'success': True, 'layout': layout.layout_data})
+        else:
+            return JsonResponse({'success': True, 'layout': []})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 @login_required
 @require_POST

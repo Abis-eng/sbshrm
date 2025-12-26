@@ -141,6 +141,71 @@
                                    value="{% if ticket.end_date %}{{ ticket.end_date|date:'Y-m-d' }}{% endif %}">
                         </div>
                         
+                        <div class="col-md-6">
+                            <label for="related_task" class="form-label">
+                                <i class="fas fa-tasks me-2"></i>Link to Task (Optional)
+                            </label>
+                            <select class="form-select" id="related_task" name="related_task">
+                                <option value="">No task linked</option>
+                                {% for task in tasks %}
+                                <option value="{{ task.id }}" {% if ticket.related_task == task %}selected{% endif %}>
+                                    {{ task.title }} - {{ task.project.name }} (Assigned to: {{ task.assigned_to.user.get_full_name|default:task.assigned_to.user.username }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Link this ticket to a task. Employee will be able to update progress if linked.</small>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="progress_percentage" class="form-label">
+                                <i class="fas fa-percentage me-2"></i>Progress Percentage
+                            </label>
+                            <div class="input-group">
+                                <button class="btn btn-outline-secondary" type="button" onclick="adjustProgress(-10)">
+                                    <i class="fas fa-minus"></i> -10
+                                </button>
+                                <button class="btn btn-outline-secondary" type="button" onclick="adjustProgress(-5)">
+                                    <i class="fas fa-minus"></i> -5
+                                </button>
+                                <input type="number" class="form-control text-center" id="progress_percentage" name="progress_percentage" 
+                                       min="0" max="100" value="{{ ticket.progress_percentage }}" 
+                                       onchange="updateProgressBar(this.value)">
+                                <button class="btn btn-outline-secondary" type="button" onclick="adjustProgress(5)">
+                                    <i class="fas fa-plus"></i> +5
+                                </button>
+                                <button class="btn btn-outline-secondary" type="button" onclick="adjustProgress(10)">
+                                    <i class="fas fa-plus"></i> +10
+                                </button>
+                            </div>
+                            <div class="mt-2">
+                                <input type="range" class="form-range" id="progress_slider" 
+                                       min="0" max="100" value="{{ ticket.progress_percentage }}" 
+                                       oninput="updateProgressInput(this.value)">
+                            </div>
+                            <div class="mt-2">
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar 
+                                                {% if ticket.progress_percentage < 25 %}bg-danger
+                                                {% elif ticket.progress_percentage < 50 %}bg-warning
+                                                {% elif ticket.progress_percentage < 75 %}bg-info
+                                                {% else %}bg-success{% endif %}" 
+                                         id="progress_bar_display" 
+                                         style="width: {{ ticket.progress_percentage }}%;">
+                                        {{ ticket.progress_percentage }}%
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="text-muted">Current progress: <span id="progress_display">{{ ticket.progress_percentage }}</span>%</small>
+                            {% if ticket.related_task %}
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="progress_locked" name="progress_locked" {% if ticket.progress_locked %}checked{% endif %}>
+                                <label class="form-check-label" for="progress_locked">
+                                    <i class="fas fa-lock me-1"></i>Lock progress (prevent employee from changing)
+                                </label>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
                         <div class="col-12">
                             <label for="description" class="form-label">
                                 <i class="fas fa-align-left me-2"></i>Description <span class="text-danger">*</span>
@@ -224,6 +289,53 @@
         document.getElementById('attachments').files = files;
         showFiles(document.getElementById('attachments'));
     });
+    
+    // Progress adjustment functions
+    function adjustProgress(change) {
+        const input = document.getElementById('progress_percentage');
+        const slider = document.getElementById('progress_slider');
+        if (input && slider) {
+            let currentValue = parseInt(input.value) || 0;
+            let newValue = Math.max(0, Math.min(100, currentValue + change));
+            input.value = newValue;
+            slider.value = newValue;
+            updateProgressBar(newValue);
+        }
+    }
+    
+    function updateProgressInput(value) {
+        const input = document.getElementById('progress_percentage');
+        if (input) {
+            input.value = value;
+            updateProgressBar(value);
+        }
+    }
+    
+    function updateProgressBar(value) {
+        const slider = document.getElementById('progress_slider');
+        const display = document.getElementById('progress_display');
+        const bar = document.getElementById('progress_bar_display');
+        
+        if (slider) slider.value = value;
+        if (display) display.textContent = value;
+        
+        if (bar) {
+            bar.style.width = value + '%';
+            bar.textContent = value + '%';
+            
+            // Update color based on progress
+            bar.className = 'progress-bar';
+            if (value < 25) {
+                bar.classList.add('bg-danger');
+            } else if (value < 50) {
+                bar.classList.add('bg-warning');
+            } else if (value < 75) {
+                bar.classList.add('bg-info');
+            } else {
+                bar.classList.add('bg-success');
+            }
+        }
+    }
 </script>
 {% endblock %}
 

@@ -419,11 +419,58 @@
     .theme-btn.active i {
         color: white !important;
     }
+    
+    /* Drag and Drop Styles */
+    .dashboard-card.sortable-ghost,
+    .chart-card.sortable-ghost,
+    [data-widget-id].sortable-ghost {
+        opacity: 0.4;
+        background: #f0f0f0;
+    }
+    
+    .dashboard-card.sortable-drag,
+    .chart-card.sortable-drag,
+    [data-widget-id].sortable-drag {
+        opacity: 0.8;
+        transform: rotate(2deg);
+        cursor: default !important;
+    }
+    
+    .dashboard-card.sortable-drag *,
+    .chart-card.sortable-drag *,
+    [data-widget-id].sortable-drag * {
+        cursor: default !important;
+    }
+    
+    .dashboard-card,
+    .chart-card,
+    [data-widget-id] {
+        cursor: default;
+        position: relative;
+    }
+    
+    .dashboard-card::after,
+    .chart-card::after {
+        content: '⋮⋮';
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        color: rgba(0,0,0,0.2);
+        font-size: 1.2rem;
+        line-height: 1;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    
+    .dashboard-card:hover::after,
+    .chart-card:hover::after {
+        opacity: 1;
+    }
 </style>
 
-<div class="stats-grid mt-4">
+<div class="stats-grid mt-4" id="dashboard-grid">
     <!-- Total Employees -->
-    <div class="dashboard-card" onclick="window.location.href='{% url 'employee_list' %}'">
+    <div class="dashboard-card" id="widget-employees" data-widget-id="employees" onclick="window.location.href='{% url 'employee_list' %}'">
         <div class="card-body p-4">
             <div class="stat-icon-wrapper primary">
                 <i class="fas fa-users stat-icon"></i>
@@ -444,7 +491,7 @@
     </div>
     
     <!-- Total Clients -->
-    <div class="dashboard-card" onclick="window.location.href='{% url 'client_list' %}'">
+    <div class="dashboard-card" id="widget-clients" data-widget-id="clients" onclick="window.location.href='{% url 'client_list' %}'">
         <div class="card-body p-4">
             <div class="stat-icon-wrapper warning">
                 <i class="fas fa-user-tie stat-icon"></i>
@@ -460,7 +507,7 @@
     </div>
     
     <!-- Departments -->
-    <div class="dashboard-card" onclick="window.location.href='{% url 'manage_departments' %}'">
+    <div class="dashboard-card" id="widget-departments" data-widget-id="departments" onclick="window.location.href='{% url 'manage_departments' %}'">
         <div class="card-body p-4">
             <div class="stat-icon-wrapper success">
                 <i class="fas fa-building stat-icon"></i>
@@ -476,7 +523,7 @@
     </div>
     
     <!-- Total Projects -->
-    <div class="dashboard-card" onclick="window.location.href='{% url 'project_list' %}'">
+    <div class="dashboard-card" id="widget-projects" data-widget-id="projects" onclick="window.location.href='{% url 'project_list' %}'">
         <div class="card-body p-4">
             <div class="stat-icon-wrapper info">
                 <i class="fas fa-project-diagram stat-icon"></i>
@@ -492,7 +539,7 @@
     </div>
     
     <!-- Open Tickets -->
-    <div class="dashboard-card" onclick="window.location.href='{% url 'all_tickets' %}'">
+    <div class="dashboard-card" id="widget-tickets" data-widget-id="tickets" onclick="window.location.href='{% url 'all_tickets' %}'">
         <div class="card-body p-4">
             <div class="stat-icon-wrapper danger">
                 <i class="fas fa-ticket-alt stat-icon"></i>
@@ -512,7 +559,7 @@
     </div>
     
     <!-- Pending Leaves -->
-    <div class="dashboard-card" onclick="window.location.href='{% url 'manage_leaves' %}'">
+    <div class="dashboard-card" id="widget-leaves" data-widget-id="leaves" onclick="window.location.href='{% url 'manage_leaves' %}'">
         <div class="card-body p-4">
             <div class="stat-icon-wrapper warning">
                 <i class="fas fa-calendar-alt stat-icon"></i>
@@ -531,7 +578,7 @@
     </div>
     
     <!-- Pending Advances -->
-    <div class="dashboard-card" onclick="window.location.href='{% url 'manage_advances' %}'">
+    <div class="dashboard-card" id="widget-advances" data-widget-id="advances" onclick="window.location.href='{% url 'manage_advances' %}'">
         <div class="card-body p-4">
             <div class="stat-icon-wrapper secondary">
                 <i class="fas fa-hand-holding-usd stat-icon"></i>
@@ -550,7 +597,7 @@
     </div>
     
     <!-- Today's Attendance -->
-    <div class="dashboard-card" onclick="window.location.href='{% url 'all_attendance' %}'">
+    <div class="dashboard-card" id="widget-attendance" data-widget-id="attendance" onclick="window.location.href='{% url 'all_attendance' %}'">
         <div class="card-body p-4">
             <div class="stat-icon-wrapper success">
                 <i class="fas fa-calendar-check stat-icon"></i>
@@ -581,9 +628,9 @@
 </div>
 
 <!-- Charts Section -->
-<div class="row g-4 mt-3">
+<div class="row g-4 mt-3" id="charts-grid">
     <!-- Attendance Chart -->
-    <div class="col-xl-6">
+    <div class="col-xl-6" id="chart-attendance" data-widget-id="chart-attendance">
         <div class="chart-card card">
             <div class="card-header">
                 <i class="fas fa-chart-bar"></i>
@@ -596,7 +643,7 @@
     </div>
     
     <!-- Department Chart -->
-    <div class="col-xl-6">
+    <div class="col-xl-6" id="chart-departments" data-widget-id="chart-departments">
         <div class="chart-card card">
             <div class="card-header">
                 <i class="fas fa-chart-bar"></i>
@@ -609,7 +656,7 @@
     </div>
     
     <!-- Designation Chart -->
-    <div class="col-xl-6">
+    <div class="col-xl-6" id="chart-designations" data-widget-id="chart-designations">
         <div class="chart-card card">
             <div class="card-header">
                 <i class="fas fa-chart-bar"></i>
@@ -622,7 +669,7 @@
     </div>
     
     <!-- Revenue vs Expenses Chart -->
-    <div class="col-xl-6">
+    <div class="col-xl-6" id="chart-revenue-expense" data-widget-id="chart-revenue-expense">
         <div class="chart-card card">
             <div class="card-header">
                 <i class="fas fa-chart-bar"></i>
@@ -635,7 +682,7 @@
     </div>
     
     <!-- Expense Chart -->
-    <div class="col-xl-6">
+    <div class="col-xl-6" id="chart-expenses" data-widget-id="chart-expenses">
         <div class="chart-card card">
             <div class="card-header">
                 <i class="fas fa-chart-bar"></i>
@@ -648,7 +695,7 @@
     </div>
     
     <!-- Revenue Chart -->
-    <div class="col-xl-6">
+    <div class="col-xl-6" id="chart-revenue" data-widget-id="chart-revenue">
         <div class="chart-card card">
             <div class="card-header">
                 <i class="fas fa-chart-bar"></i>
@@ -663,7 +710,7 @@
 
 <!-- Recent Activities -->
 <div class="row g-4 mt-3">
-    <div class="col-xl-12">
+    <div class="col-xl-12" id="widget-activities" data-widget-id="activities">
         <div class="chart-card card">
             <div class="card-header">
                 <i class="fas fa-clock"></i>
@@ -734,6 +781,7 @@
 {% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script src="{% static 'js/dashboard-charts.js' %}"></script>
 <script>
     // Set current date
@@ -745,6 +793,150 @@
                 year: 'numeric', 
                 month: 'long', 
                 day: 'numeric' 
+            });
+        }
+        
+        // Load saved layout
+        fetch('{% url "get_dashboard_layout" %}?dashboard_type=admin')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.layout && data.layout.length > 0) {
+                    const grid = document.getElementById('dashboard-grid');
+                    const chartsGrid = document.getElementById('charts-grid');
+                    const activitiesContainer = document.getElementById('widget-activities');
+                    
+                    // Reorder widgets based on saved layout
+                    data.layout.forEach(widgetId => {
+                        const widget = document.querySelector(`[data-widget-id="${widgetId}"]`);
+                        if (widget) {
+                            if (widgetId.startsWith('chart-') || widgetId === 'activities') {
+                                if (chartsGrid && widgetId !== 'activities') {
+                                    chartsGrid.appendChild(widget);
+                                } else if (activitiesContainer && widgetId === 'activities') {
+                                    activitiesContainer.parentElement.appendChild(activitiesContainer);
+                                }
+                            } else {
+                                if (grid) {
+                                    grid.appendChild(widget);
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // Initialize Sortable for stats grid
+                if (document.getElementById('dashboard-grid')) {
+                    new Sortable(document.getElementById('dashboard-grid'), {
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        dragClass: 'sortable-drag',
+                        delay: 100,
+                        delayOnTouchStart: true,
+                        forceFallback: false,
+                        onStart: function(evt) {
+                            document.body.style.cursor = 'default';
+                        },
+                        onEnd: function(evt) {
+                            document.body.style.cursor = '';
+                            saveLayout();
+                        }
+                    });
+                }
+                
+                // Initialize Sortable for charts grid
+                if (document.getElementById('charts-grid')) {
+                    new Sortable(document.getElementById('charts-grid'), {
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        dragClass: 'sortable-drag',
+                        delay: 100,
+                        delayOnTouchStart: true,
+                        forceFallback: false,
+                        onStart: function(evt) {
+                            document.body.style.cursor = 'default';
+                        },
+                        onEnd: function(evt) {
+                            document.body.style.cursor = '';
+                            saveLayout();
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading layout:', error);
+                // Initialize Sortable even if loading fails
+                if (document.getElementById('dashboard-grid')) {
+                    new Sortable(document.getElementById('dashboard-grid'), {
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        dragClass: 'sortable-drag',
+                        handle: '.dashboard-card',
+                        onEnd: function(evt) {
+                            saveLayout();
+                        }
+                    });
+                }
+                if (document.getElementById('charts-grid')) {
+                    new Sortable(document.getElementById('charts-grid'), {
+                        animation: 150,
+                        ghostClass: 'sortable-ghost',
+                        dragClass: 'sortable-drag',
+                        handle: '.chart-card',
+                        onEnd: function(evt) {
+                            saveLayout();
+                        }
+                    });
+                }
+            });
+        
+        // Function to save layout
+        function saveLayout() {
+            const order = [];
+            
+            // Get order from stats grid
+            const statsGrid = document.getElementById('dashboard-grid');
+            if (statsGrid) {
+                Array.from(statsGrid.children).forEach(child => {
+                    const widgetId = child.getAttribute('data-widget-id');
+                    if (widgetId) order.push(widgetId);
+                });
+            }
+            
+            // Get order from charts grid
+            const chartsGrid = document.getElementById('charts-grid');
+            if (chartsGrid) {
+                Array.from(chartsGrid.children).forEach(child => {
+                    const widgetId = child.getAttribute('data-widget-id');
+                    if (widgetId) order.push(widgetId);
+                });
+            }
+            
+            // Add activities if exists
+            const activities = document.getElementById('widget-activities');
+            if (activities) {
+                order.push('activities');
+            }
+            
+            // Save to server
+            fetch('{% url "save_dashboard_layout" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    dashboard_type: 'admin',
+                    order: order
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Layout saved successfully');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving layout:', error);
             });
         }
         
