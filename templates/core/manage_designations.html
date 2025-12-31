@@ -11,6 +11,17 @@
         </h1>
         <p class="text-muted mb-0 small">Create and manage designations in your organization</p>
     </div>
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-danger dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-file-export me-2"></i>Export
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="?format=pdf"><i class="fas fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+            <li><a class="dropdown-item" href="?format=docx"><i class="fas fa-file-word me-2 text-primary"></i>DOC</a></li>
+            <li><a class="dropdown-item" href="?format=excel"><i class="fas fa-file-excel me-2 text-success"></i>Excel</a></li>
+            <li><a class="dropdown-item" href="?format=csv"><i class="fas fa-file-csv me-2 text-info"></i>CSV</a></li>
+        </ul>
+    </div>
 </div>
 {% endblock %}
 

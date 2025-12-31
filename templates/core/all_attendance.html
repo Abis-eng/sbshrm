@@ -14,6 +14,17 @@
                     </ol>
                 </div>
                 <h4 class="page-title">All Attendance</h4>
+                <div class="btn-group ms-3" role="group">
+                    <button type="button" class="btn btn-outline-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-file-export me-2"></i>Export
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="?{{ request.GET.urlencode }}&format=pdf"><i class="fas fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+                        <li><a class="dropdown-item" href="?{{ request.GET.urlencode }}&format=docx"><i class="fas fa-file-word me-2 text-primary"></i>DOC</a></li>
+                        <li><a class="dropdown-item" href="?{{ request.GET.urlencode }}&format=excel"><i class="fas fa-file-excel me-2 text-success"></i>Excel</a></li>
+                        <li><a class="dropdown-item" href="?{{ request.GET.urlencode }}&format=csv"><i class="fas fa-file-csv me-2 text-info"></i>CSV</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
@@ -25,7 +36,23 @@
                     <h4 class="header-title">Attendance Records</h4>
                     <div>
                         <a href="{% url 'attendance_logs' %}" class="btn btn-info btn-sm">View Logs</a>
-                        <a href="{% url 'sync_zkt_machine' %}" class="btn btn-success btn-sm">Sync ZKT Machine</a>
+                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#syncModal">
+                            <i class="mdi mdi-sync"></i> Sync Machines
+                        </button>
+                        {% if machines %}
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-warning btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-bug"></i> Debug Matching
+                            </button>
+                            <ul class="dropdown-menu">
+                                {% for machine in machines %}
+                                <li><a class="dropdown-item" href="{% url 'debug_attendance_matching' machine.id %}">
+                                    <i class="fas fa-server me-2"></i>{{ machine.name }}
+                                </a></li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
                         <a href="{% url 'manual_attendance_entry' %}" class="btn btn-primary btn-sm">Manual Entry</a>
                     </div>
                 </div>
@@ -137,6 +164,68 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sync Machine Modal -->
+<div class="modal fade" id="syncModal" tabindex="-1" aria-labelledby="syncModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="syncModalLabel">
+                    <i class="mdi mdi-sync me-2"></i>Sync Attendance Machines
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="get" action="{% url 'sync_attendance_machine' %}" id="syncForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="sync_machine" class="form-label">Select Machine</label>
+                        <select class="form-select" id="sync_machine" name="machine_id">
+                            <option value="">Sync All Active Machines</option>
+                            {% for machine in machines %}
+                                {% if machine.is_active %}
+                                <option value="{{ machine.id }}">{{ machine.name }} ({{ machine.get_machine_type_display }}) - {{ machine.location|default:"No Location" }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        {% if not machines %}
+                            <div class="alert alert-warning mt-2">
+                                <i class="mdi mdi-alert me-2"></i>No machines configured. Please add machines in <a href="{% url 'manage_attendance_machines' %}">Manage Attendance Machines</a>.
+                            </div>
+                        {% elif machines|length == 0 %}
+                            <div class="alert alert-warning mt-2">
+                                <i class="mdi mdi-alert me-2"></i>No active machines found. Please activate machines in <a href="{% url 'manage_attendance_machines' %}">Manage Attendance Machines</a>.
+                            </div>
+                        {% else %}
+                            <small class="form-text text-muted">Leave empty to sync all active machines</small>
+                        {% endif %}
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="sync_start_date" class="form-label">Start Date (Optional)</label>
+                            <input type="date" class="form-control" id="sync_start_date" name="start_date">
+                            <small class="form-text text-muted">Leave empty to sync last 7 days</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="sync_end_date" class="form-label">End Date (Optional)</label>
+                            <input type="date" class="form-control" id="sync_end_date" name="end_date">
+                            <small class="form-text text-muted">Leave empty to sync until today</small>
+                        </div>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="mdi mdi-information me-2"></i>
+                        <strong>Note:</strong> This will fetch attendance records from the selected machine(s) and match them with employees based on their machine IDs.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="mdi mdi-sync me-2"></i>Start Sync
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

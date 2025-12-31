@@ -38,8 +38,11 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
     
     :root {
-        --theme-primary: #667eea;
-        --theme-secondary: #764ba2;
+        --theme-primary: #4B49AC;
+        --theme-secondary: #98BDFF;
+        --theme-accent: #7978E9;
+        --theme-support-1: #0FA;
+        --theme-support-2: #F3797E;
         --theme-success: #10b981;
         --theme-info: #3b82f6;
         --theme-warning: #f59e0b;
@@ -54,12 +57,12 @@
     
     /* Page Title Styling */
     .page-title-container {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
         border-radius: 20px;
         padding: 25px 30px;
         color: #fff;
         margin-bottom: 30px;
-        box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 10px 40px rgba(75, 73, 172, 0.3);
         position: relative;
         overflow: hidden;
     }
@@ -148,7 +151,7 @@
         left: 0;
         right: 0;
         height: 5px;
-        background: linear-gradient(90deg, var(--theme-primary), var(--theme-secondary));
+        background: linear-gradient(90deg, #4B49AC, #98BDFF);
         transform: scaleX(0);
         transform-origin: left;
         transition: transform 0.4s ease;
@@ -164,12 +167,13 @@
     }
     
     .dashboard-card:hover .mt-3.pt-3.border-top small {
-        color: var(--theme-primary) !important;
+        color: #4B49AC !important;
         transform: translateX(5px);
     }
     
     .dashboard-card:hover .mt-3.pt-3.border-top i {
         transform: translateX(3px);
+        color: #4B49AC !important;
     }
     
     .dashboard-card:active {
@@ -185,14 +189,14 @@
         align-items: center;
         justify-content: center;
         margin-bottom: 20px;
-        background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
-        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        background: linear-gradient(135deg, #4B49AC, #98BDFF);
+        box-shadow: 0 8px 16px rgba(75, 73, 172, 0.3);
         transition: all 0.3s ease;
     }
     
     .dashboard-card:hover .stat-icon-wrapper {
         transform: rotate(5deg) scale(1.1);
-        box-shadow: 0 12px 24px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 12px 24px rgba(75, 73, 172, 0.4);
     }
     
     .dashboard-card:active {
@@ -205,7 +209,7 @@
         z-index: 1;
     }
     
-    .stat-icon-wrapper.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-icon-wrapper.primary { background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%); }
     .stat-icon-wrapper.success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
     .stat-icon-wrapper.warning { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
     .stat-icon-wrapper.info { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
@@ -217,7 +221,7 @@
         font-size: 3rem;
         font-weight: 800;
         margin: 15px 0;
-        background: linear-gradient(135deg, var(--theme-primary), var(--theme-secondary));
+        background: linear-gradient(135deg, #4B49AC, #98BDFF);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -277,13 +281,20 @@
     }
     
     .chart-card .card-header {
-        background: linear-gradient(135deg, var(--theme-primary) 0%, var(--theme-secondary) 100%);
+        background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
         color: white;
         padding: 20px 25px;
         border: none;
         display: flex;
         align-items: center;
         gap: 12px;
+    }
+    
+    .chart-card .card-header i,
+    .chart-card .card-header .fas,
+    .chart-card .card-header .far,
+    .chart-card .card-header .fab {
+        color: #fff !important;
     }
     
     .chart-card .card-header h5 {
@@ -411,10 +422,10 @@
         box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
     .theme-btn.active {
-        background: var(--theme-primary) !important;
+        background: #4B49AC !important;
         color: white !important;
-        border-color: var(--theme-primary) !important;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        border-color: #4B49AC !important;
+        box-shadow: 0 4px 12px rgba(75, 73, 172, 0.4);
     }
     .theme-btn.active i {
         color: white !important;

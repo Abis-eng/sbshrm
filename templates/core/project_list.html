@@ -3,16 +3,16 @@
 {% block content %}
 <style>
     body {
-        background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+        background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
         min-height: 100vh;
     }
     .page-header {
-        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%);
+        background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
         border-radius: 20px;
         padding: 30px;
         color: #fff;
         margin-bottom: 30px;
-        box-shadow: 0 10px 40px rgba(20, 184, 166, 0.3);
+        box-shadow: 0 10px 40px rgba(75, 73, 172, 0.3);
     }
     .page-header h2 {
         margin: 0;
@@ -24,19 +24,25 @@
         border-radius: 15px;
         padding: 25px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        border-left: 5px solid #14b8a6;
+        border-left: 5px solid #4B49AC;
         transition: all 0.3s ease;
         margin-bottom: 20px;
     }
     .stats-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 8px 30px rgba(20, 184, 166, 0.2);
+        box-shadow: 0 8px 30px rgba(208, 184, 172, 0.2);
     }
     .stats-card .stat-value {
         font-size: 2.5rem;
         font-weight: 700;
-        color: #14b8a6;
+        color: #4B49AC;
         margin: 0;
+    }
+    .stats-card i,
+    .stats-card .fas,
+    .stats-card .far,
+    .stats-card .fab {
+        color: #4B49AC;
     }
     .stats-card .stat-label {
         color: #64748b;
@@ -190,6 +196,17 @@
             <div>
                 <h2><i class="fas fa-project-diagram me-2"></i>Projects Management</h2>
                 <p class="mb-0 mt-2" style="opacity: 0.9;">Manage and track all your projects</p>
+            </div>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="border: 2px solid rgba(255,255,255,0.3);">
+                    <i class="fas fa-file-export me-2"></i>Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="?format=pdf"><i class="fas fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+                    <li><a class="dropdown-item" href="?format=docx"><i class="fas fa-file-word me-2 text-primary"></i>DOC</a></li>
+                    <li><a class="dropdown-item" href="?format=excel"><i class="fas fa-file-excel me-2 text-success"></i>Excel</a></li>
+                    <li><a class="dropdown-item" href="?format=csv"><i class="fas fa-file-csv me-2 text-info"></i>CSV</a></li>
+                </ul>
             </div>
             {% if user.is_superuser %}
             <a href="{% url 'add_project' %}" class="btn btn-add">

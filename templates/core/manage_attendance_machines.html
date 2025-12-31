@@ -25,27 +25,77 @@
                     <h4 class="header-title">Add New Machine</h4>
                 </div>
                 <div class="card-body">
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <strong>Please correct the following errors:</strong>
+                            <ul class="mb-0">
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <li>{{ field|title }}: {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
                     <form method="post">
                         {% csrf_token %}
                         <div class="mb-3">
-                            <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+                            <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }} <span class="text-danger">*</span></label>
                             {{ form.name }}
                             {% if form.name.errors %}
                                 <div class="text-danger">{{ form.name.errors }}</div>
                             {% endif %}
                         </div>
                         <div class="mb-3">
+                            <label for="{{ form.machine_type.id_for_label }}" class="form-label">{{ form.machine_type.label }} <span class="text-danger">*</span></label>
+                            {{ form.machine_type }}
+                            {% if form.machine_type.errors %}
+                                <div class="text-danger">{{ form.machine_type.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">{{ form.machine_type.help_text }}</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.protocol.id_for_label }}" class="form-label">{{ form.protocol.label }} <span class="text-danger">*</span></label>
+                            {{ form.protocol }}
+                            {% if form.protocol.errors %}
+                                <div class="text-danger">{{ form.protocol.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">{{ form.protocol.help_text }}</small>
+                        </div>
+                        <div class="mb-3" id="tcp_ip_fields">
                             <label for="{{ form.ip_address.id_for_label }}" class="form-label">{{ form.ip_address.label }}</label>
                             {{ form.ip_address }}
                             {% if form.ip_address.errors %}
                                 <div class="text-danger">{{ form.ip_address.errors }}</div>
                             {% endif %}
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-3" id="tcp_ip_fields">
                             <label for="{{ form.port.id_for_label }}" class="form-label">{{ form.port.label }}</label>
                             {{ form.port }}
                             {% if form.port.errors %}
                                 <div class="text-danger">{{ form.port.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3" id="http_fields" style="display:none;">
+                            <label for="{{ form.url.id_for_label }}" class="form-label">{{ form.url.label }}</label>
+                            {{ form.url }}
+                            {% if form.url.errors %}
+                                <div class="text-danger">{{ form.url.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">{{ form.url.help_text }}</small>
+                        </div>
+                        <div class="mb-3" id="serial_fields" style="display:none;">
+                            <label for="{{ form.serial_port.id_for_label }}" class="form-label">{{ form.serial_port.label }}</label>
+                            {{ form.serial_port }}
+                            {% if form.serial_port.errors %}
+                                <div class="text-danger">{{ form.serial_port.errors }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3" id="serial_fields" style="display:none;">
+                            <label for="{{ form.baud_rate.id_for_label }}" class="form-label">{{ form.baud_rate.label }}</label>
+                            {{ form.baud_rate }}
+                            {% if form.baud_rate.errors %}
+                                <div class="text-danger">{{ form.baud_rate.errors }}</div>
                             {% endif %}
                         </div>
                         <div class="mb-3">
@@ -54,6 +104,14 @@
                             {% if form.location.errors %}
                                 <div class="text-danger">{{ form.location.errors }}</div>
                             {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.sync_interval.id_for_label }}" class="form-label">{{ form.sync_interval.label }}</label>
+                            {{ form.sync_interval }}
+                            {% if form.sync_interval.errors %}
+                                <div class="text-danger">{{ form.sync_interval.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">{{ form.sync_interval.help_text|default:"How often to sync data in minutes (default: 15)" }}</small>
                         </div>
                         <div class="mb-3">
                             <div class="form-check">
@@ -66,6 +124,26 @@
                         <button type="submit" class="btn btn-primary">Add Machine</button>
                     </form>
                 </div>
+                <script>
+                // Show/hide fields based on protocol selection
+                document.addEventListener('DOMContentLoaded', function() {
+                    const protocolSelect = document.getElementById('{{ form.protocol.id_for_label }}');
+                    if (protocolSelect) {
+                        function toggleFields() {
+                            const protocol = protocolSelect.value;
+                            const tcpFields = document.getElementById('tcp_ip_fields');
+                            const httpFields = document.getElementById('http_fields');
+                            const serialFields = document.getElementById('serial_fields');
+                            
+                            if (tcpFields) tcpFields.style.display = (protocol === 'tcp_ip') ? 'block' : 'none';
+                            if (httpFields) httpFields.style.display = (protocol === 'http' || protocol === 'https') ? 'block' : 'none';
+                            if (serialFields) serialFields.style.display = (protocol === 'serial') ? 'block' : 'none';
+                        }
+                        protocolSelect.addEventListener('change', toggleFields);
+                        toggleFields(); // Initial call
+                    }
+                });
+                </script>
             </div>
         </div>
 
@@ -80,8 +158,9 @@
                             <thead>
                                 <tr>
                                     <th>Name</th>
-                                    <th>IP Address</th>
-                                    <th>Port</th>
+                                    <th>Type</th>
+                                    <th>Protocol</th>
+                                    <th>Connection</th>
                                     <th>Location</th>
                                     <th>Status</th>
                                     <th>Last Sync</th>
@@ -92,8 +171,19 @@
                                 {% for machine in machines %}
                                 <tr>
                                     <td>{{ machine.name }}</td>
-                                    <td>{{ machine.ip_address }}</td>
-                                    <td>{{ machine.port }}</td>
+                                    <td><span class="badge bg-info">{{ machine.get_machine_type_display }}</span></td>
+                                    <td><span class="badge bg-secondary">{{ machine.get_protocol_display }}</span></td>
+                                    <td>
+                                        {% if machine.protocol == 'tcp_ip' %}
+                                            {{ machine.ip_address }}:{{ machine.port|default:"-" }}
+                                        {% elif machine.protocol in 'http,https' %}
+                                            {{ machine.url|default:"-"|truncatechars:30 }}
+                                        {% elif machine.protocol == 'serial' %}
+                                            {{ machine.serial_port|default:"-" }}
+                                        {% else %}
+                                            {{ machine.get_connection_string|truncatechars:30 }}
+                                        {% endif %}
+                                    </td>
                                     <td>{{ machine.location|default:"-" }}</td>
                                     <td>
                                         {% if machine.is_active %}
@@ -106,17 +196,35 @@
                                         {% if machine.last_sync %}
                                             {{ machine.last_sync|date:"Y-m-d H:i" }}
                                         {% else %}
-                                            Never
+                                            <span class="text-muted">Never</span>
+                                        {% endif %}
+                                        {% if machine.last_error %}
+                                            <br><small class="text-danger" title="{{ machine.last_error }}">Error</small>
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <a href="{% url 'edit_attendance_machine' machine.id %}" class="btn btn-sm btn-primary">Edit</a>
-                                        <a href="{% url 'delete_attendance_machine' machine.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this machine?')">Delete</a>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'sync_attendance_machine' machine.id %}" class="btn btn-sm btn-success" title="Sync this machine">
+                                                <i class="mdi mdi-sync"></i> Sync
+                                            </a>
+                                            <a href="{% url 'test_machine_connection' machine.id %}" class="btn btn-sm btn-info" title="Test connection">
+                                                <i class="mdi mdi-network"></i> Test
+                                            </a>
+                                            <a href="{% url 'debug_attendance_matching' machine.id %}" class="btn btn-sm btn-warning" title="Debug attendance matching - See why employees are not being matched">
+                                                <i class="fas fa-bug"></i> Debug Match
+                                            </a>
+                                            <a href="{% url 'edit_attendance_machine' machine.id %}" class="btn btn-sm btn-primary" title="Edit machine">
+                                                <i class="mdi mdi-pencil"></i> Edit
+                                            </a>
+                                            <a href="{% url 'delete_attendance_machine' machine.id %}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this machine?')" title="Delete machine">
+                                                <i class="mdi mdi-delete"></i> Delete
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="7" class="text-center">No machines registered.</td>
+                                    <td colspan="8" class="text-center">No machines registered.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -127,19 +235,41 @@
 
             <div class="card mt-4">
                 <div class="card-header">
-                    <h4 class="header-title">Machine Operations</h4>
+                    <h4 class="header-title">Bulk Operations & Debugging</h4>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6">
-                            <h5>Test Connection</h5>
-                            <p>Test the connection to your ZKT machine to ensure it's working properly.</p>
-                            <a href="{% url 'test_zkt_connection' %}" class="btn btn-info">Test Connection</a>
+                        <div class="col-md-4">
+                            <h5>Sync All Machines</h5>
+                            <p>Sync attendance data from all active machines to the system.</p>
+                            <a href="{% url 'sync_attendance_machine' %}" class="btn btn-success">
+                                <i class="mdi mdi-sync"></i> Sync All Machines
+                            </a>
                         </div>
-                        <div class="col-md-6">
-                            <h5>Sync Data</h5>
-                            <p>Sync attendance data from the ZKT machine to the system.</p>
-                            <a href="{% url 'sync_zkt_machine' %}" class="btn btn-success">Sync Data</a>
+                        <div class="col-md-4">
+                            <h5>Debug Attendance Matching</h5>
+                            <p>Test why employees are not being matched with machine records.</p>
+                            {% if machines %}
+                                <div class="dropdown">
+                                    <button class="btn btn-warning dropdown-toggle" type="button" id="debugDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-bug"></i> Debug Matching
+                                    </button>
+                                    <ul class="dropdown-menu" aria-labelledby="debugDropdown">
+                                        {% for machine in machines %}
+                                        <li><a class="dropdown-item" href="{% url 'debug_attendance_matching' machine.id %}">{{ machine.name }}</a></li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% else %}
+                                <p class="text-muted">No machines available</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <h5>Legacy Sync</h5>
+                            <p>Use the old ZKT sync method (redirects to new sync).</p>
+                            <a href="{% url 'sync_zkt_machine' %}" class="btn btn-secondary">
+                                <i class="mdi mdi-sync"></i> Legacy Sync
+                            </a>
                         </div>
                     </div>
                 </div>

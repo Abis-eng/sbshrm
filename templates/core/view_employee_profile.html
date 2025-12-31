@@ -12,9 +12,17 @@
         <p class="text-muted mb-0 small">Complete employee information and details</p>
     </div>
     <div class="d-flex flex-wrap gap-2 align-items-center">
-        <a href="{% url 'edit_employee' employee.id %}" class="btn btn-warning">
-            <i class="fas fa-edit me-2"></i>Edit Employee
-        </a>
+        {% if can_edit %}
+            {% if user.is_superuser %}
+                <a href="{% url 'edit_employee' employee.id %}" class="btn btn-warning">
+                    <i class="fas fa-edit me-2"></i>Edit Employee
+                </a>
+            {% else %}
+                <a href="{% url 'update_my_profile_picture' %}" class="btn btn-primary">
+                    <i class="fas fa-camera me-2"></i>Change Profile Picture
+                </a>
+            {% endif %}
+        {% endif %}
         <a href="{% url 'employee_list' %}" class="btn btn-sm btn-light">
             <i class="fas fa-arrow-left me-1"></i>Back to Employees
         </a>
@@ -46,6 +54,14 @@
         font-weight: 700;
         margin: 0 auto 1.5rem;
         border: 5px solid rgba(255, 255, 255, 0.3);
+        overflow: hidden;
+        position: relative;
+    }
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
     }
     .info-card {
         border: none;
@@ -123,7 +139,11 @@
 <!-- Profile Header -->
 <div class="profile-header">
     <div class="profile-avatar">
-        {{ employee.user.first_name|first|default:employee.user.username|first|upper }}{{ employee.user.last_name|first|upper|default:'' }}
+        {% if employee.profile_picture %}
+            <img src="{{ employee.profile_picture.url }}" alt="{{ employee.user.get_full_name|default:employee.user.username }}">
+        {% else %}
+            {{ employee.user.first_name|first|default:employee.user.username|first|upper }}{{ employee.user.last_name|first|upper|default:'' }}
+        {% endif %}
     </div>
     <h2 class="mb-2">{{ employee.user.get_full_name|default:employee.user.username }}</h2>
     <p class="mb-0 opacity-90">{{ employee.user.email }}</p>
@@ -148,7 +168,7 @@
     </div>
     <div class="col-md-3">
         <a href="{% url 'manage_leaves' %}?employee={{ employee.user.id }}" class="text-decoration-none">
-            <div class="stats-card" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); cursor: pointer; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div class="stats-card" style="background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%); cursor: pointer; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div class="stats-number">{{ leaves_count }}</div>
                 <div class="stats-label">
                     <i class="fas fa-plane-departure me-2"></i>Leave Requests
@@ -158,7 +178,7 @@
     </div>
     <div class="col-md-3">
         <a href="{% url 'manage_advances' %}?employee={{ employee.id }}" class="text-decoration-none">
-            <div class="stats-card" style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); cursor: pointer; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div class="stats-card" style="background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%); cursor: pointer; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div class="stats-number">{{ advances_count }}</div>
                 <div class="stats-label">
                     <i class="fas fa-money-bill-wave me-2"></i>Advance Requests

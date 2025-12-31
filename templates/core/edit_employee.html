@@ -25,41 +25,104 @@
         border: none;
         border-radius: 15px;
         box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        padding: 2rem;
+        padding: 2.5rem;
         background: white;
+        margin-bottom: 2rem;
     }
     .form-section {
-        background: #f8f9ff;
-        border-radius: 10px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        border-left: 4px solid #0e7490;
+        background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border-left: 5px solid #4B49AC;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+    .form-section:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     .section-title {
-        font-size: 1.1rem;
+        font-size: 1.25rem;
         font-weight: 700;
-        color: #0e7490;
-        margin-bottom: 1rem;
+        color: #4B49AC;
+        margin-bottom: 1.5rem;
         display: flex;
         align-items: center;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e9ecef;
     }
     .section-title i {
-        margin-right: 0.5rem;
+        margin-right: 0.75rem;
+        font-size: 1.4rem;
+        color: #4B49AC;
     }
     .form-label {
         font-weight: 600;
         color: #2d3748;
         margin-bottom: 0.5rem;
+        font-size: 0.95rem;
     }
     .form-control, .form-select {
         border-radius: 10px;
         border: 2px solid #e9ecef;
-        padding: 0.75rem;
+        padding: 0.875rem 1rem;
         transition: all 0.3s;
+        font-size: 0.95rem;
     }
     .form-control:focus, .form-select:focus {
-        border-color: #0e7490;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        border-color: #4B49AC;
+        box-shadow: 0 0 0 0.25rem rgba(14, 116, 144, 0.15);
+        outline: none;
+    }
+    .input-group-text {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        font-weight: 600;
+        color: #4B49AC;
+    }
+    .alert-info {
+        background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+        border: 1px solid #0e7490;
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+    .btn-quick-fill {
+        margin-top: 0.5rem;
+        margin-right: 0.5rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+    }
+    .reference-badge {
+        display: inline-block;
+        background: #0e7490;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin: 0.25rem;
+    }
+    .form-actions {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+        border-top: 3px solid #4B49AC;
+    }
+    small.text-muted {
+        display: block;
+        margin-top: 0.5rem;
+        line-height: 1.6;
+    }
+    code {
+        background: #f1f5f9;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.9em;
+        color: #4B49AC;
+        font-weight: 600;
     }
 </style>
 
@@ -73,7 +136,7 @@
             </div>
             {% endif %}
             
-            <form method="post" id="editEmployeeForm">
+            <form method="post" id="editEmployeeForm" enctype="multipart/form-data">
                 {% csrf_token %}
                 
                 <!-- Personal Information -->
@@ -82,6 +145,21 @@
                         <i class="fas fa-user"></i>Personal Information
                     </div>
                     <div class="row g-3">
+                        <div class="col-md-12">
+                            <label for="profile_picture" class="form-label">Profile Picture</label>
+                            {% if employee.profile_picture %}
+                            <div class="mb-2">
+                                <img src="{{ employee.profile_picture.url }}" alt="Current Profile Picture" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #4B49AC; margin-bottom: 10px;">
+                                <p class="text-muted small">Current profile picture</p>
+                            </div>
+                            {% endif %}
+                            <input type="file" class="form-control" id="profile_picture" name="profile_picture" accept="image/*">
+                            <small class="text-muted">Upload a new profile picture to replace the current one (JPG, PNG, etc.)</small>
+                            <div id="profile-preview" style="margin-top: 10px; display: none;">
+                                <img id="preview-img" src="" alt="Preview" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #4B49AC;">
+                                <p class="text-muted small mt-2">New profile picture preview</p>
+                            </div>
+                        </div>
                         <div class="col-md-6">
                             <label for="first_name" class="form-label">First Name</label>
                             <input type="text" class="form-control" id="first_name" name="first_name" value="{{ employee.user.first_name }}" required>
@@ -144,43 +222,108 @@
                     </div>
                 </div>
                 
-                <!-- ZKT Machine Configuration -->
+                <!-- Biometric Machine Configuration -->
                 <div class="form-section">
                     <div class="section-title">
-                        <i class="fas fa-fingerprint"></i>ZKT Machine Configuration
+                        <i class="fas fa-fingerprint"></i>Biometric Machine Configuration
                     </div>
-                    <div class="row g-3">
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-info-circle me-2 mt-1" style="font-size: 1.2rem;"></i>
+                            <div>
+                                <strong class="d-block mb-2">💡 Reference IDs for Matching:</strong>
+                                <div class="mb-2">
+                                    <span class="reference-badge">Employee ID: {{ employee.id }}</span>
+                                    <span class="reference-badge">User ID: {{ employee.user.id }}</span>
+                                </div>
+                                <small class="d-block">If your biometric machine user ID matches either of these values, use the quick-fill buttons below.</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-4">
                         <div class="col-md-6">
-                            <label for="machine_id" class="form-label">Machine ID</label>
-                            <input type="number" class="form-control" id="machine_id" name="machine_id" value="{{ employee.machine_id|default:'' }}" placeholder="Enter ZKT Machine User ID">
-                            <small class="text-muted">User ID from ZKT attendance machine</small>
+                            <label for="machine_id" class="form-label">
+                                Machine ID <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="machine_id" name="machine_id" 
+                                   value="{{ employee.machine_id|default:'' }}" 
+                                   placeholder="Enter Machine User ID (e.g., 1, 2, 3)">
+                            <div class="mt-2">
+                                <small class="text-muted d-block mb-2">
+                                    <strong>Current Value:</strong> <code>{{ employee.machine_id|default:"Not set" }}</code>
+                                </small>
+                                <small class="text-muted d-block mb-2">
+                                    <strong>Important:</strong> This must match the User ID registered in your biometric machine. 
+                                    This is the primary field used to match attendance records.
+                                </small>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary btn-quick-fill" 
+                                            onclick="document.getElementById('machine_id').value='{{ employee.id }}'">
+                                        <i class="fas fa-bolt me-1"></i>Use Employee ID ({{ employee.id }})
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-primary btn-quick-fill" 
+                                            onclick="document.getElementById('machine_id').value='{{ employee.user.id }}'">
+                                        <i class="fas fa-bolt me-1"></i>Use User ID ({{ employee.user.id }})
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label for="fingerprint_id" class="form-label">Fingerprint ID</label>
-                            <input type="number" class="form-control" id="fingerprint_id" name="fingerprint_id" value="{{ employee.fingerprint_id|default:'' }}" placeholder="Enter Fingerprint ID">
+                            <input type="text" class="form-control" id="fingerprint_id" name="fingerprint_id" 
+                                   value="{{ employee.fingerprint_id|default:'' }}" 
+                                   placeholder="Enter Fingerprint ID (if different from Machine ID)">
+                            <small class="text-muted">Alternative ID if using fingerprint authentication separately</small>
                         </div>
                         <div class="col-md-6">
-                            <label for="face_id" class="form-label">Face ID</label>
-                            <input type="number" class="form-control" id="face_id" name="face_id" value="{{ employee.face_id|default:'' }}" placeholder="Enter Face Recognition ID">
+                            <label for="face_id" class="form-label">Face Recognition ID</label>
+                            <input type="text" class="form-control" id="face_id" name="face_id" 
+                                   value="{{ employee.face_id|default:'' }}" 
+                                   placeholder="Enter Face Recognition ID (if different)">
+                            <small class="text-muted">Alternative ID if using face recognition authentication</small>
                         </div>
                         <div class="col-md-6">
-                            <label for="card_id" class="form-label">Card ID</label>
-                            <input type="text" class="form-control" id="card_id" name="card_id" value="{{ employee.card_id|default:'' }}" placeholder="Enter Card ID">
+                            <label for="card_id" class="form-label">Card/RFID ID</label>
+                            <input type="text" class="form-control" id="card_id" name="card_id" 
+                                   value="{{ employee.card_id|default:'' }}" 
+                                   placeholder="Enter Card/RFID ID (if different)">
+                            <small class="text-muted">Alternative ID if using card or RFID authentication</small>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Form Actions -->
-                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                    <a href="{% url 'employee_list' %}" class="btn btn-light">
-                        <i class="fas fa-times me-2"></i>Cancel
-                    </a>
-                    <button type="submit" class="btn btn-primary btn-lg">
-                        <i class="fas fa-save me-2"></i>Save Changes
-                    </button>
+                <div class="form-actions">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{% url 'employee_list' %}" class="btn btn-light btn-lg">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg px-4">
+                            <i class="fas fa-save me-2"></i>Save Changes
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+    // Profile picture preview
+    document.getElementById('profile_picture').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('profile-preview');
+                const img = document.getElementById('preview-img');
+                img.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            document.getElementById('profile-preview').style.display = 'none';
+        }
+    });
+</script>
 {% endblock %}

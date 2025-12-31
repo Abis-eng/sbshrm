@@ -3,6 +3,11 @@ from django.urls import path
 
 urlpatterns = [
     path('employees/', views.employee_list, name='employee_list'),
+    path('employees/<int:employee_id>/', views.view_employee_profile, name='view_employee_profile'),
+    path('employees/add/', views.add_employee, name='add_employee'),
+    path('employees/<int:employee_id>/edit/', views.edit_employee, name='edit_employee'),
+    path('employees/<int:employee_id>/delete/', views.delete_employee, name='delete_employee'),
+    path('update-my-profile-picture/', views.update_my_profile_picture, name='update_my_profile_picture'),
     path('projects/<int:project_id>/assign-task/', views.assign_task, name='assign_task'),
     path('projects/<int:project_id>/tasks/', views.project_tasks, name='project_tasks'),
     path('my-tasks/', views.my_tasks, name='my_tasks'),

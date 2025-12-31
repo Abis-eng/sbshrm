@@ -9,6 +9,17 @@
         <h1 class="h3 mb-1 fw-bold"><i class="fas fa-ticket-alt me-2"></i>All Tickets</h1>
         <p class="text-muted mb-0 small">Manage and track all support tickets</p>
     </div>
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-danger dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-file-export me-2"></i>Export
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="?{{ request.GET.urlencode }}&format=pdf"><i class="fas fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+            <li><a class="dropdown-item" href="?{{ request.GET.urlencode }}&format=docx"><i class="fas fa-file-word me-2 text-primary"></i>DOC</a></li>
+            <li><a class="dropdown-item" href="?{{ request.GET.urlencode }}&format=excel"><i class="fas fa-file-excel me-2 text-success"></i>Excel</a></li>
+            <li><a class="dropdown-item" href="?{{ request.GET.urlencode }}&format=csv"><i class="fas fa-file-csv me-2 text-info"></i>CSV</a></li>
+        </ul>
+    </div>
 </div>
 {% endblock %}
 
@@ -95,13 +106,13 @@
 <!-- Statistics Cards -->
 <div class="row g-3 mb-4">
     <div class="col-md-2">
-        <div class="stats-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="stats-card" style="background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);">
             <div class="number">{{ stats.total }}</div>
             <div class="label">Total Tickets</div>
         </div>
     </div>
     <div class="col-md-2">
-        <div class="stats-card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+        <div class="stats-card" style="background: linear-gradient(135deg, #98BDFF 0%, #7978E9 100%);">
             <div class="number">{{ stats.new }}</div>
             <div class="label">New</div>
         </div>

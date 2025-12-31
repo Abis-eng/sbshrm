@@ -18,6 +18,7 @@
         /* Global Font Sizes */
         body {
             font-size: 12px;
+            background-color: #f8fafc;
         }
         h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
             font-size: 14px;
@@ -35,7 +36,7 @@
         
         .sidebar {
             min-height: 100vh;
-            background: linear-gradient(135deg, rgba(14, 116, 144, 0.85) 0%, rgba(8, 145, 178, 0.85) 100%);
+            background: linear-gradient(135deg, rgba(75, 73, 172, 0.85) 0%, rgba(152, 189, 255, 0.85) 100%);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
             transition: all 0.3s ease;
@@ -48,7 +49,7 @@
             left: -300px;
             width: 300px;
             height: 100vh;
-            background: linear-gradient(135deg, rgba(14, 116, 144, 0.85) 0%, rgba(8, 145, 178, 0.85) 100%);
+            background: linear-gradient(135deg, rgba(75, 73, 172, 0.85) 0%, rgba(152, 189, 255, 0.85) 100%);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
             z-index: 1040;
@@ -106,15 +107,25 @@
         
         .submenu-sidebar-content .nav-link {
             padding: 12px 20px;
-            color: #fff;
+            color: rgba(255, 255, 255, 0.9);
             font-size: 12px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
             transition: all 0.3s;
+            border-radius: 8px;
+            margin: 4px 8px;
         }
         
         .submenu-sidebar-content .nav-link:hover {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.2);
             padding-left: 25px;
+            color: #fff;
+            transform: translateX(5px);
+        }
+        
+        .submenu-sidebar-content .nav-link.active {
+            background: rgba(255,255,255,0.25);
+            color: #fff;
+            font-weight: 600;
         }
         
         .submenu-sidebar-overlay {
@@ -160,7 +171,36 @@
             transform: rotate(-90deg);
         }
         .main-content {
-            background-color: #f1f5f9;
+            background-color: #f8fafc;
+        }
+        
+        /* Sidebar Navigation Links */
+        .sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.9) !important;
+            padding: 12px 20px;
+            margin: 4px 8px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+        }
+        
+        .sidebar .nav-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff !important;
+            transform: translateX(5px);
+        }
+        
+        .sidebar .nav-link.active {
+            background: rgba(255, 255, 255, 0.25);
+            color: #fff !important;
+            font-weight: 600;
+        }
+        
+        .sidebar .nav-link i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
         }
         
         /* Override cursor for drag operations - keep default cursor */
@@ -176,6 +216,77 @@
             border: none;
             border-radius: 15px;
             box-shadow: 0 0 20px rgba(0,0,0,0.08);
+            background: #fff;
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
+            color: #fff;
+            border-radius: 15px 15px 0 0;
+            border: none;
+        }
+        
+        .card-header h5, .card-header h4 {
+            color: #fff;
+        }
+        
+        /* Buttons */
+        .btn-primary, .btn-primary:focus {
+            background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
+            border: none;
+            color: #fff;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border: none;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            border: none;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border: none;
+        }
+        
+        /* Badges */
+        .badge.bg-primary {
+            background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%) !important;
+        }
+        
+        /* Navbar/Topbar if exists */
+        .navbar {
+            background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
+        }
+        
+        /* Table headers */
+        .table thead th {
+            background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
+            color: #fff;
+            border: none;
+        }
+        
+        /* Form controls focus */
+        .form-control:focus, .form-select:focus {
+            border-color: #4B49AC;
+            box-shadow: 0 0 0 0.2rem rgba(75, 73, 172, 0.25);
+        }
+        
+        /* Links */
+        a {
+            color: #4B49AC;
+        }
+        
+        a:hover {
+            color: #98BDFF;
         }
         /* Equal height cards in row/column layouts */
         .row.g-3 > [class*="col-"],
@@ -190,68 +301,94 @@
             width: 100%;
         }
         .btn-primary {
-            background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+            background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
             border: none;
         }
         .btn-primary:hover {
-            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+            background: linear-gradient(135deg, #98BDFF 0%, #4B49AC 100%);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(14, 116, 144, 0.3);
+            box-shadow: 0 4px 12px rgba(75, 73, 172, 0.3);
         }
         .chat-bubble {
             max-width: 75%;
-            padding: 8px 14px;
-            border-radius: 18px;
-            margin-bottom: 8px;
+            padding: 12px 16px;
+            border-radius: 20px;
+            margin-bottom: 12px;
             position: relative;
-            font-size: 15px;
+            font-size: 0.95rem;
             word-break: break-word;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease;
         }
         .chat-bubble.me {
-            background: #dcf8c6;
+            background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
+            color: white;
             align-self: flex-end;
             margin-left: auto;
-            text-align: right;
+            text-align: left;
+            border-bottom-right-radius: 6px;
         }
         .chat-bubble.them {
-            background: #fff;
+            background: #ffffff;
+            color: #333;
             align-self: flex-start;
             margin-right: auto;
             text-align: left;
+            border-bottom-left-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         .chat-timestamp {
-            font-size: 11px;
-            color: #888;
-            margin-top: 2px;
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 6px;
             display: block;
         }
+        .chat-bubble.me .chat-timestamp {
+            color: rgba(255,255,255,0.8);
+        }
+        .chat-bubble.them .chat-timestamp {
+            color: #6c757d;
+        }
         .chat-avatar {
-            width: 32px;
-            height: 32px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            background: #0891b2;
+            background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
             color: #fff;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-            margin-right: 8px;
-            font-size: 15px;
+            font-weight: 600;
+            font-size: 16px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(75, 73, 172, 0.2);
         }
         .chat-user-option {
             display: flex;
             align-items: center;
-            padding: 8px 8px;
+            padding: 12px;
             cursor: pointer;
-            border-bottom: 1px solid #eee;
-            background: #f7f7f7;
-            transition: background 0.2s;
+            border-radius: 12px;
+            margin: 4px 8px;
+            background: transparent;
+            transition: all 0.2s;
+            gap: 12px;
         }
         .chat-user-option.active, .chat-user-option:hover {
-            background: #ece5dd;
+            background: linear-gradient(135deg, rgba(75, 73, 172, 0.1) 0%, rgba(152, 189, 255, 0.1) 100%);
+            transform: translateX(4px);
         }
         .chat-user-info {
             flex: 1 1 auto;
@@ -297,11 +434,127 @@
             vertical-align: middle;
         }
         /* Theme dynamic classes */
-        body.theme-dark { background: #222; color: #fff; }
-        body.theme-dark .main-content { background: #222; color: #fff; }
-        body.theme-dark .sidebar { background: #222; }
-        body.sidebar-light .sidebar { background: #fff !important; color: #222; }
-        body.sidebar-dark .sidebar { background: #222 !important; color: #fff; }
+        body.theme-dark { background: #f8fafc; color: #333; }
+        body.theme-dark .main-content { background: #f8fafc; color: #333; }
+        body.theme-dark .sidebar { background: linear-gradient(135deg, rgba(75, 73, 172, 0.85) 0%, rgba(152, 189, 255, 0.85) 100%); }
+        body.sidebar-light .sidebar { background: linear-gradient(135deg, rgba(75, 73, 172, 0.85) 0%, rgba(152, 189, 255, 0.85) 100%) !important; color: #fff; }
+        body.sidebar-dark .sidebar { background: linear-gradient(135deg, rgba(75, 73, 172, 0.85) 0%, rgba(152, 189, 255, 0.85) 100%) !important; color: #fff; }
+        
+        /* Icon Colors - Sidebar */
+        .sidebar .nav-link i,
+        .sidebar .nav-link .fas,
+        .sidebar .nav-link .far,
+        .sidebar .nav-link .fab,
+        .sidebar .nav-link .fa {
+            color: rgba(255, 255, 255, 0.95) !important;
+        }
+        
+        .sidebar .nav-link:hover i,
+        .sidebar .nav-link:hover .fas,
+        .sidebar .nav-link:hover .far,
+        .sidebar .nav-link:hover .fab,
+        .sidebar .nav-link:hover .fa {
+            color: #fff !important;
+        }
+        
+        .submenu-sidebar .nav-link i,
+        .submenu-sidebar .nav-link .fas,
+        .submenu-sidebar .nav-link .far,
+        .submenu-sidebar .nav-link .fab,
+        .submenu-sidebar .nav-link .fa {
+            color: rgba(255, 255, 255, 0.95) !important;
+        }
+        
+        .submenu-sidebar-header i,
+        .submenu-sidebar-header .fas,
+        .submenu-sidebar-header .far,
+        .submenu-sidebar-header .fab,
+        .submenu-sidebar-header .fa {
+            color: #fff !important;
+        }
+        
+        /* Icon colors in cards and buttons */
+        .card-header i,
+        .card-header .fas,
+        .card-header .far,
+        .card-header .fab,
+        .card-header .fa {
+            color: #fff !important;
+        }
+        
+        .btn-primary i,
+        .btn-primary .fas,
+        .btn-primary .far,
+        .btn-primary .fab,
+        .btn-primary .fa {
+            color: #fff !important;
+        }
+        
+        /* Text primary icons */
+        .text-primary,
+        i.text-primary,
+        .fas.text-primary,
+        .far.text-primary,
+        .fab.text-primary {
+            color: #4B49AC !important;
+        }
+        
+        /* Icon colors in main content */
+        .main-content i.fas:not(.text-muted):not(.text-secondary):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info),
+        .main-content i.far:not(.text-muted):not(.text-secondary):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info),
+        .main-content i.fab:not(.text-muted):not(.text-secondary):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info) {
+            color: #4B49AC;
+        }
+        
+        .main-content .text-muted i,
+        .main-content i.text-muted {
+            color: #6c757d !important;
+        }
+        
+        /* Page header icons */
+        .page-title i,
+        .page-title .fas,
+        .page-title .far,
+        .page-title .fab {
+            color: #4B49AC;
+        }
+        
+        /* All icons default to primary color unless specified */
+        i.fas:not(.text-white):not(.text-muted):not(.text-secondary):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info):not(.text-primary),
+        i.far:not(.text-white):not(.text-muted):not(.text-secondary):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info):not(.text-primary),
+        i.fab:not(.text-white):not(.text-muted):not(.text-secondary):not(.text-success):not(.text-danger):not(.text-warning):not(.text-info):not(.text-primary) {
+            color: #4B49AC;
+        }
+        
+        /* Icon boxes and wrappers */
+        .icon-box,
+        .icon-wrapper,
+        [class*="icon-"] {
+            background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
+        }
+        
+        .icon-box i,
+        .icon-wrapper i,
+        [class*="icon-"] i {
+            color: #fff !important;
+        }
+        
+        /* Stats card icons */
+        .stats-card i,
+        .stats-card .fas,
+        .stats-card .far,
+        .stats-card .fab {
+            color: rgba(255, 255, 255, 0.95) !important;
+        }
+        
+        /* Dashboard card icons in content */
+        .dashboard-card .mt-3.pt-3.border-top i {
+            color: #6c757d;
+        }
+        
+        .dashboard-card:hover .mt-3.pt-3.border-top i {
+            color: #4B49AC !important;
+        }
         /* Add more as needed */
     </style>
 </head>
@@ -446,8 +699,9 @@
                         {% endif %}
                         
                         <li class="nav-item">
-                            <button id="chat-toggle" class="nav-link btn btn-link text-white" style="text-align:left;width:100%;">
-                                <i class="fas fa-comments me-2"></i>Chat
+                            <button id="chat-toggle" class="nav-link btn btn-link text-white" style="text-align:left;width:100%;position:relative;">
+                                <i class="fas fa-comment-dots me-2"></i>Chat
+                                <span id="chat-notification-badge" class="badge bg-danger position-absolute top-0 start-100 translate-middle" style="display:none;font-size:0.6rem;padding:0.2rem 0.4rem;">!</span>
                             </button>
                         </li>
                         
@@ -590,22 +844,60 @@
                 </div>
             </div>
 
-            <!-- Chat Box (hidden by default, toggled by button) -->
-            <div id="chat-box" style="display:none;position:fixed;bottom:0;right:0;width:400px;background:#fff;border-radius:10px 10px 0 0;box-shadow:0 0 10px rgba(0,0,0,0.2);border:1px solid #764ba2;z-index:1000;">
-                <div class="d-flex align-items-center justify-content-between p-2" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:10px 10px 0 0;">
-                    <span class="fw-bold text-white"><i class="fas fa-comments me-2"></i>Chat</span>
-                    <button id="chat-close" class="btn btn-sm btn-light">&times;</button>
-                </div>
-                <div class="d-flex" style="height:400px;">
-                    <div id="chat-sidebar" style="width:160px;background:#f7f7f7;border-right:1px solid #eee;overflow-y:auto;">
-                        <input id="chat-search" class="form-control form-control-sm m-2" placeholder="Search user...">
-                        <div id="chat-user-list"></div>
+            <!-- Full Page Chat Box -->
+            <div id="chat-box" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#f8f9fa;z-index:999999;overflow:hidden;transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
+                <style>
+                    @keyframes fadeIn {
+                        from {
+                            opacity: 0;
+                        }
+                        to {
+                            opacity: 1;
+                        }
+                    }
+                    #chat-box {
+                        animation: fadeIn 0.3s ease;
+                    }
+                </style>
+                <!-- Chat Header -->
+                <div style="background:linear-gradient(135deg,#4B49AC 0%,#98BDFF 100%);padding:1.5rem 2rem;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 10px rgba(0,0,0,0.1);flex-shrink:0;">
+                    <div style="display:flex;align-items:center;gap:1rem;">
+                        <div style="width:50px;height:50px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+                            <i class="fas fa-comment-dots text-white" style="font-size:1.5rem;"></i>
+                        </div>
+                        <div>
+                            <h4 class="mb-0 text-white" style="font-weight:600;font-size:1.5rem;">Messages</h4>
+                            <small class="text-white" style="opacity:0.9;font-size:0.85rem;" id="chat-status">Online</small>
+                        </div>
                     </div>
-                    <div class="flex-grow-1 d-flex flex-column">
-                        <div id="chat-messages" style="flex:1 1 auto;height:0;overflow-y:auto;background:#ece5dd;border-radius:0 0 5px 5px;padding:10px;display:flex;flex-direction:column;"></div>
-                        <div class="input-group p-2" style="border-top:1px solid #eee;">
-                            <input id="chat-input" type="text" class="form-control" placeholder="Type a message...">
-                            <button id="chat-send" class="btn btn-primary"><i class="fas fa-paper-plane"></i></button>
+                    <button id="chat-close" class="btn btn-light" style="border:none;color:#333;width:40px;height:40px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;font-size:1.2rem;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <!-- Chat Body -->
+                <div style="display:flex;height:calc(100vh - 100px);padding:2rem;gap:1.5rem;">
+                    <!-- User List Sidebar -->
+                    <div id="chat-sidebar" style="width:300px;background:#fff;border-radius:15px;box-shadow:0 2px 15px rgba(0,0,0,0.08);overflow:hidden;display:flex;flex-direction:column;flex-shrink:0;">
+                        <div style="padding:1.5rem;border-bottom:1px solid #e9ecef;background:#f8f9fa;">
+                            <div style="position:relative;">
+                                <i class="fas fa-search" style="position:absolute;left:15px;top:50%;transform:translateY(-50%);color:#6c757d;font-size:0.9rem;z-index:1;"></i>
+                                <input id="chat-search" class="form-control" placeholder="Search users..." style="padding-left:45px;border-radius:25px;border:1px solid #e9ecef;font-size:0.95rem;background:#fff;height:45px;">
+                            </div>
+                        </div>
+                        <div id="chat-user-list" style="flex:1;overflow-y:auto;padding:0.5rem;"></div>
+                    </div>
+                    
+                    <!-- Messages Area -->
+                    <div class="flex-grow-1 d-flex flex-column" style="background:#fff;border-radius:15px;box-shadow:0 2px 15px rgba(0,0,0,0.08);overflow:hidden;display:flex;flex-direction:column;">
+                        <div id="chat-messages" style="flex:1;overflow-y:auto;background:linear-gradient(180deg,#f0f2f5 0%,#ffffff 100%);padding:2rem;display:flex;flex-direction:column;gap:1rem;min-height:0;"></div>
+                        <div style="padding:1.5rem;background:#fff;border-top:1px solid #e9ecef;">
+                            <div style="display:flex;gap:1rem;align-items:center;">
+                                <input id="chat-input" type="text" class="form-control" placeholder="Type a message..." style="border-radius:30px;border:1px solid #e9ecef;padding:1rem 1.5rem;font-size:1rem;flex:1;height:50px;">
+                                <button id="chat-send" class="btn btn-primary" style="border-radius:50%;width:50px;height:50px;padding:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#4B49AC 0%,#98BDFF 100%);border:none;box-shadow:0 2px 10px rgba(75, 73, 172,0.3);transition:all 0.2s;flex-shrink:0;">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -639,20 +931,26 @@
                         return;
                     }
                     
-                    // Toggle chat box
+                    // Toggle chat box - Full Page
                     chatToggle.addEventListener('click', function() {
                         if (chatBox.style.display === 'none' || chatBox.style.display === '') {
-                            chatBox.style.display = 'block';
+                            chatBox.style.display = 'flex';
+                            chatBox.style.flexDirection = 'column';
+                            // Hide body overflow when chat is open
+                            document.body.style.overflow = 'hidden';
                             // Refresh user list when opening
                             fetchUsers();
+                            setTimeout(() => focusChatInput(), 300);
                         } else {
                             chatBox.style.display = 'none';
+                            document.body.style.overflow = '';
                         }
                     });
                     
                     // Close chat box
                     chatClose.addEventListener('click', function() {
                         chatBox.style.display = 'none';
+                        document.body.style.overflow = '';
                         // Stop polling
                         if (messagePollInterval) {
                             clearInterval(messagePollInterval);
@@ -777,7 +1075,20 @@
                             div.dataset.username = user.username;
                             const displayName = (user.first_name || user.last_name) ? (user.first_name + ' ' + user.last_name).trim() : user.username;
                             const lastMsgPreview = user.last_message ? (user.last_message.length > 30 ? user.last_message.substring(0, 30) + '...' : user.last_message) : 'No messages yet';
-                            div.innerHTML = `<span class='chat-avatar'>${user.initials || 'U'}</span><span class='${user.online ? 'chat-online-dot' : 'chat-offline-dot'}'></span><div class='chat-user-info'><div class='chat-user-name'>${escapeHtml(displayName)}</div><div class='chat-user-last'>${escapeHtml(lastMsgPreview)}</div></div><span class='chat-user-time'>${user.last_timestamp || ''}</span>`;
+                            div.innerHTML = `
+                                <div style="position:relative;flex-shrink:0;">
+                                    <span class='chat-avatar' style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%); color: white; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; box-shadow: 0 2px 8px rgba(75, 73, 172,0.2);">${user.initials || 'U'}</span>
+                                    <span style="position: absolute; bottom: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; background: ${user.online ? '#28a745' : '#ccc'}; border: 3px solid white; box-shadow: 0 0 0 2px #f8f9fa;"></span>
+                                </div>
+                                <div class='chat-user-info' style="flex: 1; min-width: 0; margin-left: 15px;">
+                                    <div class='chat-user-name' style="font-weight: 600; font-size: 1rem; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(displayName)}</div>
+                                    <div class='chat-user-last' style="font-size: 0.85rem; color: #6c757d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px;">${escapeHtml(lastMsgPreview)}</div>
+                                </div>
+                                <span class='chat-user-time' style="font-size: 0.75rem; color: #aaa; white-space: nowrap; margin-left: 10px;">${user.last_timestamp || ''}</span>
+                            `;
+                            div.style.position = 'relative';
+                            div.style.display = 'flex';
+                            div.style.alignItems = 'center';
                             div.onclick = function() {
                                 document.querySelectorAll('.chat-user-option').forEach(el => el.classList.remove('active'));
                                 div.classList.add('active');
@@ -800,7 +1111,7 @@
                     function loadChatMessages(recipient) {
                         if (!recipient) {
                             console.error('No recipient specified');
-                            chatMessages.innerHTML = '<div style="padding: 10px; color: #d32f2f; text-align: center;">No recipient selected</div>';
+                            chatMessages.innerHTML = '<div style="padding: 3rem; color: #6c757d; text-align: center;"><i class="fas fa-user-friends fa-3x mb-3" style="opacity:0.3;"></i><p style="margin:0;">Select a user to start chatting</p></div>';
                             return;
                         }
                         
@@ -838,7 +1149,7 @@
                                         chatMessages.scrollTop = chatMessages.scrollHeight;
                                     }, 100);
                                 } else {
-                                    chatMessages.innerHTML = '<div style="padding: 10px; color: #888; text-align: center;">No messages yet. Start the conversation!</div>';
+                                    chatMessages.innerHTML = '<div style="padding: 3rem; color: #6c757d; text-align: center;"><i class="fas fa-comments fa-3x mb-3" style="opacity:0.3;"></i><p style="margin:0;">No messages yet. Start the conversation!</p></div>';
                                     lastMessageTimestamp = null;
                                     lastMessageId = null;
                                 }
@@ -1096,7 +1407,10 @@
                         } catch (e) {
                             timestamp = data.timestamp || '';
                         }
-                        msg.innerHTML = `<span style="display: block;">${escapeHtml(data.message)}</span><span class='chat-timestamp'>${timestamp}</span>`;
+                        msg.innerHTML = `
+                            <span style="display: block; margin-bottom: 4px; line-height: 1.5;">${escapeHtml(data.message)}</span>
+                            <span class='chat-timestamp' style="font-size: 0.75rem; opacity: 0.7; margin-top: 4px; display: block;">${timestamp}</span>
+                        `;
                         chatMessages.appendChild(msg);
                         // Scroll to bottom
                         setTimeout(() => {
@@ -1120,14 +1434,14 @@
                     <div class="d-flex align-items-center">
                         <!-- Notification Dropdown -->
                         <div class="dropdown ms-3" style="position: relative;">
-                            <button class="btn btn-link text-dark position-relative" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration: none; padding: 8px 12px;">
-                                <i class="fas fa-bell fs-5"></i>
+                            <button class="btn btn-link position-relative" type="button" id="notificationDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="text-decoration: none; padding: 8px 12px; color: #4B49AC;">
+                                <i class="fas fa-bell fs-5" style="color: #4B49AC;"></i>
                                 <span id="notification-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none; font-size: 10px; padding: 2px 5px;">
                                     0
                                 </span>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-lg" aria-labelledby="notificationDropdown" style="width: 350px; max-height: 500px; overflow-y: auto; border: none; border-radius: 10px; padding: 0;">
-                                <li class="dropdown-header d-flex justify-content-between align-items-center p-3" style="background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%); color: white; border-radius: 10px 10px 0 0;">
+                                <li class="dropdown-header d-flex justify-content-between align-items-center p-3" style="background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%); color: white; border-radius: 10px 10px 0 0;">
                                     <h6 class="mb-0 fw-bold">Notifications</h6>
                                     <button type="button" class="btn btn-sm btn-light" id="mark-all-read-btn" style="font-size: 11px; padding: 2px 8px;">Mark all read</button>
                                 </li>

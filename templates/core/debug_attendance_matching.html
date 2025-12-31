@@ -1,0 +1,179 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Debug Attendance Matching{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box">
+                <h4 class="page-title">Debug Attendance Matching - {{ debug_info.machine.name }}</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Machine Information</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Name:</strong> {{ debug_info.machine.name }}</p>
+                    <p><strong>Type:</strong> {{ debug_info.machine.get_machine_type_display }}</p>
+                    <p><strong>Connection:</strong> {{ debug_info.machine.get_connection_string }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Sample Attendance Records</h5>
+                </div>
+                <div class="card-body">
+                    {% if debug_info.attendance_records %}
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in debug_info.attendance_records %}
+                                <tr>
+                                    <td><code>{{ record.user_id }}</code></td>
+                                    <td>{{ record.timestamp }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="text-muted">No attendance records found</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Matching Test Results</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Machine User ID</th>
+                                <th>Matched</th>
+                                <th>Method</th>
+                                <th>Employee</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for match in debug_info.matches %}
+                            <tr class="{% if match.matched %}table-success{% else %}table-danger{% endif %}">
+                                <td><code>{{ match.machine_user_id }}</code></td>
+                                <td>
+                                    {% if match.matched %}
+                                        <span class="badge bg-success">Yes</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">No</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ match.method|default:"-" }}</td>
+                                <td>
+                                    {% if match.employee %}
+                                        {{ match.employee.user.username }}<br>
+                                        <small class="text-muted">
+                                            Employee ID: {{ match.employee.id }}, 
+                                            User ID: {{ match.employee.user.id }}, 
+                                            Machine ID: <code>{{ match.employee.machine_id|default:"-" }}</code>
+                                        </small>
+                                    {% else %}
+                                        <span class="text-danger">Not found</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Employees with Machine IDs</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Machine ID</th>
+                                <th>Employee ID</th>
+                                <th>User ID</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for emp in debug_info.employees %}
+                            <tr>
+                                <td>{{ emp.user.username }}</td>
+                                <td><code>{{ emp.machine_id }}</code></td>
+                                <td>{{ emp.id }}</td>
+                                <td>{{ emp.user.id }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No employees with machine IDs</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if debug_info.errors %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-danger">
+                <h5>Connection Errors</h5>
+                <ul class="mb-3">
+                    {% for error in debug_info.errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+                {% if "ping" in debug_info.errors|join:" "|lower %}
+                <div class="alert alert-info mt-3">
+                    <strong>💡 Solution for Ping Error:</strong>
+                    <p class="mb-2">If the machine is accessible but ping is failing (firewall blocking ICMP), you can disable the ping test:</p>
+                    <ol>
+                        <li>Go to <a href="{% url 'edit_attendance_machine' debug_info.machine.id %}">Edit Machine</a></li>
+                        <li>In the "Configuration" JSON field, add: <code>{"ommit_ping": true}</code></li>
+                        <li>Save and try connecting again</li>
+                    </ol>
+                    <p class="mb-0 mt-2"><small>This will skip the ping test and connect directly via TCP. Some firewalls block ICMP (ping) but allow TCP connections on port 4370.</small></p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <a href="{% url 'manage_attendance_machines' %}" class="btn btn-secondary">Back to Machines</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

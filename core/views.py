@@ -65,6 +65,9 @@ from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def login_view(request):
@@ -197,23 +200,89 @@ def dashboard(request):
 
 @login_required
 def employee_list(request):
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    from django.db.models import Q
+    
+    # Check for export format
+    export_format = request.GET.get('format', '')
+    
+    # Get filter parameters
+    search_query = request.GET.get('search', '')
+    dept_filter = request.GET.get('department', '')
+    desig_filter = request.GET.get('designation', '')
+    
     if request.user.is_superuser:
-        employees = Employee.objects.all()
+        employees = Employee.objects.select_related('user', 'department', 'designation').all()
         departments = Department.objects.all()
         designations = Designation.objects.all()
     else:
         # Employees can only see their own information
         try:
             employee = request.user.employee
-            employees = Employee.objects.filter(id=employee.id)
-            # Don't show department/designation filters for employees
+            employees = Employee.objects.filter(id=employee.id).select_related('user', 'department', 'designation')
             departments = Department.objects.none()
             designations = Designation.objects.none()
         except Exception:
             employees = Employee.objects.none()
             departments = Department.objects.none()
             designations = Designation.objects.none()
-    return render(request, 'core/employee_list.html', {'employees': employees, 'departments': departments, 'designations': designations})
+    
+    # Apply filters (for both display and export)
+    if search_query:
+        employees = employees.filter(
+            Q(user__first_name__icontains=search_query) |
+            Q(user__last_name__icontains=search_query) |
+            Q(user__username__icontains=search_query) |
+            Q(user__email__icontains=search_query)
+        )
+    if dept_filter:
+        employees = employees.filter(department__name=dept_filter)
+    if desig_filter:
+        employees = employees.filter(designation__name=desig_filter)
+    
+    # Order employees
+    employees = employees.order_by('user__first_name', 'user__last_name')
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Username', 'Full Name', 'Email', 'Phone', 'Department', 'Designation', 'Salary', 'Date of Joining', 'Status']
+        data = []
+        for emp in employees:
+            data.append([
+                str(emp.id),
+                str(emp.user.username) if emp.user.username else 'N/A',
+                str(emp.user.get_full_name()) if emp.user.get_full_name() else str(emp.user.username) if emp.user.username else 'N/A',
+                str(emp.user.email) if emp.user.email else 'N/A',
+                str(emp.phone) if emp.phone else 'N/A',
+                str(emp.department.name) if emp.department and emp.department.name else 'N/A',
+                str(emp.designation.name) if emp.designation and emp.designation.name else 'N/A',
+                f"${float(emp.salary):.2f}" if emp.salary else 'N/A',
+                emp.date_of_joining.strftime('%Y-%m-%d') if emp.date_of_joining else 'N/A',
+                'Active' if not emp.is_restricted else 'Restricted'
+            ])
+        
+        filename = f"employees_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Employees Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Employees Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Employees Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Employees Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('employee_list')
+    
+    return render(request, 'core/employee_list.html', {
+        'employees': employees, 
+        'departments': departments, 
+        'designations': designations,
+        'search_query': search_query,
+        'dept_filter': dept_filter,
+        'desig_filter': desig_filter,
+    })
 
 @login_required
 def view_employee_profile(request, employee_id):
@@ -232,6 +301,9 @@ def view_employee_profile(request, employee_id):
     except:
         tasks_count = 0
     
+    # Check if current user can edit this profile (own profile or admin)
+    can_edit = request.user.is_superuser or (hasattr(request.user, 'employee') and request.user.employee.id == employee.id)
+    
     return render(request, 'core/view_employee_profile.html', {
         'employee': employee,
         'attendance_count': attendance_count,
@@ -239,6 +311,30 @@ def view_employee_profile(request, employee_id):
         'projects_count': projects_count,
         'tasks_count': tasks_count,
         'advances_count': advances_count,
+        'can_edit': can_edit,
+    })
+
+@login_required
+def update_my_profile_picture(request):
+    """Allow employees to update their own profile picture"""
+    try:
+        employee = request.user.employee
+    except:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('employee_list')
+    
+    if request.method == 'POST':
+        profile_picture = request.FILES.get('profile_picture')
+        if profile_picture:
+            employee.profile_picture = profile_picture
+            employee.save()
+            messages.success(request, 'Profile picture updated successfully!')
+            return redirect('view_employee_profile', employee_id=employee.id)
+        else:
+            messages.error(request, 'Please select a picture to upload.')
+    
+    return render(request, 'core/update_profile_picture.html', {
+        'employee': employee,
     })
 
 @user_passes_test(is_admin)
@@ -284,6 +380,7 @@ def add_employee(request):
         fingerprint_id = request.POST.get('fingerprint_id')
         face_id = request.POST.get('face_id')
         card_id = request.POST.get('card_id')
+        profile_picture = request.FILES.get('profile_picture')
         
         if User.objects.filter(username=username).exists():
             error = 'Username already exists. Please choose another.'
@@ -308,6 +405,7 @@ def add_employee(request):
             fingerprint_id=fingerprint_id if fingerprint_id else None,
             face_id=face_id if face_id else None,
             card_id=card_id if card_id else None,
+            profile_picture=profile_picture,
         )
         return render(request, 'core/employee_created.html', {'username': username, 'password': password})
     return render(request, 'core/add_employee.html', {'departments': departments, 'designations': designations, 'error': error})
@@ -319,7 +417,38 @@ class DepartmentForm(ModelForm):
 
 @user_passes_test(is_admin)
 def manage_departments(request):
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    from django.db.models import Count
+    
+    export_format = request.GET.get('format', '')
     departments = Department.objects.all().order_by('name')
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Name', 'Description', 'Total Employees']
+        data = []
+        for dept in departments:
+            emp_count = Employee.objects.filter(department=dept).count()
+            data.append([
+                dept.id,
+                dept.name,
+                dept.description[:100] + '...' if dept.description and len(dept.description) > 100 else (dept.description or 'N/A'),
+                emp_count
+            ])
+        filename = f"departments_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Departments Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Departments Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Departments Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Departments Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('manage_departments')
+    
     if request.method == 'POST':
         form = DepartmentForm(request.POST)
         if form.is_valid():
@@ -328,13 +457,43 @@ def manage_departments(request):
     else:
         form = DepartmentForm()
     # For graph: employee count per department
-    from django.db.models import Count
     dept_counts = Department.objects.annotate(emp_count=Count('employee')).values('name', 'emp_count')
     return render(request, 'core/manage_departments.html', {'departments': departments, 'form': form, 'dept_counts': list(dept_counts)})
 
 @user_passes_test(is_admin)
 def manage_designations(request):
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    from django.db.models import Count
+    
+    export_format = request.GET.get('format', '')
     designations = Designation.objects.all().order_by('name')
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Name', 'Description', 'Total Employees']
+        data = []
+        for desg in designations:
+            emp_count = Employee.objects.filter(designation=desg).count()
+            data.append([
+                desg.id,
+                desg.name,
+                desg.description[:100] + '...' if desg.description and len(desg.description) > 100 else (desg.description or 'N/A'),
+                emp_count
+            ])
+        filename = f"designations_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Designations Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Designations Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Designations Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Designations Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('manage_designations')
+    
     if request.method == 'POST':
         form = DesignationForm(request.POST)
         if form.is_valid():
@@ -343,7 +502,6 @@ def manage_designations(request):
     else:
         form = DesignationForm()
     # For graph: employee count per designation
-    from django.db.models import Count
     desig_counts = Designation.objects.annotate(emp_count=Count('employee')).values('name', 'emp_count')
     return render(request, 'core/manage_designations.html', {'designations': designations, 'form': form, 'desig_counts': list(desig_counts)})
 
@@ -1008,7 +1166,10 @@ def submit_ticket(request):
 @user_passes_test(is_admin)
 def all_tickets(request):
     from django.db.models import Q, Count
-    tickets = Ticket.objects.select_related('created_by', 'assigned_to').annotate(
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    export_format = request.GET.get('format', '')
+    tickets = Ticket.objects.select_related('created_by', 'assigned_to', 'related_task').annotate(
         reply_count=Count('replies')
     ).order_by('-created_at')
     
@@ -1028,6 +1189,36 @@ def all_tickets(request):
             Q(description__icontains=search_query) |
             Q(created_by__username__icontains=search_query)
         )
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['Ticket ID', 'Title', 'Created By', 'Assigned To', 'Status', 'Priority', 'Progress %', 'Created Date', 'Due Date']
+        data = []
+        for ticket in tickets:
+            data.append([
+                ticket.tk_id,
+                ticket.title,
+                ticket.created_by.get_full_name() or ticket.created_by.username,
+                ticket.assigned_to.get_full_name() if ticket.assigned_to else 'Unassigned',
+                ticket.get_status_display(),
+                ticket.get_priority_display(),
+                f"{ticket.progress_percentage}%" if ticket.related_task else 'N/A',
+                ticket.created_at.strftime('%Y-%m-%d %H:%M'),
+                ticket.end_date.strftime('%Y-%m-%d') if ticket.end_date else 'N/A'
+            ])
+        filename = f"tickets_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Tickets Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Tickets Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Tickets Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Tickets Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('all_tickets')
     
     # Statistics
     stats = {
@@ -1058,7 +1249,7 @@ def ticket_detail(request, ticket_id):
             messages.error(request, 'You do not have permission to view this ticket.')
             return redirect('my_tickets')
     
-    replies = ticket.replies.select_related('created_by', 'reply_to').order_by('created_at')
+    replies = ticket.replies.select_related('created_by', 'reply_to').prefetch_related('files').order_by('created_at')
     # Get files separately
     from .models import TicketFile
     files = TicketFile.objects.filter(ticket=ticket).select_related('uploaded_by')
@@ -1078,13 +1269,20 @@ def ticket_detail(request, ticket_id):
                         reply_to_id=request.POST.get('reply_to') or None
                     )
                     
-                    # Handle file attachment
-                    if request.FILES.get('attachment'):
-                        try:
-                            reply.attachment = request.FILES['attachment']
-                            reply.save()
-                        except Exception as e:
-                            print(f"Error saving attachment: {e}")
+                    # Handle multiple file attachments
+                    from .models import TicketReplyFile
+                    if request.FILES.getlist('attachments'):
+                        for file in request.FILES.getlist('attachments'):
+                            try:
+                                TicketReplyFile.objects.create(
+                                    ticket_reply=reply,
+                                    file=file,
+                                    file_name=file.name,
+                                    file_size=file.size,
+                                    uploaded_by=request.user
+                                )
+                            except Exception as e:
+                                print(f"Error saving attachment: {e}")
                     
                     # Mark reply as read for replier
                     reply.is_read = True
@@ -1385,10 +1583,13 @@ def my_attendance(request):
 
 @user_passes_test(is_admin)
 def all_attendance(request):
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    export_format = request.GET.get('format', '')
     employees = Employee.objects.all()
     form = AttendanceFilterForm(request.GET)
     
-    records = Attendance.objects.select_related('employee__user').order_by('-date')
+    records = Attendance.objects.select_related('employee__user', 'employee__department').order_by('-date')
     
     # Filter by employee if provided via GET parameter (from employee profile)
     employee_id = request.GET.get('employee')
@@ -1411,14 +1612,50 @@ def all_attendance(request):
         if form.cleaned_data.get('status'):
             records = records.filter(status=form.cleaned_data['status'])
     
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Employee', 'Department', 'Date', 'Check In', 'Check Out', 'Status', 'Work Hours', 'Late Minutes']
+        data = []
+        for att in records:
+            data.append([
+                att.id,
+                att.employee.user.get_full_name() or att.employee.user.username,
+                att.employee.department.name if att.employee.department else 'N/A',
+                att.date.strftime('%Y-%m-%d'),
+                att.check_in.strftime('%H:%M') if att.check_in else 'N/A',
+                att.check_out.strftime('%H:%M') if att.check_out else 'N/A',
+                att.get_status_display(),
+                f"{att.total_work_hours:.2f}" if att.total_work_hours else 'N/A',
+                att.late_minutes
+            ])
+        filename = f"attendance_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Attendance Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Attendance Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Attendance Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Attendance Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('all_attendance')
+    
     # For graph: attendance count by status
     status_counts = Attendance.objects.values('status').annotate(count=Count('id'))
+    
+    # Get machines for sync modal
+    machines = AttendanceMachine.objects.all().order_by('name', 'location')
+    today = timezone.now().date()
     
     return render(request, 'core/all_attendance.html', {
         'records': records,
         'status_counts': list(status_counts),
         'employees': employees,
         'form': form,
+        'machines': machines,
+        'today': today,
     })
 
 @user_passes_test(is_admin)
@@ -1444,37 +1681,229 @@ def attendance_logs(request):
 
 @user_passes_test(is_admin)
 def sync_zkt_machine(request):
-    """Sync attendance data from ZKT machine"""
-    if request.method == 'POST':
-        try:
+    """Sync attendance data from ZKT machine (legacy - redirects to new sync)"""
+    return redirect('sync_attendance_machine')
+
+@user_passes_test(is_admin)
+def sync_attendance_machine(request, machine_id=None):
+    """Sync attendance data from a specific machine or all machines"""
+    from .attendance_service import AttendanceService
+    
+    try:
+        # Get parameters from POST or GET
+        if request.method == 'POST':
             start_date = request.POST.get('start_date')
             end_date = request.POST.get('end_date')
-            
-            if start_date:
+            machine_id = request.POST.get('machine_id') or machine_id
+        else:
+            # Handle GET requests (from links)
+            start_date = request.GET.get('start_date')
+            end_date = request.GET.get('end_date')
+            machine_id = request.GET.get('machine_id') or machine_id
+        
+        # Parse dates if provided
+        if start_date:
+            try:
                 start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-            if end_date:
+            except ValueError:
+                start_date = None
+        if end_date:
+            try:
                 end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            except ValueError:
+                end_date = None
+        
+        if machine_id:
+            # Sync specific machine
+            try:
+                machine_id = int(machine_id)
+            except (ValueError, TypeError):
+                messages.error(request, 'Invalid machine ID')
+                return redirect('all_attendance')
             
-            synced_count = zkt_service.sync_attendance(start_date, end_date)
-            zkt_service.process_attendance_logs()
+            machine = get_object_or_404(AttendanceMachine, id=machine_id)
+            result = AttendanceService.sync_machine_attendance(machine, start_date, end_date)
             
-            messages.success(request, f'Successfully synced {synced_count} attendance records from ZKT machine!')
+            if result['success']:
+                messages.success(request, result['message'])
+            else:
+                messages.error(request, result['message'])
+        else:
+            # Sync all active machines
+            results = AttendanceService.sync_all_machines(start_date, end_date)
+            total_synced = sum(r['synced_count'] for r in results.values())
+            success_count = sum(1 for r in results.values() if r['success'])
+            total_machines = len(results)
+            
+            if total_machines == 0:
+                messages.warning(request, 'No active machines found to sync.')
+            elif success_count == 0:
+                messages.error(request, f'Failed to sync from all {total_machines} machine(s). Check machine configurations.')
+            else:
+                messages.success(request, f'Synced {total_synced} records from {success_count} of {total_machines} machine(s)!')
+        
+        # Process attendance logs to create/update attendance records
+        try:
+            processed_count = AttendanceService.process_attendance_logs()
+            if processed_count > 0:
+                logger.info(f"Processed {processed_count} attendance logs into attendance records")
         except Exception as e:
-            messages.error(request, f'Error syncing with ZKT machine: {str(e)}')
+            logger.error(f"Error processing attendance logs: {str(e)}")
+            # Don't fail the sync if processing fails, just log it
+        
+    except Exception as e:
+        import traceback
+        logger.error(f"Error syncing attendance: {str(e)}\n{traceback.format_exc()}")
+        messages.error(request, f'Error syncing attendance: {str(e)}')
     
     return redirect('all_attendance')
 
 @user_passes_test(is_admin)
+def debug_attendance_matching(request, machine_id):
+    """Debug view to test attendance matching"""
+    from .attendance_service import AttendanceService
+    from .machine_drivers import get_machine_driver
+    
+    machine = get_object_or_404(AttendanceMachine, id=machine_id)
+    debug_info = {
+        'machine': machine,
+        'employees': [],
+        'attendance_records': [],
+        'matches': [],
+        'errors': []
+    }
+    
+    try:
+        # Get driver and connect
+        driver = get_machine_driver(machine)
+        
+        # Try to connect and capture detailed error
+        connection_result = driver.connect()
+        if not connection_result:
+            # Connection failed, get detailed error message
+            error_msg = getattr(driver, 'connection_error', 'Unknown connection error')
+            debug_info['errors'].append(f"Connection Error: {error_msg}")
+            debug_info['errors'].append("")
+            debug_info['errors'].append("Troubleshooting steps:")
+            debug_info['errors'].append(f"1. Verify machine is powered on and connected to network")
+            debug_info['errors'].append(f"2. Check IP address: {machine.ip_address} (ping this IP from your computer)")
+            debug_info['errors'].append(f"3. Check port: {machine.port or 4370} (ensure it's not blocked by firewall)")
+            debug_info['errors'].append(f"4. Verify machine and computer are on the same network")
+            debug_info['errors'].append(f"5. Check if ZKT SDK is installed (zk or pyzk package)")
+            debug_info['errors'].append(f"6. Try increasing timeout in machine configuration")
+            
+            # Try test_connection for more details
+            try:
+                test_result = driver.test_connection()
+                if not test_result.get('success'):
+                    debug_info['errors'].append("")
+                    debug_info['errors'].append(f"Connection test result: {test_result.get('message', 'Unknown error')}")
+            except Exception as test_error:
+                debug_info['errors'].append("")
+                debug_info['errors'].append(f"Test connection error: {str(test_error)}")
+        
+        if driver.is_connected():
+            # Get sample attendance data
+            attendance_data = driver.get_attendance_data()
+            debug_info['attendance_records'] = attendance_data[:10]  # First 10 records
+            
+            # Get unique user IDs
+            unique_user_ids = set(str(r['user_id']).strip() for r in attendance_data)
+            
+            # Test matching for each user ID
+            for user_id in list(unique_user_ids)[:10]:
+                match_info = {
+                    'machine_user_id': user_id,
+                    'matched': False,
+                    'method': None,
+                    'employee': None
+                }
+                
+                # Try all matching methods
+                employee = Employee.objects.filter(machine_id=user_id).first()
+                if employee:
+                    match_info['matched'] = True
+                    match_info['method'] = 'machine_id (exact)'
+                    match_info['employee'] = employee
+                else:
+                    # Try with stripped
+                    all_employees = Employee.objects.exclude(machine_id__isnull=True).exclude(machine_id='')
+                    for emp in all_employees:
+                        if emp.machine_id and str(emp.machine_id).strip() == user_id:
+                            match_info['matched'] = True
+                            match_info['method'] = 'machine_id (stripped)'
+                            match_info['employee'] = emp
+                            break
+                
+                if not match_info['matched']:
+                    try:
+                        emp_id = int(user_id)
+                        employee = Employee.objects.filter(id=emp_id).first()
+                        if employee:
+                            match_info['matched'] = True
+                            match_info['method'] = 'employee.id'
+                            match_info['employee'] = employee
+                    except:
+                        pass
+                
+                if not match_info['matched']:
+                    try:
+                        user_db_id = int(user_id)
+                        employee = Employee.objects.filter(user_id=user_db_id).first()
+                        if employee:
+                            match_info['matched'] = True
+                            match_info['method'] = 'user.id'
+                            match_info['employee'] = employee
+                    except:
+                        pass
+                
+                debug_info['matches'].append(match_info)
+            
+            driver.disconnect()
+        else:
+            if not debug_info['errors']:
+                debug_info['errors'].append('Failed to connect to machine. Check connection settings and network connectivity.')
+    except Exception as e:
+        error_type = type(e).__name__
+        debug_info['errors'].append(f"Error ({error_type}): {str(e)}")
+        import traceback
+        debug_info['errors'].append(f"Full traceback:\n{traceback.format_exc()}")
+    
+    # Get all employees with machine IDs
+    debug_info['employees'] = Employee.objects.exclude(machine_id__isnull=True).exclude(machine_id='')[:20]
+    
+    return render(request, 'core/debug_attendance_matching.html', {
+        'debug_info': debug_info
+    })
+
+@user_passes_test(is_admin)
+def test_machine_connection(request, machine_id):
+    """Test connection to a specific machine"""
+    from .attendance_service import AttendanceService
+    
+    machine = get_object_or_404(AttendanceMachine, id=machine_id)
+    result = AttendanceService.test_machine_connection(machine)
+    
+    if result['success']:
+        messages.success(request, f'Connection test successful: {result["message"]}')
+    else:
+        messages.error(request, f'Connection test failed: {result["message"]}')
+    
+    return redirect('manage_attendance_machines')
+
+@user_passes_test(is_admin)
 def manage_attendance_machines(request):
     """Manage attendance machines"""
-    machines = AttendanceMachine.objects.all()
+    machines = AttendanceMachine.objects.all().order_by('name', 'location')
     
     if request.method == 'POST':
         form = AttendanceMachineForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Attendance machine added successfully!')
+            machine = form.save()
+            messages.success(request, f'Attendance machine "{machine.name}" added successfully!')
             return redirect('manage_attendance_machines')
+        else:
+            messages.error(request, 'Please correct the errors below.')
     else:
         form = AttendanceMachineForm()
     
@@ -1656,7 +2085,10 @@ def my_leaves(request):
 
 @user_passes_test(is_admin)
 def manage_leaves(request):
-    leaves = Leave.objects.select_related('employee__user').order_by('-applied_at')
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    export_format = request.GET.get('format', '')
+    leaves = Leave.objects.select_related('employee__user', 'employee__department', 'reviewed_by').order_by('-applied_at')
     # Filter by employee if provided (from employee profile)
     employee_id = request.GET.get('employee')
     if employee_id:
@@ -1665,6 +2097,37 @@ def manage_leaves(request):
             leaves = leaves.filter(employee=employee)
         except Employee.DoesNotExist:
             pass
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Employee', 'Department', 'Leave Type', 'Start Date', 'End Date', 'Status', 'Applied Date', 'Reviewed By']
+        data = []
+        for leave in leaves:
+            data.append([
+                leave.id,
+                leave.employee.user.get_full_name() or leave.employee.user.username,
+                leave.employee.department.name if leave.employee.department else 'N/A',
+                leave.get_leave_type_display(),
+                leave.start_date.strftime('%Y-%m-%d'),
+                leave.end_date.strftime('%Y-%m-%d'),
+                leave.get_status_display(),
+                leave.applied_at.strftime('%Y-%m-%d'),
+                leave.reviewed_by.get_full_name() if leave.reviewed_by else 'Pending'
+            ])
+        filename = f"leaves_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Leaves Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Leaves Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Leaves Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Leaves Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('manage_leaves')
+    
     if request.method == 'POST':
         leave_id = request.POST.get('leave_id')
         action = request.POST.get('action')
@@ -1705,6 +2168,7 @@ def edit_employee(request, employee_id):
         fingerprint_id = request.POST.get('fingerprint_id')
         face_id = request.POST.get('face_id')
         card_id = request.POST.get('card_id')
+        profile_picture = request.FILES.get('profile_picture')
         
         if not date_of_joining:
             date_of_joining = None
@@ -1723,6 +2187,8 @@ def edit_employee(request, employee_id):
         employee.fingerprint_id = fingerprint_id if fingerprint_id else None
         employee.face_id = face_id if face_id else None
         employee.card_id = card_id if card_id else None
+        if profile_picture:
+            employee.profile_picture = profile_picture
         employee.save()
         return redirect('employee_list')
     return render(request, 'core/edit_employee.html', {
@@ -1734,27 +2200,109 @@ def edit_employee(request, employee_id):
 
 @user_passes_test(is_admin)
 def delete_employee(request, employee_id):
-    from django.contrib.auth.models import User
-    from django.db import transaction
-    employee = Employee.objects.select_related('user').get(id=employee_id)
+    """FORCE DELETE - Uses raw SQL to bypass all constraints"""
+    from django.db import connection
+    from django.db.utils import OperationalError, ProgrammingError
+    
+    # Get employee
+    employee = get_object_or_404(Employee, id=employee_id)
     user = employee.user
-    if user == request.user:
-        messages.warning(request, 'You cannot delete your own account while logged in.')
+    employee_name = employee.user.get_full_name() or employee.user.username
+    user_id = user.id
+    
+    # Prevent self-deletion
+    if user.id == request.user.id:
+        messages.warning(request, 'You cannot delete your own account.')
         return redirect('employee_list')
-    # Delete all related objects for this user
-    with transaction.atomic():
-        for related_object in user._meta.get_fields():
-            if (related_object.one_to_many or related_object.one_to_one) and related_object.auto_created:
-                accessor_name = related_object.get_accessor_name()
-                related_manager = getattr(user, accessor_name, None)
-                if related_manager:
-                    if related_object.one_to_one:
-                        rel_obj = related_manager
-                        if rel_obj:
-                            rel_obj.delete()
-                    else:
-                        related_manager.all().delete()
-        user.delete()
+    
+    # FORCE DELETE using raw SQL - bypasses all Django ORM constraints
+    try:
+        with connection.cursor() as cursor:
+            # Step 1: Clear SET_NULL relationships
+            try:
+                cursor.execute("UPDATE core_project SET manager_id = NULL WHERE manager_id = %s", [employee_id])
+            except:
+                pass
+            
+            try:
+                cursor.execute("UPDATE core_asset SET asset_user_id = NULL WHERE asset_user_id = %s", [employee_id])
+            except:
+                pass
+            
+            # Step 2: Delete all employee-related records using raw SQL (ignore missing tables)
+            tables_to_clean = [
+                ('core_attendance', 'employee_id'),
+                ('core_attendancelog', 'employee_id'),
+                ('core_leave', 'employee_id'),
+                ('core_payrollitem', 'employee_id'),
+                ('core_payslip', 'employee_id'),
+                ('core_loan', 'employee_id'),
+                ('core_advancerequest', 'employee_id'),
+                ('core_task', 'assigned_by_id'),
+                ('core_task', 'assigned_to_id'),
+                ('core_employeeeducation', 'employee_id'),
+                ('core_employeeworkexperience', 'employee_id'),
+                ('core_employeeallowance', 'employee_id'),
+                ('core_employeededuction', 'employee_id'),
+                ('core_employeesalarydetail', 'employee_id'),
+            ]
+            
+            for table, column in tables_to_clean:
+                try:
+                    if column == 'employee_id':
+                        cursor.execute(f"DELETE FROM {table} WHERE {column} = %s", [employee_id])
+                    elif column in ['assigned_by_id', 'assigned_to_id']:
+                        cursor.execute(f"DELETE FROM {table} WHERE {column} = %s", [employee_id])
+                except (OperationalError, ProgrammingError):
+                    # Table doesn't exist or column doesn't exist - skip it
+                    pass
+            
+            # Step 3: Delete task-related records (handle missing tables)
+            task_tables = [
+                ('core_taskcomment', 'created_by_id'),
+                ('core_taskfollower', 'employee_id'),
+                ('core_subtask', 'assigned_to_id'),
+            ]
+            
+            for table, column in task_tables:
+                try:
+                    cursor.execute(f"DELETE FROM {table} WHERE {column} = %s", [employee_id])
+                except (OperationalError, ProgrammingError):
+                    # Table doesn't exist - skip it
+                    pass
+            
+            # Step 4: Delete the employee record
+            cursor.execute("DELETE FROM core_employee WHERE id = %s", [employee_id])
+            
+            # Step 5: Delete user-related records (handle missing tables)
+            user_tables = [
+                ('core_chatmessage', 'sender_id'),
+                ('core_chatmessage', 'recipient_id'),
+                ('core_ticket', 'created_by_id'),
+                ('core_notification', 'user_id'),
+            ]
+            
+            for table, column in user_tables:
+                try:
+                    cursor.execute(f"DELETE FROM {table} WHERE {column} = %s", [user_id])
+                except (OperationalError, ProgrammingError):
+                    pass
+            
+            # Step 6: Finally delete the user
+            cursor.execute("DELETE FROM auth_user WHERE id = %s", [user_id])
+        
+        messages.success(request, f'Employee "{employee_name}" has been FORCE DELETED successfully.')
+        
+    except Exception as e:
+        # Even if there's an error, try to delete using raw SQL as last resort
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("DELETE FROM core_employee WHERE id = %s", [employee_id])
+                cursor.execute("DELETE FROM auth_user WHERE id = %s", [user_id])
+            messages.success(request, f'Employee "{employee_name}" has been FORCE DELETED (with some errors ignored).')
+        except Exception as e2:
+            messages.error(request, f'Error deleting employee: {str(e2)}')
+    
     return redirect('employee_list')
 
 @require_POST
@@ -1777,7 +2325,38 @@ def admin_roles(request):
 
 @user_passes_test(is_admin)
 def client_list(request):
-    clients = Client.objects.all()
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    export_format = request.GET.get('format', '')
+    clients = Client.objects.prefetch_related('projects').all()
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Name', 'Email', 'Phone', 'Company', 'Total Projects']
+        data = []
+        for client in clients:
+            data.append([
+                client.id,
+                client.name,
+                client.email or 'N/A',
+                client.phone or 'N/A',
+                client.company or 'N/A',
+                client.projects.count()
+            ])
+        filename = f"clients_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Clients Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Clients Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Clients Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Clients Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('client_list')
+    
     return render(request, 'core/client_list.html', {'clients': clients})
 
 @user_passes_test(is_admin)
@@ -1813,18 +2392,53 @@ def delete_client(request, client_id):
 
 @login_required
 def project_list(request):
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    export_format = request.GET.get('format', '')
+    
     if request.user.is_superuser:
         # Admin sees all projects
-        projects = Project.objects.select_related('client', 'manager__department', 'manager__designation').prefetch_related('tasks').all()
+        projects = Project.objects.select_related('client', 'manager__department', 'manager__designation', 'manager__user').prefetch_related('tasks').all()
     else:
         # Employees see projects where they are manager or have tasks
         try:
             employee = request.user.employee
             projects = Project.objects.filter(
                 Q(manager=employee) | Q(tasks__assigned_to=employee)
-            ).select_related('client', 'manager__department', 'manager__designation').prefetch_related('tasks').distinct()
+            ).select_related('client', 'manager__department', 'manager__designation', 'manager__user').prefetch_related('tasks').distinct()
         except:
             projects = Project.objects.none()
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Name', 'Client', 'Manager', 'Total Tasks', 'Completed Tasks', 'Pending Tasks']
+        data = []
+        for proj in projects:
+            tasks = proj.tasks.all()
+            completed = tasks.filter(status='completed').count()
+            pending = tasks.filter(status='pending').count()
+            data.append([
+                proj.id,
+                proj.name,
+                proj.client.name if proj.client else 'N/A',
+                proj.manager.user.get_full_name() if proj.manager else 'N/A',
+                tasks.count(),
+                completed,
+                pending
+            ])
+        filename = f"projects_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Projects Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Projects Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Projects Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Projects Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('project_list')
     
     # Calculate statistics
     total_projects = projects.count()
@@ -1887,12 +2501,28 @@ def assign_task(request, project_id):
         return HttpResponseForbidden('You do not have permission to assign tasks.')
     manager = project.manager if project.manager else None
     if request.method == 'POST':
-        form = TaskForm(request.POST, project=project, manager=manager)
+        form = TaskForm(request.POST, request.FILES, project=project, manager=manager)
         if form.is_valid():
             task = form.save(commit=False)
             task.project = project
             task.assigned_by = manager if manager else None
             task.save()
+            
+            # Handle multiple file attachments
+            from .models import TaskFile
+            if request.FILES.getlist('attachments'):
+                for file in request.FILES.getlist('attachments'):
+                    try:
+                        TaskFile.objects.create(
+                            task=task,
+                            file=file,
+                            file_name=file.name,
+                            file_size=file.size,
+                            uploaded_by=request.user
+                        )
+                    except Exception as e:
+                        print(f"Error saving attachment: {e}")
+            
             # Create notification for assigned employee
             create_notification(
                 recipient=task.assigned_to.user,
@@ -1909,6 +2539,9 @@ def assign_task(request, project_id):
 
 @login_required
 def project_tasks(request, project_id):
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    export_format = request.GET.get('format', '')
     project = get_object_or_404(Project, id=project_id)
     # Permission check - allow admin, project manager, or employees with tasks in this project
     if not request.user.is_superuser:
@@ -1920,7 +2553,36 @@ def project_tasks(request, project_id):
         except:
             messages.error(request, 'You do not have permission to view tasks for this project.')
             return redirect('project_list')
-    tasks = Task.objects.filter(project=project).select_related('assigned_to', 'assigned_by').all()
+    tasks = Task.objects.filter(project=project).select_related('assigned_to', 'assigned_to__user', 'assigned_by', 'assigned_by__user').all()
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Title', 'Assigned To', 'Assigned By', 'Status', 'Priority', 'Deadline', 'Created Date']
+        data = []
+        for task in tasks:
+            data.append([
+                task.id,
+                task.title,
+                task.assigned_to.user.get_full_name() if task.assigned_to else 'N/A',
+                task.assigned_by.user.get_full_name() if task.assigned_by else 'N/A',
+                task.get_status_display(),
+                task.get_priority_display(),
+                task.deadline.strftime('%Y-%m-%d') if task.deadline else 'N/A',
+                task.created_at.strftime('%Y-%m-%d')
+            ])
+        filename = f"project_{project.id}_tasks_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, f'Tasks Report - {project.name}', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, f'Tasks Report - {project.name}', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, f'Tasks Report - {project.name}', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, f'Tasks Report - {project.name}', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('project_tasks', project_id=project.id)
     
     # Calculate statistics
     tasks_pending = tasks.filter(status='pending').count()
@@ -2120,9 +2782,23 @@ def budget_list(request):
 @user_passes_test(is_admin)
 def budget_add(request):
     if request.method == 'POST':
-        form = BudgetForm(request.POST)
+        form = BudgetForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
+            budget = form.save()
+            # Handle multiple file attachments
+            from .models import BudgetFile
+            if request.FILES.getlist('attachments'):
+                for file in request.FILES.getlist('attachments'):
+                    try:
+                        BudgetFile.objects.create(
+                            budget=budget,
+                            file=file,
+                            file_name=file.name,
+                            file_size=file.size,
+                            uploaded_by=request.user
+                        )
+                    except Exception as e:
+                        print(f"Error saving attachment: {e}")
             return redirect('budget_list')
     else:
         form = BudgetForm()
@@ -2132,9 +2808,23 @@ def budget_add(request):
 def budget_edit(request, pk):
     budget = get_object_or_404(Budget, pk=pk)
     if request.method == 'POST':
-        form = BudgetForm(request.POST, instance=budget)
+        form = BudgetForm(request.POST, request.FILES, instance=budget)
         if form.is_valid():
             form.save()
+            # Handle multiple file attachments
+            from .models import BudgetFile
+            if request.FILES.getlist('attachments'):
+                for file in request.FILES.getlist('attachments'):
+                    try:
+                        BudgetFile.objects.create(
+                            budget=budget,
+                            file=file,
+                            file_name=file.name,
+                            file_size=file.size,
+                            uploaded_by=request.user
+                        )
+                    except Exception as e:
+                        print(f"Error saving attachment: {e}")
             return redirect('budget_list')
     else:
         form = BudgetForm(instance=budget)
@@ -2161,7 +2851,21 @@ def budget_expense_add(request):
     if request.method == 'POST':
         form = BudgetExpenseForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
+            expense = form.save()
+            # Handle multiple file attachments
+            from .models import BudgetExpenseFile
+            if request.FILES.getlist('attachments'):
+                for file in request.FILES.getlist('attachments'):
+                    try:
+                        BudgetExpenseFile.objects.create(
+                            budget_expense=expense,
+                            file=file,
+                            file_name=file.name,
+                            file_size=file.size,
+                            uploaded_by=request.user
+                        )
+                    except Exception as e:
+                        print(f"Error saving attachment: {e}")
             return redirect('budget_expense_list')
     else:
         form = BudgetExpenseForm()
@@ -2174,6 +2878,20 @@ def budget_expense_edit(request, pk):
         form = BudgetExpenseForm(request.POST, request.FILES, instance=expense)
         if form.is_valid():
             form.save()
+            # Handle multiple file attachments
+            from .models import BudgetExpenseFile
+            if request.FILES.getlist('attachments'):
+                for file in request.FILES.getlist('attachments'):
+                    try:
+                        BudgetExpenseFile.objects.create(
+                            budget_expense=expense,
+                            file=file,
+                            file_name=file.name,
+                            file_size=file.size,
+                            uploaded_by=request.user
+                        )
+                    except Exception as e:
+                        print(f"Error saving attachment: {e}")
             return redirect('budget_expense_list')
     else:
         form = BudgetExpenseForm(instance=expense)
@@ -2200,7 +2918,21 @@ def budget_revenue_add(request):
     if request.method == 'POST':
         form = BudgetRevenueForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
+            revenue = form.save()
+            # Handle multiple file attachments
+            from .models import BudgetRevenueFile
+            if request.FILES.getlist('attachments'):
+                for file in request.FILES.getlist('attachments'):
+                    try:
+                        BudgetRevenueFile.objects.create(
+                            budget_revenue=revenue,
+                            file=file,
+                            file_name=file.name,
+                            file_size=file.size,
+                            uploaded_by=request.user
+                        )
+                    except Exception as e:
+                        print(f"Error saving attachment: {e}")
             return redirect('budget_revenue_list')
     else:
         form = BudgetRevenueForm()
@@ -2213,6 +2945,20 @@ def budget_revenue_edit(request, pk):
         form = BudgetRevenueForm(request.POST, request.FILES, instance=revenue)
         if form.is_valid():
             form.save()
+            # Handle multiple file attachments
+            from .models import BudgetRevenueFile
+            if request.FILES.getlist('attachments'):
+                for file in request.FILES.getlist('attachments'):
+                    try:
+                        BudgetRevenueFile.objects.create(
+                            budget_revenue=revenue,
+                            file=file,
+                            file_name=file.name,
+                            file_size=file.size,
+                            uploaded_by=request.user
+                        )
+                    except Exception as e:
+                        print(f"Error saving attachment: {e}")
             return redirect('budget_revenue_list')
     else:
         form = BudgetRevenueForm(instance=revenue)
@@ -2239,7 +2985,21 @@ def asset_add(request):
     if request.method == 'POST':
         form = AssetForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
+            asset = form.save()
+            # Handle multiple file attachments
+            from .models import AssetFile
+            if request.FILES.getlist('attachments'):
+                for file in request.FILES.getlist('attachments'):
+                    try:
+                        AssetFile.objects.create(
+                            asset=asset,
+                            file=file,
+                            file_name=file.name,
+                            file_size=file.size,
+                            uploaded_by=request.user
+                        )
+                    except Exception as e:
+                        print(f"Error saving attachment: {e}")
             return redirect('asset_list')
     else:
         form = AssetForm()
@@ -2976,6 +3736,20 @@ def notice_add(request):
             notice = form.save(commit=False)
             notice.created_by = request.user
             notice.save()
+            # Handle multiple file attachments
+            from .models import NoticeFile
+            if request.FILES.getlist('attachments'):
+                for file in request.FILES.getlist('attachments'):
+                    try:
+                        NoticeFile.objects.create(
+                            notice=notice,
+                            file=file,
+                            file_name=file.name,
+                            file_size=file.size,
+                            uploaded_by=request.user
+                        )
+                    except Exception as e:
+                        print(f"Error saving attachment: {e}")
             messages.success(request, 'Notice created successfully!')
             return redirect('notice_list')
     else:
@@ -2991,6 +3765,20 @@ def notice_edit(request, notice_id):
         form = NoticeForm(request.POST, request.FILES, instance=notice)
         if form.is_valid():
             form.save()
+            # Handle multiple file attachments
+            from .models import NoticeFile
+            if request.FILES.getlist('attachments'):
+                for file in request.FILES.getlist('attachments'):
+                    try:
+                        NoticeFile.objects.create(
+                            notice=notice,
+                            file=file,
+                            file_name=file.name,
+                            file_size=file.size,
+                            uploaded_by=request.user
+                        )
+                    except Exception as e:
+                        print(f"Error saving attachment: {e}")
             messages.success(request, 'Notice updated successfully!')
             return redirect('notice_list')
     else:
@@ -3051,3 +3839,449 @@ def mark_all_notifications_read(request):
     """Mark all notifications as read for the current user"""
     Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
     return JsonResponse({'success': True})
+
+# ===================== REPORTS =====================
+
+@user_passes_test(is_admin)
+def reports(request):
+    """Comprehensive reporting system for all entities"""
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    from .models import (
+        Employee, Department, Designation, Project, Task, Ticket, 
+        Attendance, Leave, Client, Budget, BudgetExpense, BudgetRevenue,
+        Asset, Invoice, Estimate, Expense, Loan, AdvanceRequest, Payslip
+    )
+    from django.db.models import Q
+    
+    # Get report type and format
+    report_type = request.GET.get('type', 'employees')
+    export_format = request.GET.get('format', '')
+    
+    # Get filter parameters
+    department_id = request.GET.get('department', '')
+    designation_id = request.GET.get('designation', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    status_filter = request.GET.get('status', '')
+    search_query = request.GET.get('search', '')
+    
+    # Prepare data based on report type
+    data = []
+    headers = []
+    title = ""
+    
+    if report_type == 'employees':
+        title = "Employees Report"
+        queryset = Employee.objects.select_related('user', 'department', 'designation').all()
+        
+        # Apply filters
+        if department_id:
+            queryset = queryset.filter(department_id=department_id)
+        if designation_id:
+            queryset = queryset.filter(designation_id=designation_id)
+        if search_query:
+            queryset = queryset.filter(
+                Q(user__first_name__icontains=search_query) |
+                Q(user__last_name__icontains=search_query) |
+                Q(user__username__icontains=search_query) |
+                Q(user__email__icontains=search_query)
+            )
+        
+        headers = ['ID', 'Username', 'Full Name', 'Email', 'Phone', 'Department', 'Designation', 'Salary', 'Date of Joining', 'Status']
+        for emp in queryset:
+            data.append([
+                emp.id,
+                emp.user.username,
+                emp.user.get_full_name() or emp.user.username,
+                emp.user.email,
+                emp.phone or 'N/A',
+                emp.department.name if emp.department else 'N/A',
+                emp.designation.name if emp.designation else 'N/A',
+                f"${emp.salary:.2f}" if emp.salary else 'N/A',
+                emp.date_of_joining.strftime('%Y-%m-%d') if emp.date_of_joining else 'N/A',
+                'Active' if not emp.is_restricted else 'Restricted'
+            ])
+    
+    elif report_type == 'departments':
+        title = "Departments Report"
+        queryset = Department.objects.prefetch_related('employee_set').all()
+        if search_query:
+            queryset = queryset.filter(name__icontains=search_query)
+        
+        headers = ['ID', 'Name', 'Description', 'Total Employees']
+        for dept in queryset:
+            data.append([
+                dept.id,
+                dept.name,
+                dept.description[:50] + '...' if dept.description and len(dept.description) > 50 else (dept.description or 'N/A'),
+                dept.employee_set.count()
+            ])
+    
+    elif report_type == 'designations':
+        title = "Designations Report"
+        queryset = Designation.objects.all()
+        if search_query:
+            queryset = queryset.filter(name__icontains=search_query)
+        
+        headers = ['ID', 'Name', 'Description', 'Total Employees']
+        for desg in queryset:
+            emp_count = Employee.objects.filter(designation=desg).count()
+            data.append([
+                desg.id,
+                desg.name,
+                desg.description[:50] + '...' if desg.description and len(desg.description) > 50 else (desg.description or 'N/A'),
+                emp_count
+            ])
+    
+    elif report_type == 'projects':
+        title = "Projects Report"
+        queryset = Project.objects.select_related('client', 'manager', 'manager__user').all()
+        if search_query:
+            queryset = queryset.filter(name__icontains=search_query)
+        if status_filter:
+            # Filter by task status if needed
+            pass
+        
+        headers = ['ID', 'Name', 'Client', 'Manager', 'Total Tasks', 'Completed Tasks']
+        for proj in queryset:
+            tasks = proj.tasks.all()
+            completed = tasks.filter(status='completed').count()
+            data.append([
+                proj.id,
+                proj.name,
+                proj.client.name if proj.client else 'N/A',
+                proj.manager.user.get_full_name() if proj.manager else 'N/A',
+                tasks.count(),
+                completed
+            ])
+    
+    elif report_type == 'tasks':
+        title = "Tasks Report"
+        queryset = Task.objects.select_related('project', 'assigned_to', 'assigned_to__user', 'assigned_by', 'assigned_by__user').all()
+        
+        if department_id:
+            queryset = queryset.filter(assigned_to__department_id=department_id)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if date_from:
+            queryset = queryset.filter(created_at__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(created_at__lte=date_to)
+        if search_query:
+            queryset = queryset.filter(title__icontains=search_query)
+        
+        headers = ['ID', 'Title', 'Project', 'Assigned To', 'Assigned By', 'Status', 'Priority', 'Deadline', 'Created Date']
+        for task in queryset:
+            data.append([
+                task.id,
+                task.title,
+                task.project.name,
+                task.assigned_to.user.get_full_name() if task.assigned_to else 'N/A',
+                task.assigned_by.user.get_full_name() if task.assigned_by else 'N/A',
+                task.get_status_display(),
+                task.get_priority_display(),
+                task.deadline.strftime('%Y-%m-%d') if task.deadline else 'N/A',
+                task.created_at.strftime('%Y-%m-%d')
+            ])
+    
+    elif report_type == 'tickets':
+        title = "Tickets Report"
+        queryset = Ticket.objects.select_related('created_by', 'assigned_to', 'related_task').all()
+        
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if date_from:
+            queryset = queryset.filter(created_at__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(created_at__lte=date_to)
+        if search_query:
+            queryset = queryset.filter(Q(title__icontains=search_query) | Q(tk_id__icontains=search_query))
+        
+        headers = ['Ticket ID', 'Title', 'Created By', 'Assigned To', 'Status', 'Priority', 'Progress %', 'Created Date', 'Due Date']
+        for ticket in queryset:
+            data.append([
+                ticket.tk_id,
+                ticket.title,
+                ticket.created_by.get_full_name() or ticket.created_by.username,
+                ticket.assigned_to.get_full_name() if ticket.assigned_to else 'Unassigned',
+                ticket.get_status_display(),
+                ticket.get_priority_display(),
+                f"{ticket.progress_percentage}%" if ticket.related_task else 'N/A',
+                ticket.created_at.strftime('%Y-%m-%d %H:%M'),
+                ticket.end_date.strftime('%Y-%m-%d') if ticket.end_date else 'N/A'
+            ])
+    
+    elif report_type == 'attendance':
+        title = "Attendance Report"
+        queryset = Attendance.objects.select_related('employee', 'employee__user', 'employee__department').all()
+        
+        if department_id:
+            queryset = queryset.filter(employee__department_id=department_id)
+        if date_from:
+            queryset = queryset.filter(date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(date__lte=date_to)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        headers = ['ID', 'Employee', 'Department', 'Date', 'Check In', 'Check Out', 'Status', 'Work Hours', 'Late Minutes']
+        for att in queryset:
+            data.append([
+                att.id,
+                att.employee.user.get_full_name() or att.employee.user.username,
+                att.employee.department.name if att.employee.department else 'N/A',
+                att.date.strftime('%Y-%m-%d'),
+                att.check_in.strftime('%H:%M') if att.check_in else 'N/A',
+                att.check_out.strftime('%H:%M') if att.check_out else 'N/A',
+                att.get_status_display(),
+                f"{att.total_work_hours:.2f}" if att.total_work_hours else 'N/A',
+                att.late_minutes
+            ])
+    
+    elif report_type == 'leaves':
+        title = "Leaves Report"
+        queryset = Leave.objects.select_related('employee', 'employee__user', 'employee__department', 'reviewed_by').all()
+        
+        if department_id:
+            queryset = queryset.filter(employee__department_id=department_id)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if date_from:
+            queryset = queryset.filter(start_date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(end_date__lte=date_to)
+        
+        headers = ['ID', 'Employee', 'Department', 'Leave Type', 'Start Date', 'End Date', 'Status', 'Applied Date', 'Reviewed By']
+        for leave in queryset:
+            data.append([
+                leave.id,
+                leave.employee.user.get_full_name() or leave.employee.user.username,
+                leave.employee.department.name if leave.employee.department else 'N/A',
+                leave.get_leave_type_display(),
+                leave.start_date.strftime('%Y-%m-%d'),
+                leave.end_date.strftime('%Y-%m-%d'),
+                leave.get_status_display(),
+                leave.applied_at.strftime('%Y-%m-%d'),
+                leave.reviewed_by.get_full_name() if leave.reviewed_by else 'Pending'
+            ])
+    
+    elif report_type == 'clients':
+        title = "Clients Report"
+        queryset = Client.objects.prefetch_related('projects').all()
+        if search_query:
+            queryset = queryset.filter(Q(name__icontains=search_query) | Q(email__icontains=search_query))
+        
+        headers = ['ID', 'Name', 'Email', 'Phone', 'Company', 'Total Projects']
+        for client in queryset:
+            data.append([
+                client.id,
+                client.name,
+                client.email or 'N/A',
+                client.phone or 'N/A',
+                client.company or 'N/A',
+                client.projects.count()
+            ])
+    
+    elif report_type == 'budgets':
+        title = "Budgets Report"
+        queryset = Budget.objects.select_related('project', 'category').prefetch_related('expenses', 'revenues').all()
+        
+        if date_from:
+            queryset = queryset.filter(period_start__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(period_end__lte=date_to)
+        
+        headers = ['ID', 'Name', 'Type', 'Category/Project', 'Period Start', 'Period End', 'Total Expenses', 'Total Revenue']
+        for budget in queryset:
+            total_expenses = sum(exp.amount for exp in budget.expenses.all())
+            total_revenue = sum(rev.amount for rev in budget.revenues.all())
+            type_name = budget.category.name if budget.category else (budget.project.name if budget.project else 'N/A')
+            data.append([
+                budget.id,
+                budget.name,
+                budget.get_type_display(),
+                type_name,
+                budget.period_start.strftime('%Y-%m-%d'),
+                budget.period_end.strftime('%Y-%m-%d'),
+                f"${total_expenses:.2f}",
+                f"${total_revenue:.2f}"
+            ])
+    
+    elif report_type == 'assets':
+        title = "Assets Report"
+        queryset = Asset.objects.select_related('asset_user', 'asset_user__user').all()
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if search_query:
+            queryset = queryset.filter(Q(asset_name__icontains=search_query) | Q(asset_id__icontains=search_query))
+        
+        headers = ['ID', 'Asset Name', 'Asset ID', 'Status', 'Assigned To', 'Cost', 'Purchase Date', 'Condition']
+        for asset in queryset:
+            data.append([
+                asset.id,
+                asset.asset_name,
+                asset.asset_id,
+                asset.get_status_display(),
+                asset.asset_user.user.get_full_name() if asset.asset_user else 'Unassigned',
+                f"${asset.cost:.2f}" if asset.cost else 'N/A',
+                asset.purchase_date.strftime('%Y-%m-%d') if asset.purchase_date else 'N/A',
+                asset.condition or 'N/A'
+            ])
+    
+    elif report_type == 'invoices':
+        title = "Invoices Report"
+        queryset = Invoice.objects.select_related('client', 'project', 'tax').prefetch_related('items').all()
+        
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if date_from:
+            queryset = queryset.filter(invoice_date__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(invoice_date__lte=date_to)
+        
+        headers = ['ID', 'Client', 'Project', 'Invoice Date', 'Due Date', 'Status', 'Total Amount', 'Tax']
+        for inv in queryset:
+            total = sum(item.amount for item in inv.items.all())
+            tax_amount = (total * float(inv.tax.percentage) / 100) if inv.tax else 0
+            data.append([
+                inv.id,
+                inv.client.name,
+                inv.project.name if inv.project else 'N/A',
+                inv.invoice_date.strftime('%Y-%m-%d'),
+                inv.due_date.strftime('%Y-%m-%d'),
+                inv.get_status_display(),
+                f"${total:.2f}",
+                f"${tax_amount:.2f}" if tax_amount else 'N/A'
+            ])
+    
+    elif report_type == 'loans':
+        title = "Loans Report"
+        queryset = Loan.objects.select_related('employee', 'employee__user').all()
+        
+        if department_id:
+            queryset = queryset.filter(employee__department_id=department_id)
+        if status_filter == 'active':
+            queryset = queryset.filter(is_active=True)
+        elif status_filter == 'inactive':
+            queryset = queryset.filter(is_active=False)
+        
+        headers = ['ID', 'Employee', 'Principal Amount', 'Monthly Installment', 'Balance', 'Start Date', 'End Date', 'Status']
+        for loan in queryset:
+            data.append([
+                loan.id,
+                loan.employee.user.get_full_name() or loan.employee.user.username,
+                f"${loan.principal_amount:.2f}",
+                f"${loan.monthly_installment:.2f}",
+                f"${loan.balance:.2f}",
+                loan.start_date.strftime('%Y-%m-%d'),
+                loan.end_date.strftime('%Y-%m-%d') if loan.end_date else 'N/A',
+                'Active' if loan.is_active else 'Inactive'
+            ])
+    
+    elif report_type == 'advances':
+        title = "Advance Requests Report"
+        queryset = AdvanceRequest.objects.select_related('employee', 'employee__user', 'reviewed_by').all()
+        
+        if department_id:
+            queryset = queryset.filter(employee__department_id=department_id)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if date_from:
+            queryset = queryset.filter(requested_at__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(requested_at__lte=date_to)
+        
+        headers = ['ID', 'Employee', 'Amount', 'Status', 'Requested Date', 'Reviewed By', 'Reviewed Date']
+        for adv in queryset:
+            data.append([
+                adv.id,
+                adv.employee.user.get_full_name() or adv.employee.user.username,
+                f"${adv.amount:.2f}",
+                adv.get_status_display(),
+                adv.requested_at.strftime('%Y-%m-%d'),
+                adv.reviewed_by.get_full_name() if adv.reviewed_by else 'Pending',
+                adv.reviewed_at.strftime('%Y-%m-%d') if adv.reviewed_at else 'N/A'
+            ])
+    
+    elif report_type == 'payslips':
+        title = "Payslips Report"
+        queryset = Payslip.objects.select_related('employee', 'employee__user', 'created_by').all()
+        
+        if department_id:
+            queryset = queryset.filter(employee__department_id=department_id)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if date_from:
+            queryset = queryset.filter(period_start__gte=date_from)
+        if date_to:
+            queryset = queryset.filter(period_end__lte=date_to)
+        
+        headers = ['ID', 'Employee', 'Period Start', 'Period End', 'Gross Pay', 'Total Earnings', 'Total Deductions', 'Net Pay', 'Status', 'Date']
+        for payslip in queryset:
+            data.append([
+                payslip.id,
+                payslip.employee.user.get_full_name() or payslip.employee.user.username,
+                payslip.period_start.strftime('%Y-%m-%d') if payslip.period_start else 'N/A',
+                payslip.period_end.strftime('%Y-%m-%d') if payslip.period_end else 'N/A',
+                f"${payslip.gross_pay:.2f}",
+                f"${payslip.total_earnings:.2f}",
+                f"${payslip.total_deductions:.2f}",
+                f"${payslip.total:.2f}",
+                payslip.get_status_display(),
+                payslip.date.strftime('%Y-%m-%d')
+            ])
+    
+    # Export if format is specified
+    if export_format:
+        filename = f"{report_type}_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, title, headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, title, headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, title, headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, title, headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('reports')
+    
+    # Get filter options for template
+    departments = Department.objects.all().order_by('name')
+    designations = Designation.objects.all().order_by('name')
+    
+    # Report types
+    report_types = [
+        ('employees', 'Employees'),
+        ('departments', 'Departments'),
+        ('designations', 'Designations'),
+        ('projects', 'Projects'),
+        ('tasks', 'Tasks'),
+        ('tickets', 'Tickets'),
+        ('attendance', 'Attendance'),
+        ('leaves', 'Leaves'),
+        ('clients', 'Clients'),
+        ('budgets', 'Budgets'),
+        ('assets', 'Assets'),
+        ('invoices', 'Invoices'),
+        ('loans', 'Loans'),
+        ('advances', 'Advance Requests'),
+        ('payslips', 'Payslips'),
+    ]
+    
+    return render(request, 'core/reports.html', {
+        'report_type': report_type,
+        'data': data,
+        'headers': headers,
+        'title': title,
+        'departments': departments,
+        'designations': designations,
+        'report_types': report_types,
+        'department_id': department_id,
+        'designation_id': designation_id,
+        'date_from': date_from,
+        'date_to': date_to,
+        'status_filter': status_filter,
+        'search_query': search_query,
+    })

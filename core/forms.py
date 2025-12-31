@@ -355,17 +355,105 @@ class ManualAttendanceForm(forms.Form):
     )
 
 class AttendanceMachineForm(ModelForm):
-    """Form for managing attendance machines"""
+    """Form for managing attendance machines with support for multiple machine types"""
+    
     class Meta:
         model = AttendanceMachine
-        fields = ['name', 'ip_address', 'port', 'location', 'is_active']
+        fields = [
+            'name', 'machine_type', 'protocol', 'ip_address', 'port', 'url',
+            'serial_port', 'baud_rate', 'username', 'password', 'api_key',
+            'location', 'is_active', 'sync_interval', 'description'
+        ]
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
+            'machine_type': forms.Select(attrs={'class': 'form-control', 'required': True}),
+            'protocol': forms.Select(attrs={'class': 'form-control', 'required': True}),
             'ip_address': forms.TextInput(attrs={'class': 'form-control'}),
             'port': forms.NumberInput(attrs={'class': 'form-control'}),
+            'url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://api.example.com'}),
+            'serial_port': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'COM1 or /dev/ttyUSB0'}),
+            'baud_rate': forms.NumberInput(attrs={'class': 'form-control'}),
+            'username': forms.TextInput(attrs={'class': 'form-control'}),
+            'password': forms.PasswordInput(attrs={'class': 'form-control', 'render_value': True}),
+            'api_key': forms.TextInput(attrs={'class': 'form-control'}),
             'location': forms.TextInput(attrs={'class': 'form-control'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'sync_interval': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 1440, 'value': 15}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
+        help_texts = {
+            'machine_type': 'Select the brand/type of your biometric machine',
+            'protocol': 'Select the connection protocol used by the machine',
+            'url': 'Full URL for HTTP/HTTPS/API connections (e.g., https://api.example.com)',
+            'serial_port': 'COM port for serial connection (Windows: COM1, Linux: /dev/ttyUSB0)',
+            'api_key': 'API key for API-based machines',
+            'sync_interval': 'How often to sync data in minutes (1-1440)',
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make fields conditionally required based on protocol
+        protocol = None
+        
+        if self.instance and self.instance.pk:
+            # Editing existing machine
+            protocol = self.instance.protocol
+        elif args and len(args) > 0:
+            # Form submitted via POST - check POST data
+            data = args[0]
+            protocol = data.get('protocol', None)
+        else:
+            # New form - check initial data
+            protocol = self.initial.get('protocol', AttendanceMachine.PROTOCOL_TCP_IP)
+        
+        # Default to TCP/IP if protocol not set
+        if not protocol:
+            protocol = AttendanceMachine.PROTOCOL_TCP_IP
+        
+        # Set default value for sync_interval if not provided
+        if not self.instance.pk and 'sync_interval' not in self.initial:
+            self.fields['sync_interval'].initial = 15
+        
+        # Show/hide fields based on protocol
+        if protocol == AttendanceMachine.PROTOCOL_TCP_IP:
+            self.fields['ip_address'].required = True
+            self.fields['port'].required = True
+            self.fields['url'].required = False
+            self.fields['serial_port'].required = False
+        elif protocol in [AttendanceMachine.PROTOCOL_HTTP, AttendanceMachine.PROTOCOL_HTTPS]:
+            self.fields['url'].required = True
+            self.fields['ip_address'].required = False
+            self.fields['port'].required = False
+            self.fields['serial_port'].required = False
+        elif protocol == AttendanceMachine.PROTOCOL_SERIAL:
+            self.fields['serial_port'].required = True
+            self.fields['ip_address'].required = False
+            self.fields['port'].required = False
+            self.fields['url'].required = False
+        else:
+            self.fields['url'].required = True
+            self.fields['ip_address'].required = False
+            self.fields['port'].required = False
+            self.fields['serial_port'].required = False
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        protocol = cleaned_data.get('protocol')
+        
+        # Additional validation based on protocol
+        if protocol == AttendanceMachine.PROTOCOL_TCP_IP:
+            if not cleaned_data.get('ip_address'):
+                self.add_error('ip_address', 'IP address is required for TCP/IP protocol.')
+            if not cleaned_data.get('port'):
+                self.add_error('port', 'Port is required for TCP/IP protocol.')
+        elif protocol in [AttendanceMachine.PROTOCOL_HTTP, AttendanceMachine.PROTOCOL_HTTPS]:
+            if not cleaned_data.get('url'):
+                self.add_error('url', 'URL is required for HTTP/HTTPS protocol.')
+        elif protocol == AttendanceMachine.PROTOCOL_SERIAL:
+            if not cleaned_data.get('serial_port'):
+                self.add_error('serial_port', 'Serial port is required for Serial protocol.')
+        
+        return cleaned_data
 
 class AttendanceFilterForm(forms.Form):
     """Form for filtering attendance records"""

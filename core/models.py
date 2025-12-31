@@ -50,6 +50,8 @@ class Employee(models.Model):
     fingerprint_id = models.CharField(max_length=50, blank=True, null=True, help_text="Fingerprint ID in the ZKT machine")
     face_id = models.CharField(max_length=50, blank=True, null=True, help_text="Face ID in the ZKT machine")
     card_id = models.CharField(max_length=50, blank=True, null=True, help_text="Card ID in the ZKT machine")
+    # Profile picture
+    profile_picture = models.ImageField(upload_to='employee_profile_pictures/', blank=True, null=True, help_text="Employee profile picture")
 
     def __str__(self):
         return str(self.user)
@@ -151,17 +153,101 @@ class OnlineUser(models.Model):
         return f"{self.user} (online)"
 
 class AttendanceMachine(models.Model):
-    name = models.CharField(max_length=100, default="ZKT K70")
-    ip_address = models.GenericIPAddressField(default="192.168.18.1")
-    port = models.IntegerField(default=4370)
-    location = models.CharField(max_length=200, blank=True)
-    is_active = models.BooleanField(default=True)
-    last_sync = models.DateTimeField(null=True, blank=True)
+    # Machine Brand/Type
+    MACHINE_TYPE_ZKT = 'zkt'
+    MACHINE_TYPE_REALTIME = 'realtime'
+    MACHINE_TYPE_BIOSTAR = 'biostar'
+    MACHINE_TYPE_HIKVISION = 'hikvision'
+    MACHINE_TYPE_DAHUA = 'dahua'
+    MACHINE_TYPE_ATTENDANCE_PRO = 'attendance_pro'
+    MACHINE_TYPE_GENERIC_API = 'generic_api'
+    MACHINE_TYPE_CUSTOM = 'custom'
+    
+    MACHINE_TYPE_CHOICES = [
+        (MACHINE_TYPE_ZKT, 'ZKTeco (ZKT K70, ZKT K40, etc.)'),
+        (MACHINE_TYPE_REALTIME, 'RealTime'),
+        (MACHINE_TYPE_BIOSTAR, 'BioStar'),
+        (MACHINE_TYPE_HIKVISION, 'Hikvision'),
+        (MACHINE_TYPE_DAHUA, 'Dahua'),
+        (MACHINE_TYPE_ATTENDANCE_PRO, 'Attendance Pro'),
+        (MACHINE_TYPE_GENERIC_API, 'Generic API/Webhook'),
+        (MACHINE_TYPE_CUSTOM, 'Custom/Other'),
+    ]
+    
+    # Connection Protocol
+    PROTOCOL_TCP_IP = 'tcp_ip'
+    PROTOCOL_HTTP = 'http'
+    PROTOCOL_HTTPS = 'https'
+    PROTOCOL_WEBSOCKET = 'websocket'
+    PROTOCOL_SERIAL = 'serial'
+    PROTOCOL_USB = 'usb'
+    
+    PROTOCOL_CHOICES = [
+        (PROTOCOL_TCP_IP, 'TCP/IP'),
+        (PROTOCOL_HTTP, 'HTTP'),
+        (PROTOCOL_HTTPS, 'HTTPS'),
+        (PROTOCOL_WEBSOCKET, 'WebSocket'),
+        (PROTOCOL_SERIAL, 'Serial/COM'),
+        (PROTOCOL_USB, 'USB'),
+    ]
+    
+    name = models.CharField(max_length=100, default="ZKT K70", help_text="Machine name/identifier")
+    machine_type = models.CharField(max_length=20, choices=MACHINE_TYPE_CHOICES, default=MACHINE_TYPE_ZKT, help_text="Brand/Type of biometric machine")
+    protocol = models.CharField(max_length=20, choices=PROTOCOL_CHOICES, default=PROTOCOL_TCP_IP, help_text="Connection protocol")
+    
+    # Network Configuration
+    ip_address = models.GenericIPAddressField(null=True, blank=True, help_text="IP address for TCP/IP, HTTP, HTTPS, WebSocket")
+    port = models.IntegerField(default=4370, null=True, blank=True, help_text="Port number")
+    url = models.URLField(max_length=500, blank=True, help_text="Full URL for HTTP/HTTPS/API connections")
+    
+    # Serial/USB Configuration
+    serial_port = models.CharField(max_length=50, blank=True, help_text="COM port for serial connection (e.g., COM1, /dev/ttyUSB0)")
+    baud_rate = models.IntegerField(default=9600, null=True, blank=True, help_text="Baud rate for serial connection")
+    
+    # Authentication
+    username = models.CharField(max_length=100, blank=True, help_text="Username for machine authentication")
+    password = models.CharField(max_length=100, blank=True, help_text="Password for machine authentication")
+    api_key = models.CharField(max_length=255, blank=True, help_text="API key for API-based machines")
+    
+    # Additional Configuration (JSON field for flexibility)
+    configuration = models.JSONField(default=dict, blank=True, help_text="Additional machine-specific configuration (JSON format)")
+    
+    # Location and Status
+    location = models.CharField(max_length=200, blank=True, help_text="Physical location of the machine")
+    is_active = models.BooleanField(default=True, help_text="Whether this machine is active and should be synced")
+    last_sync = models.DateTimeField(null=True, blank=True, help_text="Last successful sync timestamp")
+    last_error = models.TextField(blank=True, help_text="Last error message if sync failed")
+    sync_interval = models.IntegerField(default=15, help_text="Sync interval in minutes")
+    
+    # Metadata
+    description = models.TextField(blank=True, help_text="Additional description or notes")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ['name', 'location']
+        verbose_name = 'Attendance Machine'
+        verbose_name_plural = 'Attendance Machines'
+
     def __str__(self):
-        return f"{self.name} ({self.ip_address}:{self.port})"
+        return f"{self.name} ({self.get_machine_type_display()}) - {self.location or 'No Location'}"
+    
+    def get_connection_string(self):
+        """Get connection string based on protocol"""
+        if self.protocol == self.PROTOCOL_TCP_IP:
+            return f"{self.ip_address}:{self.port}"
+        elif self.protocol in [self.PROTOCOL_HTTP, self.PROTOCOL_HTTPS]:
+            return self.url or f"{self.protocol}://{self.ip_address}:{self.port}"
+        elif self.protocol == self.PROTOCOL_SERIAL:
+            return f"{self.serial_port}@{self.baud_rate}"
+        elif self.protocol == self.PROTOCOL_USB:
+            return "USB Connection"
+        else:
+            return self.url or "Unknown"
+    
+    def is_connected(self):
+        """Check if machine is currently connected (basic check)"""
+        return self.is_active and self.last_sync is not None
 
 class AttendanceLog(models.Model):
     ATTENDANCE_TYPE_CHOICES = [
@@ -172,19 +258,23 @@ class AttendanceLog(models.Model):
     ]
     
     SOURCE_CHOICES = [
-        ('manual', 'Manual'),
-        ('machine', 'ZKT Machine'),
-        ('api', 'API'),
+        ('manual', 'Manual Entry'),
+        ('machine', 'Biometric Machine'),
+        ('api', 'API/Webhook'),
+        ('mobile', 'Mobile App'),
+        ('web', 'Web Interface'),
     ]
     
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='attendance_logs')
     attendance_type = models.CharField(max_length=20, choices=ATTENDANCE_TYPE_CHOICES)
     source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default='manual')
+    machine = models.ForeignKey(AttendanceMachine, on_delete=models.SET_NULL, null=True, blank=True, related_name='attendance_logs', help_text="Biometric machine that recorded this attendance (if applicable)")
     timestamp = models.DateTimeField()
     machine_timestamp = models.DateTimeField(null=True, blank=True, help_text="Original timestamp from the machine")
-    machine_id = models.CharField(max_length=50, blank=True, null=True, help_text="Machine ID if from ZKT device")
-    location = models.CharField(max_length=200, blank=True)
+    machine_user_id = models.CharField(max_length=50, blank=True, null=True, help_text="User ID as stored in the biometric machine")
+    location = models.CharField(max_length=200, blank=True, help_text="Location where attendance was recorded")
     notes = models.TextField(blank=True)
+    raw_data = models.JSONField(default=dict, blank=True, help_text="Raw data from machine/API for debugging")
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
@@ -192,10 +282,22 @@ class AttendanceLog(models.Model):
         indexes = [
             models.Index(fields=['employee', 'timestamp']),
             models.Index(fields=['timestamp']),
+            models.Index(fields=['machine', 'timestamp']),
+            models.Index(fields=['source', 'timestamp']),
         ]
+        verbose_name = 'Attendance Log'
+        verbose_name_plural = 'Attendance Logs'
 
     def __str__(self):
-        return f"{self.employee} - {self.get_attendance_type_display()} at {self.timestamp}"
+        machine_info = f" via {self.machine.name}" if self.machine else ""
+        return f"{self.employee} - {self.get_attendance_type_display()} at {self.timestamp}{machine_info}"
+    
+    def get_source_display_with_machine(self):
+        """Get source display with machine name if applicable"""
+        source_display = self.get_source_display()
+        if self.machine:
+            return f"{source_display} ({self.machine.name})"
+        return source_display
 
 class Attendance(models.Model):
     STATUS_CHOICES = [
@@ -863,6 +965,141 @@ class AssetIssue(models.Model):
 class TicketFile(models.Model):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='files')
     file = models.FileField(upload_to='tickets/files/')
+    file_name = models.CharField(max_length=255)
+    file_size = models.IntegerField(help_text="File size in bytes")
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.file_name
+
+# Task File (for task attachments)
+class TaskFile(models.Model):
+    task = models.ForeignKey('Task', on_delete=models.CASCADE, related_name='files')
+    file = models.FileField(upload_to='task_attachments/files/')
+    file_name = models.CharField(max_length=255)
+    file_size = models.IntegerField(help_text="File size in bytes")
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.file_name
+
+# Budget File (for budget attachments)
+class BudgetFile(models.Model):
+    budget = models.ForeignKey('Budget', on_delete=models.CASCADE, related_name='files')
+    file = models.FileField(upload_to='budget_attachments/files/')
+    file_name = models.CharField(max_length=255)
+    file_size = models.IntegerField(help_text="File size in bytes")
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.file_name
+
+# Budget Expense File (for budget expense attachments)
+class BudgetExpenseFile(models.Model):
+    budget_expense = models.ForeignKey('BudgetExpense', on_delete=models.CASCADE, related_name='files')
+    file = models.FileField(upload_to='budget_expense_attachments/files/')
+    file_name = models.CharField(max_length=255)
+    file_size = models.IntegerField(help_text="File size in bytes")
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.file_name
+
+# Budget Revenue File (for budget revenue attachments)
+class BudgetRevenueFile(models.Model):
+    budget_revenue = models.ForeignKey('BudgetRevenue', on_delete=models.CASCADE, related_name='files')
+    file = models.FileField(upload_to='budget_revenue_attachments/files/')
+    file_name = models.CharField(max_length=255)
+    file_size = models.IntegerField(help_text="File size in bytes")
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.file_name
+
+# Asset File (for asset files)
+class AssetFile(models.Model):
+    asset = models.ForeignKey('Asset', on_delete=models.CASCADE, related_name='file_attachments')
+    file = models.FileField(upload_to='asset_files/files/')
+    file_name = models.CharField(max_length=255)
+    file_size = models.IntegerField(help_text="File size in bytes")
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.file_name
+
+# Ticket Reply File (for ticket reply attachments)
+class TicketReplyFile(models.Model):
+    ticket_reply = models.ForeignKey('TicketReply', on_delete=models.CASCADE, related_name='files')
+    file = models.FileField(upload_to='ticket_attachments/files/')
+    file_name = models.CharField(max_length=255)
+    file_size = models.IntegerField(help_text="File size in bytes")
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.file_name
+
+# Notice File (for notice attachments)
+class NoticeFile(models.Model):
+    notice = models.ForeignKey('Notice', on_delete=models.CASCADE, related_name='files')
+    file = models.FileField(upload_to='notices/files/')
+    file_name = models.CharField(max_length=255)
+    file_size = models.IntegerField(help_text="File size in bytes")
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.file_name
+
+# Employee Education File (for employee education files)
+class EmployeeEducationFile(models.Model):
+    employee_education = models.ForeignKey('EmployeeEducation', on_delete=models.CASCADE, related_name='file_attachments')
+    file = models.FileField(upload_to='employee_education/files/')
+    file_name = models.CharField(max_length=255)
+    file_size = models.IntegerField(help_text="File size in bytes")
+    uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.file_name
+
+# Employee Experience File (for employee experience files)
+class EmployeeExperienceFile(models.Model):
+    employee_experience = models.ForeignKey('EmployeeWorkExperience', on_delete=models.CASCADE, related_name='file_attachments')
+    file = models.FileField(upload_to='employee_experience/files/')
     file_name = models.CharField(max_length=255)
     file_size = models.IntegerField(help_text="File size in bytes")
     uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)

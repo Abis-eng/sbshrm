@@ -16,8 +16,19 @@
         <a href="{% url 'add_employee' %}" class="btn btn-primary">
             <i class="fas fa-plus me-2"></i>Add New Employee
         </a>
-            </div>
-        {% endif %}
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-danger dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-file-export me-2"></i>Export
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="exportEmployees('pdf'); return false;"><i class="fas fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+                <li><a class="dropdown-item" href="#" onclick="exportEmployees('docx'); return false;"><i class="fas fa-file-word me-2 text-primary"></i>DOC</a></li>
+                <li><a class="dropdown-item" href="#" onclick="exportEmployees('excel'); return false;"><i class="fas fa-file-excel me-2 text-success"></i>Excel</a></li>
+                <li><a class="dropdown-item" href="#" onclick="exportEmployees('csv'); return false;"><i class="fas fa-file-csv me-2 text-info"></i>CSV</a></li>
+            </ul>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 
@@ -45,7 +56,7 @@
         width: 60px;
         height: 60px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+        background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -81,7 +92,7 @@
         margin: 0.25rem;
     }
     .badge-dept {
-        background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+        background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
         color: white;
     }
     .badge-designation {
@@ -106,7 +117,7 @@
         transform: scale(1.05);
     }
     .stats-card {
-        background: linear-gradient(135deg, #0e7490 0%, #0891b2 100%);
+        background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);
         color: white;
         border-radius: 15px;
         padding: 1.5rem;
@@ -152,7 +163,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="stats-card" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+        <div class="stats-card" style="background: linear-gradient(135deg, #4B49AC 0%, #98BDFF 100%);">
             <div class="stats-number">{{ departments|length }}</div>
             <div class="stats-label">
                 <i class="fas fa-building me-2"></i>Departments
@@ -160,7 +171,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="stats-card" style="background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);">
+        <div class="stats-card" style="background: linear-gradient(135deg, #98BDFF 0%, #7978E9 100%);">
             <div class="stats-number">{{ designations|length }}</div>
             <div class="stats-label">
                 <i class="fas fa-id-badge me-2"></i>Designations
@@ -224,8 +235,12 @@
          data-desig="{{ employee.designation.name|default:''|lower }}">
         <div class="employee-card">
             <div class="employee-info">
-                <div class="employee-avatar mb-3">
-                    {{ employee.user.first_name|first|default:employee.user.username|first|upper }}{{ employee.user.last_name|first|upper|default:'' }}
+                <div class="employee-avatar mb-3" style="position: relative; overflow: hidden;">
+                    {% if employee.profile_picture %}
+                        <img src="{{ employee.profile_picture.url }}" alt="{{ employee.user.get_full_name|default:employee.user.username }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                    {% else %}
+                        {{ employee.user.first_name|first|default:employee.user.username|first|upper }}{{ employee.user.last_name|first|upper|default:'' }}
+                    {% endif %}
                 </div>
                 <div class="text-center d-flex flex-column" style="flex-grow: 1;">
                     <div class="employee-name">
@@ -280,8 +295,8 @@
                 <a href="{% url 'delete_employee' employee.id %}" 
                    class="btn btn-sm btn-danger action-btn" 
                    title="Delete Employee"
-                   style="font-size: 0.75rem; padding: 0.25rem 0.5rem;"
-                   onclick="return confirm('Are you sure you want to delete {{ employee.user.get_full_name|default:employee.user.username }}? This will also delete their user account.');">
+                   style="font-size: 0.75rem; padding: 0.25rem 0.5rem; text-decoration: none;"
+                   onclick="return confirm('Are you sure you want to delete {{ employee.user.get_full_name|default:employee.user.username }}? This will also delete their user account. This action cannot be undone.');">
                     <i class="fas fa-trash me-1"></i>Del
                 </a>
                 {% endif %}
@@ -345,6 +360,25 @@
                 item.style.display = 'none';
             }
         });
+    }
+    
+    function exportEmployees(format) {
+        const searchQuery = document.getElementById('searchInput').value;
+        const deptFilter = document.getElementById('deptFilter').value;
+        const desigFilter = document.getElementById('desigFilter').value;
+        
+        let url = '?format=' + format;
+        if (searchQuery) {
+            url += '&search=' + encodeURIComponent(searchQuery);
+        }
+        if (deptFilter) {
+            url += '&department=' + encodeURIComponent(deptFilter);
+        }
+        if (desigFilter) {
+            url += '&designation=' + encodeURIComponent(desigFilter);
+        }
+        
+        window.location.href = url;
     }
 </script>
 {% endif %}
