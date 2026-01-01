@@ -141,6 +141,25 @@
         transform: translateX(5px);
     }
     
+    .notice-attachment-image {
+        margin-top: 15px;
+        margin-bottom: 10px;
+    }
+    
+    .notice-attachment-image img {
+        transition: transform 0.3s ease;
+        max-width: 100%;
+        height: auto;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        cursor: pointer;
+    }
+    
+    .notice-attachment-image img:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
     .no-notices {
         text-align: center;
         padding: 40px 20px;
@@ -312,12 +331,63 @@
                     {{ notice.content|linebreaks }}
                 </div>
                 {% endif %}
-                {% if notice.attachment %}
-                <a href="{{ notice.attachment.url }}" target="_blank" class="file-attachment-link">
-                    <i class="fas fa-paperclip"></i>
-                    <span>Download Attachment: {{ notice.attachment.name|slice:"30:"|default:notice.attachment.name }}</span>
-                    <i class="fas fa-external-link-alt ms-2"></i>
-                </a>
+                {% if notice.attachment and notice.attachment.name %}
+                    {% with attachment_name=notice.attachment.name|lower %}
+                        {% if ".jpg" in attachment_name or ".jpeg" in attachment_name or ".png" in attachment_name or ".gif" in attachment_name or ".webp" in attachment_name %}
+                            {% if notice.image_display_mode == 'inline' %}
+                                <div class="notice-attachment-image mt-3">
+                                    <img src="{{ notice.attachment.url }}" alt="{{ notice.title }}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;" onclick="window.open('{{ notice.attachment.url }}', '_blank')">
+                                    <a href="{{ notice.attachment.url }}" target="_blank" class="file-attachment-link mt-2 d-inline-block">
+                                        <i class="fas fa-download"></i>
+                                        <span>Download Image</span>
+                                    </a>
+                                </div>
+                            {% else %}
+                                <a href="{{ notice.attachment.url }}" target="_blank" class="file-attachment-link">
+                                    <i class="fas fa-image"></i>
+                                    <span>View Image: {{ notice.attachment.name|slice:"30:"|default:notice.attachment.name }}</span>
+                                    <i class="fas fa-external-link-alt ms-2"></i>
+                                </a>
+                            {% endif %}
+                        {% else %}
+                            <a href="{{ notice.attachment.url }}" target="_blank" class="file-attachment-link">
+                                <i class="fas fa-paperclip"></i>
+                                <span>Download Attachment: {{ notice.attachment.name|slice:"30:"|default:notice.attachment.name }}</span>
+                                <i class="fas fa-external-link-alt ms-2"></i>
+                            </a>
+                        {% endif %}
+                    {% endwith %}
+                {% endif %}
+                {% if notice.files.all %}
+                    {% for file in notice.files.all %}
+                        {% if file.file and file.file_name %}
+                            {% with file_name=file.file_name|lower %}
+                                {% if ".jpg" in file_name or ".jpeg" in file_name or ".png" in file_name or ".gif" in file_name or ".webp" in file_name %}
+                                    {% if notice.image_display_mode == 'inline' %}
+                                        <div class="notice-attachment-image mt-3">
+                                            <img src="{{ file.file.url }}" alt="{{ file.file_name }}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;" onclick="window.open('{{ file.file.url }}', '_blank')">
+                                            <a href="{{ file.file.url }}" target="_blank" class="file-attachment-link mt-2 d-inline-block">
+                                                <i class="fas fa-download"></i>
+                                                <span>Download Image</span>
+                                            </a>
+                                        </div>
+                                    {% else %}
+                                        <a href="{{ file.file.url }}" target="_blank" class="file-attachment-link">
+                                            <i class="fas fa-image"></i>
+                                            <span>View Image: {{ file.file_name|truncatechars:40 }}</span>
+                                            <i class="fas fa-external-link-alt ms-2"></i>
+                                        </a>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="{{ file.file.url }}" target="_blank" class="file-attachment-link">
+                                        <i class="fas fa-paperclip"></i>
+                                        <span>Download: {{ file.file_name|truncatechars:40 }}</span>
+                                        <i class="fas fa-external-link-alt ms-2"></i>
+                                    </a>
+                                {% endif %}
+                            {% endwith %}
+                        {% endif %}
+                    {% endfor %}
                 {% endif %}
                 <div class="notice-item-meta">
                     <div>

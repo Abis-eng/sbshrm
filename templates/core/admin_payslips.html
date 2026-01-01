@@ -60,6 +60,11 @@
         box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
         margin-bottom: 30px;
         border: 2px solid #d1fae5;
+        transition: all 0.3s ease;
+    }
+    .form-card:hover {
+        box-shadow: 0 8px 30px rgba(16, 185, 129, 0.15);
+        border-color: #10b981;
     }
     .payslip-card {
         background: #fff;
@@ -179,19 +184,63 @@
     .form-label {
         font-weight: 600;
         color: #334155;
-        margin-bottom: 8px;
-        font-size: 0.9rem;
+        margin-bottom: 6px;
+        font-size: 0.85rem;
+    }
+    .form-label i {
+        color: #10b981;
+        font-size: 0.8rem;
     }
     .form-control, .form-select {
-        border-radius: 12px;
+        border-radius: 10px;
         border: 2px solid #e2e8f0;
-        padding: 10px 15px;
+        padding: 8px 12px;
         transition: all 0.3s ease;
+        font-size: 0.9rem;
     }
     .form-control:focus, .form-select:focus {
         border-color: #10b981;
         box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
         outline: none;
+    }
+    .form-check {
+        padding: 6px 10px;
+        background: #f8fafc;
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+        margin: 0;
+    }
+    .form-check-input {
+        cursor: pointer;
+    }
+    .form-check-input:checked {
+        background-color: #10b981;
+        border-color: #10b981;
+    }
+    .form-check-input:focus {
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        border-color: #10b981;
+    }
+    .form-check-label {
+        font-weight: 600;
+        color: #334155;
+        cursor: pointer;
+        margin-left: 8px;
+        font-size: 0.85rem;
+    }
+    .btn-submit {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+    .alert {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    .alert-danger {
+        background: #fee2e2;
+        color: #991b1b;
+        border-left: 4px solid #ef4444;
     }
 </style>
 
@@ -248,40 +297,67 @@
 
     <!-- Create Payslip Form -->
     <div class="form-card">
-        <h4 class="mb-4"><i class="fas fa-plus-circle me-2 text-success"></i>Create New Payslip</h4>
+        <h4 class="mb-4">
+            <i class="fas fa-plus-circle me-2 text-success"></i>
+            Create New Payslip
+        </h4>
         <form method="post">
             {% csrf_token %}
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Employee</label>
+            <div class="row g-2">
+                <div class="col-md-2">
+                    <label class="form-label">
+                        <i class="fas fa-user me-1"></i>Employee
+                    </label>
                     {{ form.employee }}
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Period Start</label>
+                    <label class="form-label">
+                        <i class="fas fa-calendar-alt me-1"></i>Period Start
+                    </label>
                     {{ form.period_start }}
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Period End</label>
+                    <label class="form-label">
+                        <i class="fas fa-calendar-check me-1"></i>Period End
+                    </label>
                     {{ form.period_end }}
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Base Salary</label>
+                    <label class="form-label">
+                        <i class="fas fa-dollar-sign me-1"></i>Base Salary
+                    </label>
                     {{ form.base_salary }}
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">&nbsp;</label>
-                    <div class="form-check form-switch mt-2">
+                    <label class="form-label d-block mb-1">
+                        <i class="fas fa-envelope me-1"></i>Email
+                    </label>
+                    <div class="form-check form-switch">
                         {{ form.send_email }}
-                        <label class="form-check-label">Email to employee</label>
+                        <label class="form-check-label" for="{{ form.send_email.id_for_label }}">
+                            Send
+                        </label>
                     </div>
                 </div>
-                <div class="col-md-1">
-                    <label class="form-label">&nbsp;</label>
+                <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-submit w-100">
                         <i class="fas fa-plus me-1"></i>Create
                     </button>
                 </div>
             </div>
+            {% if form.errors %}
+            <div class="alert alert-danger mt-3" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Please correct the following errors:</strong>
+                <ul class="mb-0 mt-2">
+                    {% for field, errors in form.errors.items %}
+                        {% for error in errors %}
+                            <li>{{ field|title }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
         </form>
     </div>
 
@@ -300,33 +376,36 @@
                         </p>
                     </div>
                     <div class="text-end">
-                        <div class="payslip-amount">${{ payslip.total }}</div>
+                        <div class="payslip-amount">{{ currency_symbol }}{{ payslip.total }}</div>
                         <span class="status-badge status-{{ payslip.status }}">{{ payslip.get_status_display }}</span>
                     </div>
                 </div>
                 <div class="payslip-info">
                     <div class="info-item">
                         <i class="fas fa-dollar-sign"></i>
-                        <span><strong>Gross Pay:</strong> ${{ payslip.gross_pay }}</span>
+                        <span><strong>Gross Pay:</strong> {{ currency_symbol }}{{ payslip.gross_pay }}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-arrow-up"></i>
-                        <span><strong>Earnings:</strong> ${{ payslip.total_earnings }}</span>
+                        <span><strong>Earnings:</strong> {{ currency_symbol }}{{ payslip.total_earnings }}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-arrow-down"></i>
-                        <span><strong>Deductions:</strong> ${{ payslip.total_deductions }}</span>
+                        <span><strong>Deductions:</strong> {{ currency_symbol }}{{ payslip.total_deductions }}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-calendar"></i>
                         <span><strong>Created:</strong> {{ payslip.created_at|date:"M d, Y H:i" }}</span>
                     </div>
                 </div>
-                <div class="mt-3">
-                    <a href="{% url 'edit_payslip' payslip.id %}" class="btn btn-action btn-edit me-2">
+                <div class="mt-3 d-flex gap-2 flex-wrap">
+                    <a href="{% url 'view_payslip_detail' payslip.id %}" class="btn btn-action btn-pdf" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                        <i class="fas fa-eye me-1"></i>View Details
+                    </a>
+                    <a href="{% url 'edit_payslip' payslip.id %}" class="btn btn-action btn-edit">
                         <i class="fas fa-edit me-1"></i>Edit
                     </a>
-                    <a href="{% url 'delete_payslip' payslip.id %}" class="btn btn-action btn-delete me-2" onclick="return confirm('Are you sure you want to delete this payslip?');">
+                    <a href="{% url 'delete_payslip' payslip.id %}" class="btn btn-action btn-delete" onclick="return confirm('Are you sure you want to delete this payslip?');">
                         <i class="fas fa-trash me-1"></i>Delete
                     </a>
                     {% if payslip.pdf %}

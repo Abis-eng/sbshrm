@@ -1,0 +1,331 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block page_title %}Payslip Details{% endblock %}
+{% block content %}
+<style>
+    body {
+        background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+        min-height: 100vh;
+    }
+    .payslip-detail-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    .payslip-header-card {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 20px;
+        padding: 40px;
+        color: #fff;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(16, 185, 129, 0.3);
+    }
+    .payslip-detail-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 35px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 25px;
+        border: 2px solid #e2e8f0;
+    }
+    .section-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 3px solid #10b981;
+    }
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .info-row:last-child {
+        border-bottom: none;
+    }
+    .info-label {
+        font-weight: 600;
+        color: #64748b;
+        font-size: 0.95rem;
+    }
+    .info-value {
+        font-weight: 700;
+        color: #1a1a1a;
+        font-size: 1rem;
+    }
+    .amount-positive {
+        color: #10b981;
+    }
+    .amount-negative {
+        color: #ef4444;
+    }
+    .amount-total {
+        color: #2563eb;
+        font-size: 1.2rem;
+    }
+    .table-detail {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    .table-detail thead {
+        background: linear-gradient(135deg, #2c3e50 0%, #1a1a1a 100%);
+        color: #fff;
+    }
+    .table-detail th {
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .table-detail td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .table-detail tbody tr:hover {
+        background: #f8f9fa;
+    }
+    .table-detail tbody tr:last-child td {
+        border-bottom: none;
+        font-weight: 700;
+        background: #e9ecef;
+        font-size: 1.05rem;
+    }
+    .summary-box {
+        background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        border-radius: 15px;
+        padding: 25px;
+        border: 2px solid #10b981;
+    }
+    .summary-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #065f46;
+        margin-bottom: 15px;
+    }
+    .net-pay-amount {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #10b981;
+        text-align: center;
+        margin: 15px 0;
+    }
+    .btn-pdf-download {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: #fff;
+        border-radius: 50px;
+        padding: 12px 30px;
+        font-weight: 700;
+        border: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-pdf-download:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        color: #fff;
+    }
+    .status-badge {
+        display: inline-block;
+        padding: 8px 20px;
+        border-radius: 25px;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    .status-processed {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .status-paid {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="payslip-detail-container">
+        <!-- Header -->
+        <div class="payslip-header-card">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <h2 class="mb-2"><i class="fas fa-receipt me-2"></i>Salary Payslip</h2>
+                    <p class="mb-0 opacity-75">Payslip #PSL-{{ payslip.id|stringformat:"06d" }}</p>
+                </div>
+                <div class="text-end">
+                    <span class="status-badge status-{{ payslip.status }}">{{ payslip.get_status_display|upper }}</span>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <p class="mb-1 opacity-75"><i class="fas fa-user me-2"></i>Employee</p>
+                    <h4 class="mb-0">{{ payslip.employee.user.get_full_name|default:payslip.employee.user.username }}</h4>
+                    <p class="mb-0 opacity-75">{{ payslip.employee.designation|default:"N/A" }}</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-1 opacity-75"><i class="fas fa-calendar-alt me-2"></i>Pay Period</p>
+                    <h4 class="mb-0">{{ payslip.period_start|date:"M d, Y" }} - {{ payslip.period_end|date:"M d, Y" }}</h4>
+                    <p class="mb-0 opacity-75">Payment Date: {{ payslip.date|date:"M d, Y" }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Employee Information -->
+        <div class="payslip-detail-card">
+            <h3 class="section-title"><i class="fas fa-user-circle me-2"></i>Employee Information</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="info-row">
+                        <span class="info-label">Employee ID:</span>
+                        <span class="info-value">EMP-{{ payslip.employee.id|stringformat:"04d" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Department:</span>
+                        <span class="info-value">{{ payslip.employee.department|default:"N/A" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Email:</span>
+                        <span class="info-value">{{ payslip.employee.user.email|default:"N/A" }}</span>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="info-row">
+                        <span class="info-label">Phone:</span>
+                        <span class="info-value">{{ payslip.employee.phone|default:"N/A" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Date of Joining:</span>
+                        <span class="info-value">{{ payslip.employee.date_of_joining|date:"M d, Y"|default:"N/A" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Created:</span>
+                        <span class="info-value">{{ payslip.created_at|date:"M d, Y H:i" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Earnings -->
+        <div class="payslip-detail-card">
+            <h3 class="section-title"><i class="fas fa-arrow-up me-2 text-success"></i>Earnings</h3>
+            <table class="table-detail">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th style="text-align: right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if base_salary > 0 %}
+                    <tr>
+                        <td><strong>Base Salary</strong></td>
+                        <td style="text-align: right;" class="amount-positive">${{ base_salary|floatformat:2 }}</td>
+                    </tr>
+                    {% endif %}
+                    {% for earning in earnings %}
+                    <tr>
+                        <td>{{ earning.name }}</td>
+                        <td style="text-align: right;" class="amount-positive">${{ earning.amount|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% if earnings|length == 0 and base_salary == 0 %}
+                    <tr>
+                        <td colspan="2" style="text-align: center; color: #64748b;">No additional earnings</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td><strong>TOTAL EARNINGS</strong></td>
+                        <td style="text-align: right;" class="amount-positive"><strong>${{ total_earnings|floatformat:2 }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Deductions -->
+        <div class="payslip-detail-card">
+            <h3 class="section-title"><i class="fas fa-arrow-down me-2 text-danger"></i>Deductions</h3>
+            <table class="table-detail">
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th style="text-align: right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if tax_amount > 0 %}
+                    <tr>
+                        <td><strong>Income Tax</strong></td>
+                        <td style="text-align: right;" class="amount-negative">${{ tax_amount|floatformat:2 }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if loan_installment_total > 0 %}
+                    <tr>
+                        <td><strong>Loan Repayment</strong></td>
+                        <td style="text-align: right;" class="amount-negative">${{ loan_installment_total|floatformat:2 }}</td>
+                    </tr>
+                    {% endif %}
+                    {% for deduction in deductions %}
+                    <tr>
+                        <td>{{ deduction.name }}</td>
+                        <td style="text-align: right;" class="amount-negative">${{ deduction.amount|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% if deductions|length == 0 and tax_amount == 0 and loan_installment_total == 0 %}
+                    <tr>
+                        <td colspan="2" style="text-align: center; color: #64748b;">No deductions</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td><strong>TOTAL DEDUCTIONS</strong></td>
+                        <td style="text-align: right;" class="amount-negative"><strong>${{ total_deductions|floatformat:2 }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Summary -->
+        <div class="payslip-detail-card">
+            <div class="summary-box">
+                <div class="summary-title text-center">PAYMENT SUMMARY</div>
+                <div class="row text-center mb-3">
+                    <div class="col-md-6">
+                        <p class="mb-1" style="color: #64748b;">Gross Pay</p>
+                        <h4 class="mb-0 amount-total">${{ gross_pay|floatformat:2 }}</h4>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1" style="color: #64748b;">Total Deductions</p>
+                        <h4 class="mb-0 amount-negative">${{ total_deductions|floatformat:2 }}</h4>
+                    </div>
+                </div>
+                <div style="border-top: 2px solid #10b981; padding-top: 20px; margin-top: 20px;">
+                    <p class="text-center mb-2" style="color: #065f46; font-weight: 600;">NET PAY</p>
+                    <div class="net-pay-amount">${{ net_pay|floatformat:2 }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="payslip-detail-card text-center">
+            {% if payslip.pdf %}
+            <a href="{{ payslip.pdf.url }}" target="_blank" class="btn-pdf-download">
+                <i class="fas fa-file-pdf me-2"></i>Download PDF Payslip
+            </a>
+            {% else %}
+            <p class="text-muted">PDF not available for this payslip.</p>
+            {% endif %}
+            <div class="mt-3">
+                <a href="{% if request.user.is_superuser %}{% url 'admin_payslips' %}{% else %}{% url 'my_payslips' %}{% endif %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Payslips
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

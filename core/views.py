@@ -66,6 +66,8 @@ from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate
+from .models import CompanySettings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -674,12 +676,23 @@ def chat_user_list(request):
         last_msg = ChatMessage.objects.filter(
             (Q(sender=user, recipient=u) | Q(sender=u, recipient=user))
         ).order_by('-timestamp').first()
+        
+        # Get employee profile picture if exists
+        profile_picture_url = None
+        try:
+            employee = Employee.objects.get(user=u)
+            if employee.profile_picture:
+                profile_picture_url = employee.profile_picture.url
+        except Employee.DoesNotExist:
+            pass
+        
         user_data.append({
             'id': u.id,
             'username': u.username,
             'first_name': u.first_name,
             'last_name': u.last_name,
             'initials': (u.first_name[:1] + u.last_name[:1]).upper() if u.first_name or u.last_name else u.username[:2].upper(),
+            'profile_picture_url': profile_picture_url,
             'last_message': last_msg.content if last_msg else '',
             'last_timestamp': last_msg.timestamp.strftime('%Y-%m-%d %H:%M') if last_msg else '',
             'online': u.id in online_ids,
@@ -2377,7 +2390,7 @@ def client_list(request):
 @user_passes_test(is_admin)
 def add_client(request):
     if request.method == 'POST':
-        form = ClientForm(request.POST)
+        form = ClientForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
             return redirect('client_list')
@@ -2389,7 +2402,7 @@ def add_client(request):
 def edit_client(request, client_id):
     client = get_object_or_404(Client, id=client_id)
     if request.method == 'POST':
-        form = ClientForm(request.POST, instance=client)
+        form = ClientForm(request.POST, request.FILES, instance=client)
         if form.is_valid():
             form.save()
             return redirect('client_list')
@@ -3101,7 +3114,42 @@ def budget_revenue(request):
 
 @user_passes_test(is_admin)
 def asset_list(request):
-    assets = Asset.objects.select_related('asset_user').all()
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    export_format = request.GET.get('format', '')
+    assets = Asset.objects.select_related('asset_user').all().order_by('-purchase_date')
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Asset Name', 'Asset ID', 'Brand', 'Model', 'Purchase Date', 'Cost', 'Assigned To', 'Status']
+        data = []
+        for asset in assets:
+            data.append([
+                str(asset.id),
+                asset.asset_name,
+                asset.asset_id,
+                asset.brand or 'N/A',
+                asset.model or 'N/A',
+                asset.purchase_date.strftime('%Y-%m-%d') if asset.purchase_date else 'N/A',
+                f"${asset.cost:.2f}" if asset.cost else 'N/A',
+                asset.asset_user.user.get_full_name() if asset.asset_user else 'Unassigned',
+                asset.get_status_display()
+            ])
+        
+        filename = f"assets_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Assets Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Assets Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Assets Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Assets Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('asset_list')
+    
     return render(request, 'core/asset_list.html', {'assets': assets})
 
 @user_passes_test(is_admin)
@@ -3225,14 +3273,14 @@ def delete_user(request, user_id):
 def settings_main(request):
     settings_obj, _ = CompanySettings.objects.get_or_create(pk=1)
     if request.method == 'POST':
-        form = CompanySettingsForm(request.POST, instance=settings_obj)
+        form = CompanySettingsForm(request.POST, request.FILES, instance=settings_obj)
         if form.is_valid():
             form.save()
             messages.success(request, 'Company settings updated!')
             return redirect('settings_main')
     else:
         form = CompanySettingsForm(instance=settings_obj)
-    return render(request, 'core/settings_main.html', {'form': form, 'active_section': 'company'})
+    return render(request, 'core/settings_main.html', {'form': form, 'active_section': 'company', 'settings_obj': settings_obj})
 
 @user_passes_test(is_admin)
 def settings_localization(request):
@@ -3296,7 +3344,37 @@ def theme_settings_context(request):
 
 @user_passes_test(is_admin)
 def taxes(request):
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    export_format = request.GET.get('format', '')
     taxes = Tax.objects.all()
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Name', 'Percentage', 'Status']
+        data = []
+        for tax in taxes:
+            data.append([
+                str(tax.id),
+                tax.name,
+                f"{tax.percentage}%",
+                'Active' if tax.active else 'Inactive'
+            ])
+        
+        filename = f"taxes_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Taxes Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Taxes Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Taxes Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Taxes Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('taxes')
+    
     form = TaxForm(request.POST or None)
     if request.method == 'POST':
         if form.is_valid():
@@ -3306,7 +3384,40 @@ def taxes(request):
 
 @user_passes_test(is_admin)
 def expenses(request):
-    expenses = Expense.objects.all()
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    export_format = request.GET.get('format', '')
+    expenses = Expense.objects.all().order_by('-purchased_date')
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Item Name', 'Purchased From', 'Purchased Date', 'Amount', 'Paid By', 'Status']
+        data = []
+        for expense in expenses:
+            data.append([
+                str(expense.id),
+                expense.item_name,
+                expense.purchased_from,
+                expense.purchased_date.strftime('%Y-%m-%d') if expense.purchased_date else '',
+                f"${expense.amount}",
+                expense.paid_by,
+                expense.get_status_display()
+            ])
+        
+        filename = f"expenses_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Expenses Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Expenses Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Expenses Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Expenses Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('expenses')
+    
     form = ExpenseForm(request.POST or None)
     if request.method == 'POST':
         if form.is_valid():
@@ -3316,9 +3427,42 @@ def expenses(request):
 
 @user_passes_test(is_admin)
 def estimates(request):
-    estimates = Estimate.objects.all().prefetch_related('items', 'client', 'project')
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    export_format = request.GET.get('format', '')
+    estimates = Estimate.objects.all().prefetch_related('items', 'client', 'project').order_by('-date')
     for estimate in estimates:
         estimate.total_amount = sum(item.amount for item in estimate.items.all())
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Client', 'Project', 'Date', 'Status', 'Total Amount', 'Tax']
+        data = []
+        for estimate in estimates:
+            data.append([
+                str(estimate.id),
+                estimate.client.name if estimate.client else 'N/A',
+                estimate.project.name if estimate.project else 'N/A',
+                estimate.estimate_date.strftime('%Y-%m-%d') if estimate.estimate_date else '',
+                estimate.get_status_display(),
+                f"${estimate.total_amount:.2f}",
+                f"{estimate.tax.name} ({estimate.tax.percentage}%)" if estimate.tax else 'N/A'
+            ])
+        
+        filename = f"estimates_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Estimates Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Estimates Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Estimates Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Estimates Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('estimates')
+    
     return render(request, 'core/estimates.html', {'estimates': estimates})
 
 @user_passes_test(is_admin)
@@ -3327,9 +3471,44 @@ def invoices(request):
 
 @user_passes_test(is_admin)
 def invoice_list(request):
-    invoices = Invoice.objects.all().select_related('client', 'project', 'tax')
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    export_format = request.GET.get('format', '')
+    invoices = Invoice.objects.all().select_related('client', 'project', 'tax').order_by('-date')
     for invoice in invoices:
         invoice.total_amount = sum(item.amount for item in invoice.items.all())
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Invoice #', 'Client', 'Project', 'Date', 'Due Date', 'Status', 'Total Amount', 'Tax']
+        data = []
+        for invoice in invoices:
+            data.append([
+                str(invoice.id),
+                f"INV-{invoice.id:06d}",
+                invoice.client.name if invoice.client else 'N/A',
+                invoice.project.name if invoice.project else 'N/A',
+                invoice.invoice_date.strftime('%Y-%m-%d') if invoice.invoice_date else '',
+                invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else '',
+                invoice.get_status_display(),
+                f"${invoice.total_amount:.2f}",
+                f"{invoice.tax.name} ({invoice.tax.percentage}%)" if invoice.tax else 'N/A'
+            ])
+        
+        filename = f"invoices_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Invoices Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Invoices Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Invoices Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Invoices Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('invoices')
+    
     return render(request, 'core/invoices.html', {'invoices': invoices})
 
 @user_passes_test(is_admin)
@@ -3499,79 +3678,404 @@ def permissions_management(request):
 # ===================== PAYROLL =====================
 
 def _render_payslip_pdf_to_bytes(payslip, items, context_extra=None):
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm, inch
+    from reportlab.platypus import Table, TableStyle, Paragraph, Spacer, KeepTogether
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.pdfgen import canvas
+    from datetime import datetime
+    from reportlab.lib.colors import HexColor
+    
     base_salary = 0
     unpaid_leave_deduction = 0
+    tax_amount = 0
+    loan_installment_total = 0
+    late_deduction = 0
+    
     if context_extra:
-        base_salary = context_extra.get('base_salary', 0)
-        unpaid_leave_deduction = context_extra.get('unpaid_leave_deduction', 0)
-        tax_amount = context_extra.get('tax_amount', 0)
-        loan_installment_total = context_extra.get('loan_installment_total', 0)
-        late_deduction = context_extra.get('late_deduction', 0)
+        base_salary = float(context_extra.get('base_salary', 0))
+        unpaid_leave_deduction = float(context_extra.get('unpaid_leave_deduction', 0))
+        tax_amount = float(context_extra.get('tax_amount', 0))
+        loan_installment_total = float(context_extra.get('loan_installment_total', 0))
+        late_deduction = float(context_extra.get('late_deduction', 0))
+    
+    # Get company settings
+    try:
+        company_settings = CompanySettings.objects.first()
+    except:
+        company_settings = None
+    
     buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
-    width, height = A4
-    y = height - 20 * mm
-
-    def draw_line(text, offset_mm=7, bold=False):
-        nonlocal y
-        if bold:
-            c.setFont('Helvetica-Bold', 11)
-        else:
-            c.setFont('Helvetica', 10)
-        c.drawString(20 * mm, y, str(text))
-        y -= offset_mm * mm
-
-    # Header
-    c.setFont('Helvetica-Bold', 14)
-    c.drawCentredString(width / 2, height - 15 * mm, 'Salary Payslip')
-    c.setFont('Helvetica', 10)
-    draw_line(f"Employee: {payslip.employee.user.get_full_name() or payslip.employee.user.username}")
-    draw_line(f"Designation: {payslip.employee.designation}")
-    draw_line(f"Period: {payslip.period_start} - {payslip.period_end}")
-    draw_line(f"Date of Payment: {payslip.date}")
-    draw_line(f"Payslip No.: {payslip.id}")
-
-    # Earnings
-    y -= 4 * mm
-    draw_line('Earnings', bold=True)
-    draw_line(f"Base Salary: {base_salary}")
+    doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                           topMargin=8*mm, bottomMargin=10*mm,
+                           leftMargin=12*mm, rightMargin=12*mm)
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Import Image for logo
+    from reportlab.platypus import Image
+    
+    # Custom styles - Reduced sizes for single page
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        textColor=HexColor('#1a1a1a'),
+        spaceAfter=2,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold',
+        leading=20
+    )
+    
+    company_name_style = ParagraphStyle(
+        'CompanyName',
+        parent=styles['Normal'],
+        fontSize=14,
+        textColor=HexColor('#2c3e50'),
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold',
+        spaceAfter=1
+    )
+    
+    company_info_style = ParagraphStyle(
+        'CompanyInfo',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=HexColor('#555555'),
+        alignment=TA_CENTER,
+        spaceAfter=0.5
+    )
+    
+    section_title_style = ParagraphStyle(
+        'SectionTitle',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=HexColor('#ffffff'),
+        fontName='Helvetica-Bold',
+        alignment=TA_LEFT,
+        spaceAfter=0,
+        spaceBefore=0
+    )
+    
+    label_style = ParagraphStyle(
+        'Label',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=HexColor('#666666'),
+        fontName='Helvetica-Bold',
+        spaceAfter=0
+    )
+    
+    value_style = ParagraphStyle(
+        'Value',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=HexColor('#1a1a1a'),
+        spaceAfter=0
+    )
+    
+    # Company Header with Logo
+    company_name = company_settings.company_name if company_settings else "COMPANY NAME"
+    company_address = company_settings.address if company_settings else ""
+    company_phone = company_settings.phone_number if company_settings else ""
+    company_email = company_settings.email if company_settings else ""
+    company_city = company_settings.city if company_settings else ""
+    company_country = company_settings.country if company_settings else ""
+    
+    # Logo handling
+    logo_path = None
+    if company_settings and company_settings.logo:
+        try:
+            logo_path = company_settings.logo.path
+        except:
+            logo_path = None
+    
+    # Header with Logo and Company Info
+    if logo_path:
+        try:
+            logo_img = Image(logo_path, width=40*mm, height=15*mm, kind='proportional')
+        except:
+            logo_img = None
+    else:
+        logo_img = None
+    
+    # Create header table with logo on left, company info on right
+    company_info_text = f"<b>{company_name}</b><br/>"
+    if company_address:
+        company_info_text += f"{company_address}<br/>"
+    if company_city and company_country:
+        company_info_text += f"{company_city}, {company_country}<br/>"
+    elif company_city:
+        company_info_text += f"{company_city}<br/>"
+    if company_phone:
+        company_info_text += f"Tel: {company_phone}<br/>"
+    if company_email:
+        company_info_text += f"Email: {company_email}"
+    
+    # Header table: Logo left, Company info right
+    if logo_img:
+        # Two column layout with logo
+        company_info_para = Paragraph(company_info_text, ParagraphStyle('CompanyInfoAll', parent=company_info_style, alignment=TA_CENTER))
+        header_data = [[logo_img, company_info_para]]
+        header_table = Table(header_data, colWidths=[50*mm, 140*mm])
+        header_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+            ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('LEFTPADDING', (0, 0), (0, 0), 5),
+            ('RIGHTPADDING', (0, 0), (0, 0), 5),
+            ('LEFTPADDING', (1, 0), (1, 0), 5),
+            ('RIGHTPADDING', (1, 0), (1, 0), 5),
+            ('BACKGROUND', (0, 0), (-1, -1), HexColor('#f8f9fa')),
+            ('BOX', (0, 0), (-1, -1), 1.5, HexColor('#2c3e50')),
+            ('LINEBELOW', (0, 0), (-1, 0), 2, HexColor('#2c3e50')),
+        ]))
+    else:
+        # Single column layout without logo
+        header_data = [[Paragraph(company_info_text, ParagraphStyle('CompanyInfoAll', parent=company_info_style, alignment=TA_CENTER))]]
+        header_table = Table(header_data, colWidths=[doc.width])
+        header_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('LEFTPADDING', (0, 0), (-1, -1), 5),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+            ('BACKGROUND', (0, 0), (-1, -1), HexColor('#f8f9fa')),
+            ('BOX', (0, 0), (-1, -1), 1.5, HexColor('#2c3e50')),
+            ('LINEBELOW', (0, 0), (-1, 0), 2, HexColor('#2c3e50')),
+        ]))
+    story.append(header_table)
+    story.append(Spacer(1, 3*mm))
+    
+    # Title
+    story.append(Paragraph("SALARY PAYSLIP", title_style))
+    story.append(Spacer(1, 3*mm))
+    
+    # Employee and Payslip Info Side by Side
+    employee = payslip.employee
+    emp_name = employee.user.get_full_name() or employee.user.username
+    emp_designation = str(employee.designation) if employee.designation else "N/A"
+    emp_department = str(employee.department) if employee.department else "N/A"
+    emp_id = f"EMP-{employee.id:04d}"
+    emp_email = employee.user.email or "N/A"
+    emp_phone = employee.phone or "N/A"
+    
+    period_start_str = payslip.period_start.strftime('%B %d, %Y') if payslip.period_start else 'N/A'
+    period_end_str = payslip.period_end.strftime('%B %d, %Y') if payslip.period_end else 'N/A'
+    payment_date_str = payslip.date.strftime('%B %d, %Y')
+    
+    # Two Column Layout - Employee and Payslip Info
+    info_data = [
+        [Paragraph("<b>EMPLOYEE INFORMATION</b>", section_title_style), Paragraph("<b>PAYSLIP INFORMATION</b>", section_title_style)],
+        [f"Employee Name: {emp_name}", f"Payslip No.: PSL-{payslip.id:06d}"],
+        [f"Employee ID: {emp_id}", f"Pay Period: {period_start_str} to {period_end_str}"],
+        [f"Designation: {emp_designation}", f"Payment Date: {payment_date_str}"],
+        [f"Department: {emp_department}", f"Status: {payslip.get_status_display().upper()}"],
+        [f"Email: {emp_email}", ''],
+        [f"Phone: {emp_phone}", ''],
+    ]
+    
+    info_table = Table(info_data, colWidths=[95*mm, 95*mm])
+    info_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), HexColor('#2c3e50')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#dee2e6')),
+        ('BOX', (0, 0), (-1, -1), 1, HexColor('#2c3e50')),
+        ('BACKGROUND', (0, 1), (0, -1), HexColor('#ffffff')),
+        ('BACKGROUND', (1, 1), (1, -1), HexColor('#ffffff')),
+    ]))
+    story.append(info_table)
+    story.append(Spacer(1, 8*mm))
+    
+    # Earnings Section with Professional Form Style
+    earnings_data = [[Paragraph("<b>EARNINGS</b>", section_title_style), '']]
+    earnings_total = 0
+    
+    # Base Salary
+    if base_salary > 0:
+        earnings_data.append([Paragraph("Base Salary", value_style), Paragraph(f"${base_salary:,.2f}", value_style)])
+        earnings_total += base_salary
+    
+    # Additional Earnings
     for item in items:
         if item.item_type == PayrollItem.EARNING:
-            draw_line(f"{item.name}: {item.amount}")
-    draw_line(f"Total Earnings: {payslip.total_earnings + base_salary}", bold=True)
-
-    # Deductions
-    y -= 4 * mm
-    draw_line('Deductions', bold=True)
-    if unpaid_leave_deduction:
-        draw_line(f"Unpaid Leaves: {unpaid_leave_deduction}")
-    if 'late_deduction' in locals() and late_deduction:
-        draw_line(f"Late Policy Deduction: {late_deduction}")
+            amount = float(item.amount)
+            earnings_data.append([Paragraph(item.name, value_style), Paragraph(f"${amount:,.2f}", value_style)])
+            earnings_total += amount
+    
+    if len(earnings_data) == 1:
+        earnings_data.append([Paragraph("No additional earnings", value_style), Paragraph('$0.00', value_style)])
+    
+    earnings_data.append([Paragraph("<b>TOTAL EARNINGS</b>", ParagraphStyle('BoldTotal', parent=value_style, fontName='Helvetica-Bold', fontSize=9)), 
+                         Paragraph(f"<b>${earnings_total:,.2f}</b>", ParagraphStyle('BoldTotal', parent=value_style, fontName='Helvetica-Bold', fontSize=9))])
+    
+    earnings_table = Table(earnings_data, colWidths=[140*mm, 50*mm])
+    earnings_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), HexColor('#2c3e50')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#dee2e6')),
+        ('BOX', (0, 0), (-1, -1), 1, HexColor('#2c3e50')),
+        ('BACKGROUND', (0, -1), (-1, -1), HexColor('#e9ecef')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LINEABOVE', (0, -1), (-1, -1), 1.5, HexColor('#2c3e50')),
+    ]))
+    story.append(earnings_table)
+    story.append(Spacer(1, 4*mm))
+    
+    # Deductions Section with Professional Form Style
+    deductions_data = [[Paragraph("<b>DEDUCTIONS</b>", section_title_style), '']]
+    deductions_total = 0
+    
+    # Tax
+    if tax_amount > 0:
+        deductions_data.append([Paragraph("Income Tax", value_style), Paragraph(f"${tax_amount:,.2f}", value_style)])
+        deductions_total += tax_amount
+    
+    # Loan Installments
+    if loan_installment_total > 0:
+        deductions_data.append([Paragraph("Loan Repayment", value_style), Paragraph(f"${loan_installment_total:,.2f}", value_style)])
+        deductions_total += loan_installment_total
+    
+    # Unpaid Leaves
+    if unpaid_leave_deduction > 0:
+        deductions_data.append([Paragraph("Unpaid Leave Deduction", value_style), Paragraph(f"${unpaid_leave_deduction:,.2f}", value_style)])
+        deductions_total += unpaid_leave_deduction
+    
+    # Late Deduction
+    if late_deduction > 0:
+        deductions_data.append([Paragraph("Late Arrival Deduction", value_style), Paragraph(f"${late_deduction:,.2f}", value_style)])
+        deductions_total += late_deduction
+    
+    # Additional Deductions
     for item in items:
         if item.item_type == PayrollItem.DEDUCTION:
-            draw_line(f"{item.name}: {item.amount}")
-    draw_line(f"Total Deductions: {payslip.total_deductions}", bold=True)
-
-    # Summary
-    y -= 4 * mm
-    draw_line('Summary', bold=True)
-    draw_line(f"Gross Pay: {payslip.gross_pay}")
-    draw_line(f"Net Pay: {payslip.total}")
-    # Optional extras
-    # tax_amount and loan_installment_total already set above when context provided
-
-    if tax_amount or loan_installment_total:
-        y -= 4 * mm
-        draw_line('Additional Deductions', bold=True)
-        if tax_amount:
-            draw_line(f"Income Tax: {tax_amount}")
-        if loan_installment_total:
-            draw_line(f"Loan Repayment: {loan_installment_total}")
-
-    draw_line(f"Status: {payslip.get_status_display()}")
-
-    c.showPage()
-    c.save()
+            amount = float(item.amount)
+            deductions_data.append([Paragraph(item.name, value_style), Paragraph(f"${amount:,.2f}", value_style)])
+            deductions_total += amount
+    
+    if len(deductions_data) == 1:
+        deductions_data.append([Paragraph("No deductions", value_style), Paragraph('$0.00', value_style)])
+    
+    deductions_data.append([Paragraph("<b>TOTAL DEDUCTIONS</b>", ParagraphStyle('BoldTotal', parent=value_style, fontName='Helvetica-Bold', fontSize=9)), 
+                            Paragraph(f"<b>${deductions_total:,.2f}</b>", ParagraphStyle('BoldTotal', parent=value_style, fontName='Helvetica-Bold', fontSize=9))])
+    
+    deductions_table = Table(deductions_data, colWidths=[140*mm, 50*mm])
+    deductions_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), HexColor('#2c3e50')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#dee2e6')),
+        ('BOX', (0, 0), (-1, -1), 1, HexColor('#2c3e50')),
+        ('BACKGROUND', (0, -1), (-1, -1), HexColor('#e9ecef')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LINEABOVE', (0, -1), (-1, -1), 1.5, HexColor('#2c3e50')),
+    ]))
+    story.append(deductions_table)
+    story.append(Spacer(1, 4*mm))
+    
+    # Summary Section with Professional Form Style
+    gross_pay = float(payslip.gross_pay) if payslip.gross_pay else earnings_total
+    net_pay = float(payslip.total) if payslip.total else (gross_pay - deductions_total)
+    
+    summary_data = [
+        [Paragraph("<b>PAYMENT SUMMARY</b>", section_title_style), ''],
+        [Paragraph("Gross Pay:", ParagraphStyle('SummaryLabel', parent=value_style, fontName='Helvetica-Bold', fontSize=9)), 
+         Paragraph(f"${gross_pay:,.2f}", value_style)],
+        [Paragraph("Total Deductions:", ParagraphStyle('SummaryLabel', parent=value_style, fontName='Helvetica-Bold', fontSize=9)), 
+         Paragraph(f"${deductions_total:,.2f}", value_style)],
+        ['', ''],
+        [Paragraph("<b>NET PAY</b>", ParagraphStyle('NetPayLabel', parent=value_style, fontName='Helvetica-Bold', fontSize=12, textColor=HexColor('#28a745'))), 
+         Paragraph(f"<b>${net_pay:,.2f}</b>", ParagraphStyle('NetPayValue', parent=value_style, fontName='Helvetica-Bold', fontSize=13, textColor=HexColor('#28a745')))],
+    ]
+    
+    summary_table = Table(summary_data, colWidths=[140*mm, 50*mm])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), HexColor('#2c3e50')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#dee2e6')),
+        ('BOX', (0, 0), (-1, -1), 1.5, HexColor('#2c3e50')),
+        ('BACKGROUND', (0, -1), (-1, -1), HexColor('#d4edda')),
+        ('LINEABOVE', (0, -2), (-1, -2), 2, HexColor('#2c3e50')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    story.append(summary_table)
+    story.append(Spacer(1, 5*mm))
+    
+    # Signature Section
+    signature_data = [
+        ['', ''],
+        [Paragraph("_________________________", ParagraphStyle('Signature', parent=value_style, alignment=TA_CENTER)), 
+         Paragraph("_________________________", ParagraphStyle('Signature', parent=value_style, alignment=TA_CENTER))],
+        [Paragraph("Employee Signature", ParagraphStyle('SignatureLabel', parent=value_style, fontSize=8, alignment=TA_CENTER)), 
+         Paragraph("Authorized Signature", ParagraphStyle('SignatureLabel', parent=value_style, fontSize=8, alignment=TA_CENTER))],
+    ]
+    
+    signature_table = Table(signature_data, colWidths=[95*mm, 95*mm])
+    signature_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    story.append(signature_table)
+    story.append(Spacer(1, 2*mm))
+    
+    # Footer
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=7,
+        textColor=HexColor('#888888'),
+        alignment=TA_CENTER,
+        spaceBefore=2
+    )
+    
+    footer_text = f"This is a computer-generated payslip. Generated on {datetime.now().strftime('%B %d, %Y at %I:%M %p')}"
+    if company_settings and company_settings.contact_person:
+        footer_text += f" | For queries, contact: {company_settings.contact_person}"
+    if company_settings and company_settings.phone_number:
+        footer_text += f" | Tel: {company_settings.phone_number}"
+    
+    story.append(Paragraph(footer_text, footer_style))
+    
+    # Build PDF
+    doc.build(story)
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes
@@ -3751,6 +4255,66 @@ def my_payslips(request):
         return HttpResponse('Not an employee', status=403)
     payslips = Payslip.objects.filter(employee=employee).order_by('-created_at')
     return render(request, 'core/employee_payslips.html', {'payslips': payslips})
+
+@login_required
+def view_payslip_detail(request, payslip_id):
+    """View detailed payslip information"""
+    payslip = get_object_or_404(Payslip, id=payslip_id)
+    
+    # Check if user has permission to view this payslip
+    if not request.user.is_superuser and payslip.employee.user != request.user:
+        messages.error(request, "You don't have permission to view this payslip.")
+        return redirect('my_payslips' if not request.user.is_superuser else 'admin_payslips')
+    
+    # Get payroll items
+    items = PayrollItem.objects.filter(employee=payslip.employee).order_by('-date', 'item_type')
+    
+    # Get context extra data if available
+    from .models import TaxSlab, Loan
+    
+    # Calculate base salary
+    base_salary = float(payslip.employee.salary) if payslip.employee.salary else 0
+    
+    # Calculate tax
+    tax_amount = 0
+    if payslip.period_start and payslip.period_end:
+        taxable_income = float(payslip.gross_pay) if payslip.gross_pay else base_salary
+        slab = TaxSlab.objects.filter(
+            min_income__lte=taxable_income
+        ).filter(
+            Q(max_income__gte=taxable_income) | Q(max_income__isnull=True)
+        ).first()
+        if slab:
+            tax_amount = round((taxable_income * float(slab.rate_percent) / 100.0) + float(slab.fixed_deduction), 2)
+    
+    # Calculate loan installments
+    loan_installment_total = 0
+    loans = Loan.objects.filter(employee=payslip.employee, is_active=True)
+    for loan in loans:
+        if float(loan.balance) > 0 and float(loan.monthly_installment) > 0:
+            installment = float(loan.monthly_installment)
+            if installment > float(loan.balance):
+                installment = float(loan.balance)
+            loan_installment_total += installment
+    
+    # Get earnings and deductions
+    earnings = [item for item in items if item.item_type == PayrollItem.EARNING]
+    deductions = [item for item in items if item.item_type == PayrollItem.DEDUCTION]
+    
+    context = {
+        'payslip': payslip,
+        'base_salary': base_salary,
+        'earnings': earnings,
+        'deductions': deductions,
+        'tax_amount': tax_amount,
+        'loan_installment_total': loan_installment_total,
+        'total_earnings': float(payslip.total_earnings) + base_salary,
+        'total_deductions': float(payslip.total_deductions),
+        'gross_pay': float(payslip.gross_pay) if payslip.gross_pay else (float(payslip.total_earnings) + base_salary),
+        'net_pay': float(payslip.total) if payslip.total else 0,
+    }
+    
+    return render(request, 'core/view_payslip_detail.html', context)
 
 @user_passes_test(is_admin)
 def tax_slabs(request):

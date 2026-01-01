@@ -432,4 +432,48 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Currency symbol mapping
+    const currencySymbols = {
+        'USD': '$',
+        'PKR': '₨',
+        'EUR': '€',
+        'GBP': '£',
+        'INR': '₹',
+        'AED': 'د.إ',
+        'SAR': '﷼',
+        'CAD': 'C$',
+        'AUD': 'A$',
+        'JPY': '¥',
+        'CNY': '¥',
+        'SGD': 'S$',
+        'MYR': 'RM',
+        'THB': '฿',
+        'BHD': '.د.ب',
+        'KWD': 'د.ك',
+        'OMR': 'ر.ع.',
+        'QAR': '﷼',
+    };
+    
+    // Auto-update currency symbol when currency is selected
+    document.addEventListener('DOMContentLoaded', function() {
+        const currencySelect = document.getElementById('id_currency');
+        const currencySymbolInput = document.getElementById('id_currency_symbol');
+        
+        if (currencySelect && currencySymbolInput) {
+            currencySelect.addEventListener('change', function() {
+                const selectedCurrency = this.value;
+                if (currencySymbols[selectedCurrency]) {
+                    currencySymbolInput.value = currencySymbols[selectedCurrency];
+                }
+            });
+            
+            // Set initial value on page load
+            if (currencySelect.value && currencySymbols[currencySelect.value]) {
+                currencySymbolInput.value = currencySymbols[currencySelect.value];
+            }
+        }
+    });
+</script>
 {% endblock %}

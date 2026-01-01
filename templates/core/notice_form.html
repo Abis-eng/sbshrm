@@ -180,6 +180,32 @@
                     </div>
 
                     <div class="mb-4">
+                        <label for="{{ form.attachment.id_for_label }}" class="form-label">
+                            <i class="fas fa-file-upload"></i>Single File Attachment (Optional)
+                        </label>
+                        <div class="file-upload-wrapper">
+                            <i class="fas fa-cloud-upload-alt file-upload-icon"></i>
+                            <p class="mb-2">Click to select a file or drag and drop</p>
+                            {{ form.attachment }}
+                            <div class="form-text mt-2">You can attach a single file here. For multiple files, use the "File Attachments" section above.</div>
+                        </div>
+                        {% if form.attachment.errors %}
+                        <div class="text-danger small mt-1">{{ form.attachment.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.image_display_mode.id_for_label }}" class="form-label">
+                            <i class="fas fa-image me-2"></i>Image Display Mode
+                        </label>
+                        {{ form.image_display_mode }}
+                        <div class="form-text">Choose how images should be displayed: as inline images or as links that open in a new page.</div>
+                        {% if form.image_display_mode.errors %}
+                        <div class="text-danger small mt-1">{{ form.image_display_mode.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
                         <div class="form-check form-switch">
                             {{ form.is_active }}
                             <label class="form-check-label" for="{{ form.is_active.id_for_label }}">

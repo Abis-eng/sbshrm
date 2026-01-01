@@ -70,7 +70,7 @@
 <div class="row justify-content-center">
     <div class="col-lg-10">
         <div class="form-card">
-            <form method="post" id="addClientForm">
+            <form method="post" id="addClientForm" enctype="multipart/form-data">
                 {% csrf_token %}
                 
                 <!-- Contact Information -->
@@ -79,6 +79,15 @@
                         <i class="fas fa-user"></i>Contact Information
                     </div>
                     <div class="row g-3">
+                        <div class="col-md-12">
+                            <label for="id_profile_picture" class="form-label">Profile Picture</label>
+                            <input type="file" class="form-control" id="id_profile_picture" name="profile_picture" accept="image/*">
+                            <small class="text-muted">Upload a profile picture for the client (JPG, PNG, etc.)</small>
+                            <div id="profile-preview" style="margin-top: 10px; display: none;">
+                                <img id="preview-img" src="" alt="Preview" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #0ea5e9;">
+                                <p class="text-muted small mt-2">Profile picture preview</p>
+                            </div>
+                        </div>
                         <div class="col-md-6">
                             <label for="id_name" class="form-label required-field">Client Name</label>
                             <input type="text" class="form-control" id="id_name" name="name" required>
@@ -128,4 +137,24 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Profile picture preview
+    document.getElementById('id_profile_picture').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const preview = document.getElementById('profile-preview');
+        const previewImg = document.getElementById('preview-img');
+        
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            preview.style.display = 'none';
+        }
+    });
+</script>
 {% endblock %}

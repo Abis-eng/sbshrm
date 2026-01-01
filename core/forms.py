@@ -8,7 +8,10 @@ from django.utils import timezone
 class ClientForm(forms.ModelForm):
     class Meta:
         model = Client
-        fields = ['name', 'email', 'phone', 'address', 'company', 'description']
+        fields = ['name', 'email', 'phone', 'address', 'company', 'description', 'profile_picture']
+        widgets = {
+            'profile_picture': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+        }
 
 class UserAdminForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput, required=False)
@@ -159,7 +162,10 @@ class AssetForm(forms.ModelForm):
 class CompanySettingsForm(forms.ModelForm):
     class Meta:
         model = CompanySettings
-        fields = ['company_name', 'contact_person', 'address', 'country', 'city', 'state_province', 'postal_code', 'email', 'phone_number', 'mobile_number', 'fax', 'website_url']
+        fields = ['company_name', 'contact_person', 'address', 'country', 'city', 'state_province', 'postal_code', 'email', 'phone_number', 'mobile_number', 'fax', 'website_url', 'logo']
+        widgets = {
+            'logo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+        }
         widgets = {
             'company_name': forms.TextInput(attrs={'class': 'form-control'}),
             'contact_person': forms.TextInput(attrs={'class': 'form-control'}),
@@ -184,8 +190,8 @@ class LocalizationSettingsForm(forms.ModelForm):
             'timezone': forms.Select(attrs={'class': 'form-control form-select'}),
             'date_format': forms.TextInput(attrs={'class': 'form-control'}),
             'time_format': forms.TextInput(attrs={'class': 'form-control'}),
-            'currency': forms.TextInput(attrs={'class': 'form-control'}),
-            'currency_symbol': forms.TextInput(attrs={'class': 'form-control'}),
+            'currency': forms.Select(attrs={'class': 'form-control form-select', 'id': 'id_currency'}),
+            'currency_symbol': forms.TextInput(attrs={'class': 'form-control', 'readonly': True, 'id': 'id_currency_symbol'}),
             'thousand_separator': forms.TextInput(attrs={'class': 'form-control'}),
             'decimal_separator': forms.TextInput(attrs={'class': 'form-control'}),
         } 
@@ -504,11 +510,46 @@ class PayrollItemForm(forms.ModelForm):
         }
 
 class PayslipCreateForm(forms.Form):
-    employee = forms.ModelChoiceField(queryset=Employee.objects.select_related('user').all(), widget=forms.Select(attrs={'class': 'form-control'}))
-    period_start = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
-    period_end = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
-    base_salary = forms.DecimalField(required=False, min_value=0, decimal_places=2, max_digits=10, widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}), help_text='Leave blank to use employee profile salary')
-    send_email = forms.BooleanField(required=False, initial=False, widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}), label='Email payslip to employee')
+    employee = forms.ModelChoiceField(
+        queryset=Employee.objects.select_related('user').all(), 
+        widget=forms.Select(attrs={
+            'class': 'form-control',
+            'placeholder': 'Select Employee'
+        }),
+        empty_label='-- Select Employee --'
+    )
+    period_start = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'type': 'date', 
+            'class': 'form-control',
+            'placeholder': 'mm/dd/yyyy'
+        })
+    )
+    period_end = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'type': 'date', 
+            'class': 'form-control',
+            'placeholder': 'mm/dd/yyyy'
+        })
+    )
+    base_salary = forms.DecimalField(
+        required=False, 
+        min_value=0, 
+        decimal_places=2, 
+        max_digits=10, 
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control', 
+            'step': '0.01',
+            'placeholder': '0.00'
+        }), 
+        help_text='Leave blank to use employee profile salary'
+    )
+    send_email = forms.BooleanField(
+        required=False, 
+        initial=False, 
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}), 
+        label='Email payslip to employee'
+    )
 
 class PayslipEditForm(forms.ModelForm):
     period_start = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}), required=False)
@@ -568,10 +609,11 @@ class AdvanceReviewForm(forms.ModelForm):
 class NoticeForm(forms.ModelForm):
     class Meta:
         model = Notice
-        fields = ['title', 'content', 'attachment', 'is_active']
+        fields = ['title', 'content', 'attachment', 'image_display_mode', 'is_active']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter notice title'}),
             'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': 'Enter notice content (optional if file is attached)'}),
-            'attachment': forms.FileInput(attrs={'class': 'form-control', 'accept': '.pdf,.doc,.docx,.txt,.jpg,.jpeg,.png'}),
+            'attachment': forms.FileInput(attrs={'class': 'form-control', 'accept': '.pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.webp'}),
+            'image_display_mode': forms.Select(attrs={'class': 'form-control form-select'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

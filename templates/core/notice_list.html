@@ -226,12 +226,21 @@
                     {{ notice.content|truncatewords:30|linebreaks }}
                 </div>
                 {% endif %}
-                {% if notice.attachment %}
-                <a href="{{ notice.attachment.url }}" target="_blank" class="file-attachment">
-                    <i class="fas fa-paperclip"></i>
-                    <span>{{ notice.attachment.name|slice:"20:"|default:notice.attachment.name }}</span>
-                    <i class="fas fa-external-link-alt ms-auto"></i>
-                </a>
+                {% if notice.attachment and notice.attachment.name %}
+                    {% with attachment_name=notice.attachment.name|lower %}
+                        {% if ".jpg" in attachment_name or ".jpeg" in attachment_name or ".png" in attachment_name or ".gif" in attachment_name or ".webp" in attachment_name %}
+                            {% if notice.image_display_mode == 'inline' %}
+                                <div class="notice-attachment-image mt-2 mb-2">
+                                    <img src="{{ notice.attachment.url }}" alt="{{ notice.title }}" style="max-width: 100%; max-height: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;" onclick="window.open('{{ notice.attachment.url }}', '_blank')">
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    {% endwith %}
+                    <a href="{{ notice.attachment.url }}" target="_blank" class="file-attachment">
+                        <i class="fas fa-paperclip"></i>
+                        <span>{{ notice.attachment.name|slice:"20:"|default:notice.attachment.name }}</span>
+                        <i class="fas fa-external-link-alt ms-auto"></i>
+                    </a>
                 {% endif %}
                 <div class="notice-meta">
                     <div>

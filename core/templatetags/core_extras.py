@@ -43,4 +43,29 @@ def get_user_company_tag(context):
     request = context.get('request')
     if not request or not request.user.is_authenticated:
         return None
-    return get_user_company(request.user) 
+    return get_user_company(request.user)
+
+@register.simple_tag(takes_context=True)
+def format_currency(context, amount):
+    """Format amount with currency symbol and separators"""
+    currency_symbol = context.get('currency_symbol', '$')
+    thousand_sep = context.get('thousand_separator', ',')
+    decimal_sep = context.get('decimal_separator', '.')
+    
+    try:
+        amount = float(amount)
+        # Format with thousand separator
+        formatted = f"{amount:,.2f}".replace(',', thousand_sep).replace('.', decimal_sep)
+        # Handle decimal separator properly
+        if decimal_sep != '.':
+            parts = formatted.split('.')
+            if len(parts) == 2:
+                formatted = f"{parts[0].replace(',', thousand_sep)}{decimal_sep}{parts[1]}"
+        return f"{currency_symbol}{formatted}"
+    except (ValueError, TypeError):
+        return f"{currency_symbol}0{decimal_sep}00"
+
+@register.simple_tag(takes_context=True)
+def get_currency_symbol(context):
+    """Get currency symbol from context"""
+    return context.get('currency_symbol', '$') 

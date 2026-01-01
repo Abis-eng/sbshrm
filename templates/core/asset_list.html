@@ -199,9 +199,22 @@
                 <h2><i class="fas fa-boxes me-2"></i>Assets</h2>
                 <p class="subtitle mb-0 mt-2">Manage company assets and equipment</p>
             </div>
-            <a href="{% url 'asset_add' %}" class="btn btn-add">
-                <i class="fas fa-plus me-2"></i>Add Asset
-            </a>
+            <div class="d-flex gap-2">
+                <div class="dropdown">
+                    <button type="button" class="btn btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-file-export me-2"></i>Export
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="?format=pdf"><i class="fas fa-file-pdf me-2 text-danger"></i>PDF</a></li>
+                        <li><a class="dropdown-item" href="?format=docx"><i class="fas fa-file-word me-2 text-primary"></i>DOC</a></li>
+                        <li><a class="dropdown-item" href="?format=excel"><i class="fas fa-file-excel me-2 text-success"></i>Excel</a></li>
+                        <li><a class="dropdown-item" href="?format=csv"><i class="fas fa-file-csv me-2 text-info"></i>CSV</a></li>
+                    </ul>
+                </div>
+                <a href="{% url 'asset_add' %}" class="btn btn-add">
+                    <i class="fas fa-plus me-2"></i>Add Asset
+                </a>
+            </div>
         </div>
     </div>
 

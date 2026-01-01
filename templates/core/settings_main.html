@@ -302,8 +302,39 @@
                         <div class="subtitle">Manage your company information and contact details</div>
                     </div>
                     <div class="settings-card-body">
-                        <form method="post" id="companySettingsForm">
+                        <form method="post" id="companySettingsForm" enctype="multipart/form-data">
                             {% csrf_token %}
+                            
+                            <!-- Company Logo -->
+                            <div class="form-section">
+                                <div class="form-section-title">
+                                    <i class="fas fa-image"></i> Company Logo
+                                </div>
+                                <div class="row g-4">
+                                    <div class="col-md-12">
+                                        <div class="form-group-enhanced">
+                                            <label class="form-label">
+                                                <i class="fas fa-image"></i> Logo (for Payslips and Documents)
+                                            </label>
+                                            {% if settings_obj.logo %}
+                                            <div class="mb-3">
+                                                <img src="{{ settings_obj.logo.url }}" alt="Current Logo" style="max-width: 200px; max-height: 80px; border: 2px solid #e0e7ff; border-radius: 8px; padding: 5px;">
+                                                <p class="text-muted small mt-2">Current logo</p>
+                                            </div>
+                                            {% endif %}
+                                            <div class="input-group-icon">
+                                                {{ form.logo }}
+                                                <i class="fas fa-image"></i>
+                                            </div>
+                                            <small class="text-muted">Upload company logo (JPG, PNG). Recommended size: 200x80px. Will appear on payslip PDFs.</small>
+                                            <div id="logo-preview" style="margin-top: 10px; display: none;">
+                                                <img id="preview-logo-img" src="" alt="Preview" style="max-width: 200px; max-height: 80px; border: 2px solid #4B49AC; border-radius: 8px; padding: 5px;">
+                                                <p class="text-muted small mt-2">New logo preview</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <!-- Basic Information -->
                             <div class="form-section">
@@ -464,4 +495,24 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Logo preview
+    document.getElementById('id_logo').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const preview = document.getElementById('logo-preview');
+        const previewImg = document.getElementById('preview-logo-img');
+        
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        } else {
+            preview.style.display = 'none';
+        }
+    });
+</script>
 {% endblock %}

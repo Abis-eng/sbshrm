@@ -172,8 +172,12 @@
          data-phone="{{ client.phone|default:''|lower }}">
         <div class="client-card">
             <div class="client-info">
-                <div class="client-avatar mb-3">
-                    {{ client.name|first|upper }}
+                <div class="client-avatar mb-3" style="position: relative; overflow: hidden;">
+                    {% if client.profile_picture %}
+                        <img src="{{ client.profile_picture.url }}" alt="{{ client.name }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                    {% else %}
+                        {{ client.name|first|upper }}
+                    {% endif %}
                 </div>
                 <div class="text-center">
                     <div class="client-name">

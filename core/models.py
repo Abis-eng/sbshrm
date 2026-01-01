@@ -637,6 +637,7 @@ class Client(models.Model):
     phone = models.CharField(max_length=20, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     description = models.TextField(blank=True, null=True)
+    profile_picture = models.ImageField(upload_to='client_profile_pictures/', blank=True, null=True, help_text="Client profile picture")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -785,6 +786,7 @@ class CompanySettings(models.Model):
     mobile_number = models.CharField(max_length=30, blank=True)
     fax = models.CharField(max_length=30, blank=True)
     website_url = models.CharField(max_length=255, blank=True)
+    logo = models.ImageField(upload_to='company_logos/', blank=True, null=True, help_text="Company logo for payslips and documents")
 
     def __str__(self):
         return self.company_name or 'Company Settings'
@@ -802,14 +804,60 @@ class LocalizationSettings(models.Model):
         ('UTC', 'UTC'),
         # Add more as needed
     ]
+    CURRENCY_CHOICES = [
+        ('USD', 'US Dollar ($)'),
+        ('PKR', 'Pakistani Rupee (₨)'),
+        ('EUR', 'Euro (€)'),
+        ('GBP', 'British Pound (£)'),
+        ('INR', 'Indian Rupee (₹)'),
+        ('AED', 'UAE Dirham (د.إ)'),
+        ('SAR', 'Saudi Riyal (﷼)'),
+        ('CAD', 'Canadian Dollar (C$)'),
+        ('AUD', 'Australian Dollar (A$)'),
+        ('JPY', 'Japanese Yen (¥)'),
+        ('CNY', 'Chinese Yuan (¥)'),
+        ('SGD', 'Singapore Dollar (S$)'),
+        ('MYR', 'Malaysian Ringgit (RM)'),
+        ('THB', 'Thai Baht (฿)'),
+        ('BHD', 'Bahraini Dinar (.د.ب)'),
+        ('KWD', 'Kuwaiti Dinar (د.ك)'),
+        ('OMR', 'Omani Rial (ر.ع.)'),
+        ('QAR', 'Qatari Riyal (﷼)'),
+    ]
+    CURRENCY_SYMBOL_MAP = {
+        'USD': '$',
+        'PKR': '₨',
+        'EUR': '€',
+        'GBP': '£',
+        'INR': '₹',
+        'AED': 'د.إ',
+        'SAR': '﷼',
+        'CAD': 'C$',
+        'AUD': 'A$',
+        'JPY': '¥',
+        'CNY': '¥',
+        'SGD': 'S$',
+        'MYR': 'RM',
+        'THB': '฿',
+        'BHD': '.د.ب',
+        'KWD': 'د.ك',
+        'OMR': 'ر.ع.',
+        'QAR': '﷼',
+    }
     default_language = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, default='en')
     timezone = models.CharField(max_length=50, choices=TIMEZONE_CHOICES, default='Asia/Karachi')
     date_format = models.CharField(max_length=20, default='%Y-%m-%d')
     time_format = models.CharField(max_length=20, default='%H:%M')
-    currency = models.CharField(max_length=10, default='PKR')
+    currency = models.CharField(max_length=10, choices=CURRENCY_CHOICES, default='PKR')
     currency_symbol = models.CharField(max_length=5, default='₨')
     thousand_separator = models.CharField(max_length=2, default=',')
     decimal_separator = models.CharField(max_length=2, default='.')
+    
+    def save(self, *args, **kwargs):
+        # Auto-update currency symbol when currency changes
+        if self.currency in self.CURRENCY_SYMBOL_MAP:
+            self.currency_symbol = self.CURRENCY_SYMBOL_MAP[self.currency]
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Localization ({self.default_language}, {self.timezone})"
@@ -1376,9 +1424,20 @@ class SubTask(models.Model):
         return f"{self.task.title} - {self.title}"
 
 class Notice(models.Model):
+    DISPLAY_CHOICES = [
+        ('inline', 'Display as Image (Inline)'),
+        ('link', 'Display as Link (Open in New Page)'),
+    ]
+    
     title = models.CharField(max_length=200)
     content = models.TextField(blank=True, help_text="Written notice content")
     attachment = models.FileField(upload_to='notices/', blank=True, null=True, help_text="Optional file attachment")
+    image_display_mode = models.CharField(
+        max_length=10,
+        choices=DISPLAY_CHOICES,
+        default='inline',
+        help_text="How to display images: inline or as a link"
+    )
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_notices')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
