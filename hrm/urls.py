@@ -46,10 +46,14 @@ urlpatterns = [
     path('my-attendance/', views.my_attendance, name='my_attendance'),  # employee
     path('all-attendance/', views.all_attendance, name='all_attendance'),  # admin
     path('attendance-logs/', views.attendance_logs, name='attendance_logs'),  # admin
-    path('sync-zkt-machine/', views.sync_zkt_machine, name='sync_zkt_machine'),  # admin
+    path('sync-zkt-machine/', views.sync_zkt_machine, name='sync_zkt_machine'),  # admin (legacy - redirects to new sync)
+    path('sync-attendance-machine/', views.sync_attendance_machine, name='sync_attendance_machine'),  # admin - sync all machines
+    path('sync-attendance-machine/<int:machine_id>/', views.sync_attendance_machine, name='sync_attendance_machine'),  # admin - sync specific machine
     path('manage-attendance-machines/', views.manage_attendance_machines, name='manage_attendance_machines'),  # admin
     path('edit-attendance-machine/<int:machine_id>/', views.edit_attendance_machine, name='edit_attendance_machine'),  # admin
     path('delete-attendance-machine/<int:machine_id>/', views.delete_attendance_machine, name='delete_attendance_machine'),  # admin
+    path('test-machine-connection/<int:machine_id>/', views.test_machine_connection, name='test_machine_connection'),  # admin
+    path('debug-attendance-matching/<int:machine_id>/', views.debug_attendance_matching, name='debug_attendance_matching'),  # admin
     path('manage-employee-machine-ids/', views.manage_employee_machine_ids, name='manage_employee_machine_ids'),  # admin
     path('manual-attendance-entry/', views.manual_attendance_entry, name='manual_attendance_entry'),  # admin
     path('test-zkt-connection/', views.test_zkt_connection, name='test_zkt_connection'),  # admin
@@ -87,6 +91,8 @@ urlpatterns = [
     # Direct access to manage-advances (for backward compatibility and notifications)
     path('manage-advances/', views.manage_advances, name='manage_advances'),
     path('my-advances/', views.my_advances, name='my_advances'),
+    # Reports
+    path('reports/', views.reports, name='reports'),
     path('core/', include('core.urls')),
 ]
 if settings.DEBUG:

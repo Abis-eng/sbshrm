@@ -44,6 +44,32 @@ class AttendanceLogAdmin(admin.ModelAdmin):
 
 @admin.register(AttendanceMachine)
 class AttendanceMachineAdmin(admin.ModelAdmin):
-    list_display = ['name', 'ip_address', 'port', 'location', 'is_active', 'last_sync']
-    list_filter = ['is_active', 'location']
-    search_fields = ['name', 'ip_address', 'location']
+    list_display = ['name', 'machine_type', 'protocol', 'get_connection_display', 'location', 'is_active', 'last_sync']
+    list_filter = ['is_active', 'machine_type', 'protocol', 'location']
+    search_fields = ['name', 'ip_address', 'location', 'description']
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'machine_type', 'protocol', 'location', 'description', 'is_active')
+        }),
+        ('Network Configuration (TCP/IP, HTTP, HTTPS, WebSocket)', {
+            'fields': ('ip_address', 'port', 'url'),
+            'classes': ('collapse',)
+        }),
+        ('Serial/USB Configuration', {
+            'fields': ('serial_port', 'baud_rate'),
+            'classes': ('collapse',)
+        }),
+        ('Authentication', {
+            'fields': ('username', 'password', 'api_key'),
+            'classes': ('collapse',)
+        }),
+        ('Advanced Configuration', {
+            'fields': ('configuration', 'sync_interval', 'last_sync', 'last_error'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_connection_display(self, obj):
+        """Display connection string"""
+        return obj.get_connection_string()
+    get_connection_display.short_description = 'Connection'

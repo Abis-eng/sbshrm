@@ -39,3 +39,8 @@ channels-redis==4.1.0
 # Field encryption
 django-cryptography==1.1
 python-dateutil==2.8.2
+
+# Reporting and Export
+python-docx==1.1.0
+openpyxl==3.1.2
+xlsxwriter==3.1.9

@@ -2776,7 +2776,44 @@ def budget_categories(request):
 
 @user_passes_test(is_admin)
 def budget_list(request):
-    budgets = Budget.objects.select_related('category').all()
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    # Check for export format
+    export_format = request.GET.get('format', '')
+    
+    budgets = Budget.objects.select_related('category', 'project').all()
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Name', 'Type', 'Category', 'Project', 'Tax', 'Period Start', 'Period End', 'Note']
+        data = []
+        for budget in budgets:
+            data.append([
+                str(budget.id),
+                str(budget.name),
+                str(budget.get_type_display()),
+                str(budget.category.name) if budget.category else 'N/A',
+                str(budget.project.name) if budget.project else 'N/A',
+                f"${float(budget.tax):.2f}" if budget.tax else '$0.00',
+                budget.period_start.strftime('%Y-%m-%d') if budget.period_start else 'N/A',
+                budget.period_end.strftime('%Y-%m-%d') if budget.period_end else 'N/A',
+                str(budget.note)[:50] if budget.note else 'N/A',
+            ])
+        
+        filename = f"budgets_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Budgets Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Budgets Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Budgets Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Budgets Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('budget_list')
+    
     return render(request, 'core/budget_list.html', {'budgets': budgets})
 
 @user_passes_test(is_admin)
@@ -2843,7 +2880,43 @@ def budgets(request):
 
 @user_passes_test(is_admin)
 def budget_expense_list(request):
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    # Check for export format
+    export_format = request.GET.get('format', '')
+    
     expenses = BudgetExpense.objects.select_related('budget').all()
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Budget', 'Title', 'Amount', 'Description', 'Date', 'Start Date', 'End Date']
+        data = []
+        for expense in expenses:
+            data.append([
+                str(expense.id),
+                str(expense.budget.name),
+                str(expense.title),
+                f"${float(expense.amount):.2f}" if expense.amount else '$0.00',
+                str(expense.description)[:50] if expense.description else 'N/A',
+                expense.date.strftime('%Y-%m-%d') if expense.date else 'N/A',
+                expense.start_date.strftime('%Y-%m-%d') if expense.start_date else 'N/A',
+                expense.end_date.strftime('%Y-%m-%d') if expense.end_date else 'N/A',
+            ])
+        
+        filename = f"budget_expenses_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Budget Expenses Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Budget Expenses Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Budget Expenses Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Budget Expenses Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('budget_expense_list')
+    
     return render(request, 'core/budget_expense_list.html', {'expenses': expenses})
 
 @user_passes_test(is_admin)
@@ -2910,7 +2983,43 @@ def budget_expense(request):
 
 @user_passes_test(is_admin)
 def budget_revenue_list(request):
+    from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
+    
+    # Check for export format
+    export_format = request.GET.get('format', '')
+    
     revenues = BudgetRevenue.objects.select_related('budget').all()
+    
+    # Export if format is specified
+    if export_format:
+        headers = ['ID', 'Budget', 'Title', 'Amount', 'Description', 'Date', 'Start Date', 'End Date']
+        data = []
+        for revenue in revenues:
+            data.append([
+                str(revenue.id),
+                str(revenue.budget.name),
+                str(revenue.title),
+                f"${float(revenue.amount):.2f}" if revenue.amount else '$0.00',
+                str(revenue.description)[:50] if revenue.description else 'N/A',
+                revenue.date.strftime('%Y-%m-%d') if revenue.date else 'N/A',
+                revenue.start_date.strftime('%Y-%m-%d') if revenue.start_date else 'N/A',
+                revenue.end_date.strftime('%Y-%m-%d') if revenue.end_date else 'N/A',
+            ])
+        
+        filename = f"budget_revenues_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(data, 'Budget Revenues Report', headers, filename)
+            elif export_format == 'docx':
+                return export_to_docx(data, 'Budget Revenues Report', headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(data, 'Budget Revenues Report', headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(data, 'Budget Revenues Report', headers, filename)
+        except Exception as e:
+            messages.error(request, f'Export error: {str(e)}')
+            return redirect('budget_revenue_list')
+    
     return render(request, 'core/budget_revenue_list.html', {'revenues': revenues})
 
 @user_passes_test(is_admin)
