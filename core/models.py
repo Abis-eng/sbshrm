@@ -3,25 +3,140 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 # Create your models here.
 
-class Department(models.Model):
+class Company(models.Model):
+    """Company model for multi-tenant system"""
+    name = models.CharField(max_length=200, unique=True)
+    slug = models.SlugField(max_length=200, unique=True, help_text="URL-friendly identifier")
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Company Admin (one user per company who can manage the company)
+    admin = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, 
+                             related_name='administered_companies', 
+                             help_text="Company Admin user for this company")
+    
+    class Meta:
+        verbose_name_plural = 'Companies'
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+    
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from django.utils.text import slugify
+            self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
+
+class Feature(models.Model):
+    """HRM Feature/Module model for feature access control"""
+    FEATURE_CHOICES = [
+        ('employees', 'Employees Management'),
+        ('attendance', 'Attendance Management'),
+        ('leaves', 'Leave Management'),
+        ('holidays', 'Holiday Management'),
+        ('payroll', 'Payroll Management'),
+        ('loans', 'Loan Management'),
+        ('advances', 'Advance Requests'),
+        ('projects', 'Project Management'),
+        ('tasks', 'Task Management'),
+        ('tickets', 'Ticket Management'),
+        ('clients', 'Client Management'),
+        ('budgets', 'Budget Management'),
+        ('expenses', 'Expense Management'),
+        ('revenues', 'Revenue Management'),
+        ('assets', 'Asset Management'),
+        ('invoices', 'Invoice Management'),
+        ('estimates', 'Estimate Management'),
+        ('reports', 'Reports & Analytics'),
+        ('chat', 'Chat & Messaging'),
+        ('notifications', 'Notifications'),
+        ('settings', 'Settings'),
+        ('marzi', 'Marzi Features'),  # Custom features
+    ]
+    
+    code = models.CharField(max_length=50, unique=True, choices=FEATURE_CHOICES)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True, help_text="Whether this feature is available in the system")
+    companies = models.ManyToManyField(Company, related_name='features', blank=True, 
+                                       help_text="Companies that have access to this feature")
+    
+    class Meta:
+        ordering = ['name']
+    
+    def __str__(self):
+        return self.name
+
+
+class UserProfile(models.Model):
+    """Extended user profile to link users to companies"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='users', 
+                               null=True, blank=True, help_text="Company this user belongs to")
+    is_company_admin = models.BooleanField(default=False, help_text="Whether this user is a Company Admin")
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.company.name if self.company else 'No Company'}"
+    
+    @property
+    def is_super_admin(self):
+        """Check if user is Super Admin (Django superuser)"""
+        return self.user.is_superuser
+    
+    def has_feature_access(self, feature_code):
+        """Check if user's company has access to a feature"""
+        if self.is_super_admin:
+            return True  # Super Admin has access to all features
+        if not self.company:
+            return False
+        return self.company.features.filter(code=feature_code, is_active=True).exists()
+
+
+# Signal to auto-create UserProfile when User is created
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    """Create UserProfile when a new User is created"""
+    if created:
+        UserProfile.objects.get_or_create(user=instance)
+
+
+class Department(models.Model):
+    company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='departments', 
+                               null=True, blank=True, help_text="Company this department belongs to")
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = [['company', 'name']]  # Department names must be unique per company
 
     def __str__(self):
         return self.name
 
 class Designation(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='designations', 
+                              null=True, blank=True, help_text="Company this designation belongs to")
+    name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = [['company', 'name']]  # Designation names must be unique per company
 
     def __str__(self):
         return self.name
 
 class Employee(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
+    company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='employees', 
+                                null=True, blank=True, help_text="Company this employee belongs to")
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
     designation = models.ForeignKey('Designation', on_delete=models.SET_NULL, null=True, blank=True)
     salary = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -153,6 +268,8 @@ class OnlineUser(models.Model):
         return f"{self.user} (online)"
 
 class AttendanceMachine(models.Model):
+    company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='attendance_machines', 
+                               null=True, blank=True, help_text="Company this machine belongs to")
     # Machine Brand/Type
     MACHINE_TYPE_ZKT = 'zkt'
     MACHINE_TYPE_REALTIME = 'realtime'
@@ -346,6 +463,8 @@ class Attendance(models.Model):
 # SalarySlip model removed. PayrollItem and Payslip models will be added.
 
 class Holiday(models.Model):
+    company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='holidays', 
+                               null=True, blank=True, help_text="Company this holiday belongs to")
     name = models.CharField(max_length=100)
     date = models.DateField()
     description = models.TextField(blank=True)
@@ -511,11 +630,12 @@ class AdvanceRequest(models.Model):
         return f"Advance {self.employee} {self.amount} ({self.status})"
 
 class Client(models.Model):
+    company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='clients', 
+                               null=True, blank=True, help_text="Company this client belongs to")
     name = models.CharField(max_length=255)
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
-    company = models.CharField(max_length=255, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -524,6 +644,8 @@ class Client(models.Model):
         return self.name
 
 class Project(models.Model):
+    company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='projects', 
+                               null=True, blank=True, help_text="Company this project belongs to")
     name = models.CharField(max_length=200)
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='projects')
     manager = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_projects')
@@ -560,13 +682,20 @@ class Task(models.Model):
         return f"{self.title} ({self.status}) for {self.assigned_to}"
 
 class BudgetCategory(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='budget_categories', 
+                               null=True, blank=True, help_text="Company this budget category belongs to")
+    name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = [['company', 'name']]  # Budget category names must be unique per company
 
     def __str__(self):
         return self.name
 
 class Budget(models.Model):
+    company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='budgets', 
+                               null=True, blank=True, help_text="Company this budget belongs to")
     TYPE_CHOICES = [
         ('project', 'Project'),
         ('category', 'Category'),
@@ -612,14 +741,19 @@ class BudgetRevenue(models.Model):
         return f"Revenue: {self.title} ({self.amount}) for {self.budget.name}"
 
 class Asset(models.Model):
+    company = models.ForeignKey('Company', on_delete=models.CASCADE, related_name='assets', 
+                               null=True, blank=True, help_text="Company this asset belongs to")
     STATUS_CHOICES = [
         ('approved', 'Approved'),
         ('pending', 'Pending'),
         ('returned', 'Returned'),
     ]
     asset_name = models.CharField(max_length=255)
-    asset_id = models.CharField(max_length=100, unique=True)
+    asset_id = models.CharField(max_length=100)
     purchase_date = models.DateField(null=True, blank=True)
+    
+    class Meta:
+        unique_together = [['company', 'asset_id']]  # Asset IDs must be unique per company
     purchase_from = models.CharField(max_length=255, blank=True)
     manufacturer = models.CharField(max_length=255, blank=True)
     model = models.CharField(max_length=255, blank=True)

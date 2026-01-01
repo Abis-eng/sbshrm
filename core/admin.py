@@ -1,5 +1,17 @@
-from .models import Department, Employee, Designation, Holiday, Leave, BudgetCategory, Budget, BudgetExpense, BudgetRevenue, Asset, CompanySettings, LocalizationSettings, InvoiceSettings, SalarySettings, ThemeSettings, Tax, Expense, Estimate, EstimateItem, Invoice, InvoiceItem, Attendance, AttendanceLog, AttendanceMachine
+from .models import (
+    Department, Employee, Designation, Holiday, Leave, BudgetCategory, Budget, BudgetExpense, 
+    BudgetRevenue, Asset, CompanySettings, LocalizationSettings, InvoiceSettings, SalarySettings, 
+    ThemeSettings, Tax, Expense, Estimate, EstimateItem, Invoice, InvoiceItem, Attendance, 
+    AttendanceLog, AttendanceMachine, Company, Feature, UserProfile
+)
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
+
+# Customize admin site
+admin.site.site_header = "HRM System - Super Admin"
+admin.site.site_title = "HRM Admin"
+admin.site.index_title = "Multi-Tenant Company Management"
 
 # Register your models here.
 
@@ -73,3 +85,122 @@ class AttendanceMachineAdmin(admin.ModelAdmin):
         """Display connection string"""
         return obj.get_connection_string()
     get_connection_display.short_description = 'Connection'
+
+
+# Multi-Tenant Company and Feature Management
+@admin.register(Company)
+class CompanyAdmin(admin.ModelAdmin):
+    """Super Admin interface for managing companies"""
+    list_display = ['name', 'slug', 'admin', 'is_active', 'created_at', 'feature_count']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['name', 'slug', 'description']
+    prepopulated_fields = {'slug': ('name',)}
+    readonly_fields = ['feature_list']
+    list_editable = ['is_active']  # Allow quick activation/deactivation
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'slug', 'description', 'is_active')
+        }),
+        ('Company Admin', {
+            'fields': ('admin',),
+            'description': 'Select a user to be the Company Admin for this company. This user will be able to manage employees and access features assigned to this company.'
+        }),
+        ('Features', {
+            'fields': ('feature_list',),
+            'description': 'To assign features to this company, go to the Feature admin page and edit each feature to add this company. Or use the Feature admin page to manage company-feature relationships.'
+        }),
+    )
+    
+    def feature_count(self, obj):
+        """Display number of features assigned"""
+        return obj.features.count()
+    feature_count.short_description = 'Features'
+    
+    def feature_list(self, obj):
+        """Display list of features assigned to this company"""
+        from django.utils.html import format_html
+        if obj.pk:
+            features = obj.features.all()
+            if features:
+                feature_links = []
+                for f in features:
+                    feature_links.append(f'<a href="/admin/core/feature/{f.id}/change/">{f.name}</a>')
+                return format_html(', '.join(feature_links))
+            return format_html('No features assigned. <a href="/admin/core/feature/">Go to Features</a> to assign features to this company.')
+        return 'Save the company first, then assign features from the Feature admin page.'
+    feature_list.short_description = 'Assigned Features'
+    
+    def get_queryset(self, request):
+        """Super Admin sees all companies"""
+        return super().get_queryset(request).prefetch_related('features')
+    
+    class Meta:
+        verbose_name = 'Company'
+        verbose_name_plural = 'Companies'
+
+
+@admin.register(Feature)
+class FeatureAdmin(admin.ModelAdmin):
+    """Super Admin interface for managing features"""
+    list_display = ['name', 'code', 'is_active', 'company_count', 'company_list']
+    list_filter = ['is_active', 'code']
+    search_fields = ['name', 'code', 'description']
+    filter_horizontal = ['companies']  # For many-to-many companies
+    list_editable = ['is_active']  # Allow quick activation/deactivation
+    fieldsets = (
+        ('Feature Information', {
+            'fields': ('code', 'name', 'description', 'is_active')
+        }),
+        ('Companies', {
+            'fields': ('companies',),
+            'description': 'Select which companies have access to this feature. Use Ctrl/Cmd to select multiple companies.'
+        }),
+    )
+    
+    def company_count(self, obj):
+        """Display number of companies with access"""
+        return obj.companies.count()
+    company_count.short_description = 'Companies'
+    
+    def company_list(self, obj):
+        """Display list of companies with access"""
+        from django.utils.html import format_html
+        if obj.pk:
+            companies = obj.companies.all()
+            if companies:
+                company_links = []
+                for c in companies:
+                    company_links.append(f'<a href="/admin/core/company/{c.id}/change/">{c.name}</a>')
+                return format_html(', '.join(company_links))
+            return 'No companies assigned'
+        return '-'
+    company_list.short_description = 'Companies with Access'
+    
+    def get_queryset(self, request):
+        """Super Admin sees all features"""
+        return super().get_queryset(request).prefetch_related('companies')
+    
+    class Meta:
+        verbose_name = 'Feature'
+        verbose_name_plural = 'Features'
+
+
+# Extend User Admin to show company profile
+class UserProfileInline(admin.StackedInline):
+    """Inline admin for UserProfile"""
+    model = UserProfile
+    can_delete = False
+    verbose_name_plural = 'Company Profile'
+    fields = ('company', 'is_company_admin')
+    fk_name = 'user'
+
+
+class UserAdmin(BaseUserAdmin):
+    """Extended User Admin with company profile"""
+    inlines = (UserProfileInline,)
+
+
+# Unregister default User admin and register extended version
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)

@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test, permission_required
 from django.contrib import messages
+from .company_utils import require_feature, require_company_admin, filter_by_company, get_user_company, is_super_admin, is_company_admin, has_feature_access, get_company_context
 from .models import Employee, Department, Designation, Attendance, AttendanceLog, AttendanceMachine, Ticket, Client, Holiday, Leave, Notice
 from django.contrib.auth.models import User
 from django.http import JsonResponse
@@ -199,9 +200,11 @@ def dashboard(request):
     })
 
 @login_required
+@require_feature('employees')
 def employee_list(request):
     from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
     from django.db.models import Q
+    from .company_utils import filter_by_company, is_super_admin, get_user_company
     
     # Check for export format
     export_format = request.GET.get('format', '')
@@ -211,21 +214,32 @@ def employee_list(request):
     dept_filter = request.GET.get('department', '')
     desig_filter = request.GET.get('designation', '')
     
-    if request.user.is_superuser:
-        employees = Employee.objects.select_related('user', 'department', 'designation').all()
+    # Get user's company
+    user_company = get_user_company(request.user)
+    
+    if is_super_admin(request.user):
+        # Super Admin sees all employees
+        employees = Employee.objects.select_related('user', 'department', 'designation', 'company').all()
         departments = Department.objects.all()
         designations = Designation.objects.all()
+    elif user_company:
+        # Company Admin and Employees see only their company's data
+        employees = Employee.objects.filter(company=user_company).select_related('user', 'department', 'designation', 'company')
+        departments = Department.objects.filter(company=user_company)
+        designations = Designation.objects.filter(company=user_company)
+        
+        # Regular employees can only see their own information
+        if not (is_company_admin(request.user) or request.user.is_staff):
+            try:
+                employee = request.user.employee
+                employees = employees.filter(id=employee.id)
+            except Exception:
+                employees = Employee.objects.none()
     else:
-        # Employees can only see their own information
-        try:
-            employee = request.user.employee
-            employees = Employee.objects.filter(id=employee.id).select_related('user', 'department', 'designation')
-            departments = Department.objects.none()
-            designations = Designation.objects.none()
-        except Exception:
-            employees = Employee.objects.none()
-            departments = Department.objects.none()
-            designations = Designation.objects.none()
+        # No company assigned - no data
+        employees = Employee.objects.none()
+        departments = Department.objects.none()
+        designations = Designation.objects.none()
     
     # Apply filters (for both display and export)
     if search_query:
@@ -1707,6 +1721,7 @@ def sync_attendance_machine(request, machine_id=None):
                 start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
             except ValueError:
                 start_date = None
+        
         if end_date:
             try:
                 end_date = datetime.strptime(end_date, '%Y-%m-%d').date()

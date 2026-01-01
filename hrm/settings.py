@@ -68,6 +68,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.middleware.CompanyIsolationMiddleware',  # Company isolation middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -90,6 +91,7 @@ TEMPLATES = [
 ]
 TEMPLATES[0]['OPTIONS']['context_processors'] += [
     'core.views.theme_settings_context',
+    'core.context_processors.company_context',  # Add company context to all templates
 ]
 
 WSGI_APPLICATION = 'hrm.wsgi.application'
