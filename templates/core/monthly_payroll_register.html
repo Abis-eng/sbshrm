@@ -1,0 +1,251 @@
+{% extends 'core/base.html' %}
+{% block page_title %}Monthly Payroll Register{% endblock %}
+{% block content %}
+<style>
+    body {
+        background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+        min-height: 100vh;
+    }
+    .main-content {
+        position: relative;
+        z-index: 1;
+    }
+    .register-container {
+        padding: 30px 0;
+        max-width: 100%;
+        overflow-x: auto;
+        position: relative;
+        z-index: 1;
+    }
+    .register-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+        border-radius: 20px;
+        padding: 30px;
+        color: #fff;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(16, 185, 129, 0.3);
+    }
+    .register-header h2 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 1.75rem;
+    }
+    .register-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.1);
+        overflow-x: auto;
+    }
+    .payroll-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+        margin-top: 20px;
+    }
+    .payroll-table thead {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: #fff;
+    }
+    .payroll-table th {
+        padding: 12px 8px;
+        text-align: center;
+        font-weight: 600;
+        border: 1px solid #047857;
+        white-space: nowrap;
+    }
+    .payroll-table td {
+        padding: 10px 8px;
+        text-align: center;
+        border: 1px solid #d1fae5;
+        vertical-align: middle;
+    }
+    .payroll-table tbody tr:nth-child(even) {
+        background: #f0fdfa;
+    }
+    .payroll-table tbody tr:hover {
+        background: #d1fae5;
+    }
+    .text-left {
+        text-align: left !important;
+    }
+    .text-right {
+        text-align: right !important;
+    }
+    .btn-back {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: #fff;
+        font-weight: 600;
+        border-radius: 50px;
+        padding: 10px 30px;
+        border: none;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-block;
+        margin-bottom: 20px;
+    }
+    .btn-back:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        color: #fff;
+    }
+    .sub-header {
+        margin-top: 10px;
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+    .number-cell {
+        font-weight: 600;
+        color: #334155;
+    }
+    .name-cell {
+        text-align: left;
+        font-weight: 500;
+        color: #1e293b;
+    }
+    .month-selector {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 15px;
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+    }
+    .month-selector .form-control,
+    .month-selector .form-select {
+        background: #fff;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+    .month-selector .form-label {
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    .d-flex {
+        display: flex;
+    }
+    .gap-2 {
+        gap: 0.5rem;
+    }
+    .align-items-end {
+        align-items: flex-end;
+    }
+    .justify-content-between {
+        justify-content: space-between;
+    }
+    .mb-3 {
+        margin-bottom: 1rem;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="register-container">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+            <a href="{% url 'monthly_payroll_create' %}" class="btn btn-back">
+                <i class="fas fa-plus me-2"></i>Create New Payroll
+            </a>
+            <div class="month-selector">
+                <form method="get" action="{% url 'monthly_payroll_register' %}" class="d-flex gap-2 align-items-end">
+                    <div>
+                        <label class="form-label mb-1">Month</label>
+                        <select name="month" class="form-control form-select" style="width: 150px;">
+                            {% for m in month_list %}
+                                <option value="{{ m.0 }}" {% if m.0 == month %}selected{% endif %}>{{ m.1 }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label mb-1">Year</label>
+                        <input type="number" name="year" value="{{ year }}" class="form-control" style="width: 100px;" min="2000" max="2100">
+                    </div>
+                    <button type="submit" class="btn btn-back" style="height: fit-content; padding: 12px 20px;">
+                        <i class="fas fa-search me-2"></i>View
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="register-header">
+            <h2><i class="fas fa-file-invoice-dollar me-2"></i>Monthly Payroll Register for: {{ month_name }}, {{ year }}</h2>
+            <div class="sub-header">
+                <i class="fas fa-city me-2"></i>City: {{ city }} | 
+                <i class="fas fa-users me-2"></i>Total Employees: {{ total_employees }} | 
+                <i class="fas fa-calendar me-2"></i>Period: {{ period_start|date:"M d, Y" }} - {{ period_end|date:"M d, Y" }}
+            </div>
+        </div>
+        
+        <div class="register-card">
+            {% if register_data %}
+            <table class="payroll-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2">No.</th>
+                        <th rowspan="2">Name</th>
+                        <th rowspan="2">Designation</th>
+                        <th rowspan="2">Basic Pay</th>
+                        <th rowspan="2">Work Days</th>
+                        <th rowspan="2">Abs</th>
+                        <th rowspan="2">Lvs</th>
+                        <th rowspan="2">Basic Salary</th>
+                        <th colspan="3">Allowance</th>
+                        <th rowspan="2">Gross Salary</th>
+                        <th rowspan="2">Open Bal.</th>
+                        <th colspan="3">Deductions</th>
+                        <th rowspan="2">Close Bal.</th>
+                        <th rowspan="2">Net Pay</th>
+                        <th rowspan="2">Actions</th>
+                        <th rowspan="2">Receiver Signature</th>
+                    </tr>
+                    <tr>
+                        <th>Fuel</th>
+                        <th>Mobile</th>
+                        <th>Other</th>
+                        <th>Add</th>
+                        <th>Ded.</th>
+                        <th>Other</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for data in register_data %}
+                    <tr>
+                        <td class="number-cell">{{ data.employee_no }}</td>
+                        <td class="name-cell text-left">{{ data.employee.user.get_full_name|default:data.employee.user.username }}</td>
+                        <td>{{ data.designation|default:"N/A" }}</td>
+                        <td class="text-right">{{ data.base_pay|floatformat:0 }}</td>
+                        <td class="number-cell">{{ data.work_days }}</td>
+                        <td class="number-cell">{{ data.absences }}</td>
+                        <td class="number-cell">{{ data.leaves }}</td>
+                        <td class="text-right">{{ data.basic_salary|floatformat:0 }}</td>
+                        <td class="text-right">{{ data.allowance_fuel|floatformat:0 }}</td>
+                        <td class="text-right">{{ data.allowance_mobile|floatformat:0 }}</td>
+                        <td class="text-right">{{ data.allowance_other|floatformat:0 }}</td>
+                        <td class="text-right number-cell">{{ data.gross_salary|floatformat:0 }}</td>
+                        <td class="text-right">{{ data.opening_balance|floatformat:0 }}</td>
+                        <td class="text-right">{{ data.deduction_add|floatformat:0 }}</td>
+                        <td class="text-right">{{ data.deduction_ded|floatformat:0 }}</td>
+                        <td class="text-right">{{ data.deduction_other|floatformat:0 }}</td>
+                        <td class="text-right">{{ data.closing_balance|floatformat:0 }}</td>
+                        <td class="text-right number-cell"><strong>{{ data.net_pay|floatformat:0 }}</strong></td>
+                        <td>
+                            <a href="{% url 'edit_payslip_register' data.payslip.id %}?redirect_to=register" class="btn btn-sm btn-primary" title="Edit All Amounts" style="padding: 5px 10px; border-radius: 5px;">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                        </td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No Payroll Data Found</h4>
+                <p class="text-muted">Please process payroll for {{ month_name }}, {{ year }} first.</p>
+                <a href="{% url 'monthly_payroll_create' %}" class="btn btn-back mt-3">
+                    <i class="fas fa-plus me-2"></i>Create Payroll
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

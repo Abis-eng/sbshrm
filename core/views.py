@@ -55,7 +55,7 @@ from django.forms import inlineformset_factory
 from .models import Estimate, EstimateItem
 from .forms import EstimateForm, EstimateItemForm
 from .forms import InvoiceForm, InvoiceItemForm, EmployeeMachineForm, ManualAttendanceForm, AttendanceMachineForm, AttendanceFilterForm
-from .forms import PayrollItemForm, PayslipCreateForm, PayslipEditForm, TaxSlabForm, LoanForm, AdvanceRequestForm, AdvanceReviewForm
+from .forms import PayrollItemForm, PayslipCreateForm, PayslipEditForm, TaxSlabForm, LoanForm, AdvanceRequestForm, AdvanceReviewForm, MonthlyPayrollForm, PayslipRegisterEditForm
 from .models import Invoice, InvoiceItem, Notification
 from django.http import HttpResponse
 from django.contrib.admin.views.decorators import staff_member_required
@@ -4230,14 +4230,163 @@ def admin_payslips(request):
 @user_passes_test(is_admin)
 def edit_payslip(request, payslip_id):
     payslip = get_object_or_404(Payslip, id=payslip_id)
+    redirect_to = request.GET.get('redirect_to') or request.POST.get('redirect_to', 'admin_payslips')
     if request.method == 'POST':
         form = PayslipEditForm(request.POST, instance=payslip)
         if form.is_valid():
             form.save()
-            return redirect('admin_payslips')
+            if redirect_to == 'register' and payslip.period_start and payslip.period_end:
+                return redirect('monthly_payroll_register', month=payslip.period_start.month, year=payslip.period_start.year)
+            return redirect(redirect_to)
     else:
         form = PayslipEditForm(instance=payslip)
-    return render(request, 'core/edit_payslip.html', {'form': form})
+    return render(request, 'core/edit_payslip.html', {'form': form, 'payslip': payslip, 'redirect_to': redirect_to})
+
+@user_passes_test(is_admin)
+def edit_payslip_register(request, payslip_id):
+    """Edit all payslip amounts as shown in the register"""
+    from calendar import monthrange
+    from datetime import date
+    
+    payslip = get_object_or_404(Payslip, id=payslip_id)
+    employee = payslip.employee
+    redirect_to = request.GET.get('redirect_to', 'register')
+    
+    # Get period dates
+    period_start = payslip.period_start or date.today()
+    period_end = payslip.period_end or date.today()
+    
+    # Get current register data
+    attendances = Attendance.objects.filter(
+        employee=employee,
+        date__gte=period_start,
+        date__lte=period_end
+    )
+    work_days = attendances.filter(status='present').count()
+    absences = attendances.filter(status='absent').count()
+    
+    # Get leaves
+    leaves = Leave.objects.filter(
+        employee=employee,
+        status='approved',
+        start_date__lte=period_end,
+        end_date__gte=period_start
+    )
+    leave_days = 0
+    for leave in leaves:
+        overlap_start = max(leave.start_date, period_start)
+        overlap_end = min(leave.end_date, period_end)
+        if overlap_start <= overlap_end:
+            leave_days += (overlap_end - overlap_start).days + 1
+    
+    # Get payroll items
+    period_items = PayrollItem.objects.filter(employee=employee).filter(
+        (
+            Q(is_recurring=False) & Q(date__gte=period_start, date__lte=period_end)
+        ) | (
+            Q(is_recurring=True) & (
+                (Q(start_date__lte=period_end) | Q(start_date__isnull=True)) & 
+                (Q(end_date__gte=period_start) | Q(end_date__isnull=True))
+            )
+        )
+    )
+    
+    # Calculate current values
+    base_pay = float(employee.salary or 0)
+    basic_salary = base_pay
+    if work_days > 0:
+        days_of_month = monthrange(period_start.year, period_start.month)[1]
+        per_day_salary = base_pay / days_of_month
+        basic_salary = base_pay - (per_day_salary * absences)
+    
+    # Calculate allowances
+    allowance_fuel = 0
+    allowance_mobile = 0
+    allowance_other = 0
+    
+    for item in period_items.filter(item_type=PayrollItem.EARNING):
+        amount = float(item.amount)
+        if 'fuel' in item.name.lower():
+            allowance_fuel += amount
+        elif 'mobile' in item.name.lower():
+            allowance_mobile += amount
+        else:
+            allowance_other += amount
+    
+    # Calculate deductions
+    deduction_add = 0
+    deduction_ded = 0
+    deduction_other = 0
+    
+    for item in period_items.filter(item_type=PayrollItem.DEDUCTION):
+        amount = float(item.amount)
+        if 'add' in item.name.lower() or 'advance' in item.name.lower():
+            deduction_add += amount
+        elif 'ded' in item.name.lower() or 'deduction' in item.name.lower():
+            deduction_ded += amount
+        else:
+            deduction_other += amount
+    
+    opening_balance = 0
+    closing_balance = opening_balance + deduction_add - deduction_ded
+    gross_pay = float(payslip.gross_pay or 0)
+    net_pay = float(payslip.total or 0)
+    
+    if request.method == 'POST':
+        form = PayslipRegisterEditForm(request.POST)
+        if form.is_valid():
+            # Update payslip amounts
+            payslip.gross_pay = form.cleaned_data['gross_pay']
+            payslip.total_earnings = form.cleaned_data['allowance_fuel'] + form.cleaned_data['allowance_mobile'] + form.cleaned_data['allowance_other']
+            payslip.total_deductions = form.cleaned_data['deduction_add'] + form.cleaned_data['deduction_ded'] + form.cleaned_data['deduction_other']
+            payslip.total = form.cleaned_data['net_pay']
+            payslip.date = form.cleaned_data['date']
+            payslip.period_start = form.cleaned_data.get('period_start') or payslip.period_start
+            payslip.period_end = form.cleaned_data.get('period_end') or payslip.period_end
+            payslip.status = form.cleaned_data['status']
+            payslip.save()
+            
+            # Optionally update employee salary if base_pay changed
+            new_base_pay = form.cleaned_data['base_pay']
+            if new_base_pay != base_pay:
+                employee.salary = new_base_pay
+                employee.save()
+            
+            messages.success(request, 'Payslip updated successfully!')
+            if redirect_to == 'register' and payslip.period_start and payslip.period_end:
+                return redirect('monthly_payroll_register', month=payslip.period_start.month, year=payslip.period_start.year)
+            return redirect('admin_payslips')
+    else:
+        # Initialize form with current values
+        form = PayslipRegisterEditForm(initial={
+            'base_pay': base_pay,
+            'work_days': work_days,
+            'absences': absences,
+            'leaves': leave_days,
+            'basic_salary': basic_salary,
+            'allowance_fuel': allowance_fuel,
+            'allowance_mobile': allowance_mobile,
+            'allowance_other': allowance_other,
+            'gross_pay': gross_pay,
+            'opening_balance': opening_balance,
+            'deduction_add': deduction_add,
+            'deduction_ded': deduction_ded,
+            'deduction_other': deduction_other,
+            'closing_balance': closing_balance,
+            'net_pay': net_pay,
+            'date': payslip.date,
+            'period_start': payslip.period_start,
+            'period_end': payslip.period_end,
+            'status': payslip.status,
+        })
+    
+    context = {
+        'form': form,
+        'payslip': payslip,
+        'employee': employee,
+        'redirect_to': redirect_to,
+    }
+    return render(request, 'core/edit_payslip_register.html', context)
 
 @user_passes_test(is_admin)
 def delete_payslip(request, payslip_id):
@@ -4333,6 +4482,439 @@ def loans(request):
         loan = form.save()
         return redirect('loans')
     return render(request, 'core/loans.html', {'loans': loans_qs, 'form': form})
+
+@user_passes_test(is_admin)
+def monthly_payroll_create(request):
+    """Monthly payroll creation form and processing"""
+    from calendar import monthrange
+    from datetime import date
+    
+    form = MonthlyPayrollForm(request.POST or None)
+    
+    # Set default values
+    if not request.POST:
+        today = timezone.now().date()
+        form.initial = {
+            'month': today.month,
+            'year': today.year,
+            'days_of_month': monthrange(today.year, today.month)[1],
+        }
+        # Get city from company settings
+        try:
+            settings_obj = CompanySettings.objects.first()
+            if settings_obj and settings_obj.city:
+                form.initial['city'] = settings_obj.city
+        except:
+            pass
+    
+    if request.method == 'POST' and form.is_valid():
+        city = form.cleaned_data['city']
+        department = form.cleaned_data.get('department')
+        month = int(form.cleaned_data['month'])
+        year = int(form.cleaned_data['year'])
+        days_of_month = int(form.cleaned_data['days_of_month'])
+        
+        # Calculate period dates
+        period_start = date(year, month, 1)
+        period_end = date(year, month, days_of_month)
+        
+        # Get employees - filter by department if selected
+        employees = Employee.objects.select_related('user', 'designation', 'company', 'department').all()
+        if department:
+            employees = employees.filter(department=department)
+        
+        # Count employees that already have payslips for this period
+        existing_payslips = Payslip.objects.filter(
+            period_start=period_start,
+            period_end=period_end
+        ).values_list('employee_id', flat=True)
+        
+        employees_to_process = employees.exclude(id__in=existing_payslips)
+        employees_count = employees_to_process.count()
+        total_employees = employees.count()
+        
+        # Process payroll for all employees
+        created_count = 0
+        for employee in employees_to_process:
+            try:
+                # Calculate attendance-based values
+                attendances = Attendance.objects.filter(
+                    employee=employee,
+                    date__gte=period_start,
+                    date__lte=period_end
+                )
+                
+                # Work days = present days
+                work_days = attendances.filter(status='present').count()
+                
+                # Absences
+                absences = attendances.filter(status='absent').count()
+                
+                # Leaves (approved leaves from Leave model)
+                leaves = Leave.objects.filter(
+                    employee=employee,
+                    status='approved',
+                    start_date__lte=period_end,
+                    end_date__gte=period_start
+                )
+                leave_days = 0
+                for leave in leaves:
+                    # Calculate overlapping days
+                    overlap_start = max(leave.start_date, period_start)
+                    overlap_end = min(leave.end_date, period_end)
+                    if overlap_start <= overlap_end:
+                        leave_days += (overlap_end - overlap_start).days + 1
+                
+                # Base salary calculation
+                base_pay = float(employee.salary or 0)
+                basic_salary = base_pay
+                
+                # Adjust for absences and leaves (if unpaid)
+                if work_days > 0 and days_of_month > 0:
+                    # Calculate per day salary
+                    per_day_salary = base_pay / days_of_month
+                    # Deduct for absences
+                    basic_salary = base_pay - (per_day_salary * absences)
+                else:
+                    basic_salary = 0
+                
+                # Get payroll items for the period
+                period_items = PayrollItem.objects.filter(employee=employee).filter(
+                    (
+                        Q(is_recurring=False) & Q(date__gte=period_start, date__lte=period_end)
+                    ) | (
+                        Q(is_recurring=True) & (
+                            (Q(start_date__lte=period_end) | Q(start_date__isnull=True)) & 
+                            (Q(end_date__gte=period_start) | Q(end_date__isnull=True))
+                        )
+                    )
+                )
+                
+                # Calculate allowances (Fuel, Mobile, Other)
+                allowance_fuel = 0
+                allowance_mobile = 0
+                allowance_other = 0
+                total_earnings = 0
+                
+                for item in period_items.filter(item_type=PayrollItem.EARNING):
+                    amount = float(item.amount)
+                    total_earnings += amount
+                    # Categorize allowances
+                    if 'fuel' in item.name.lower():
+                        allowance_fuel += amount
+                    elif 'mobile' in item.name.lower():
+                        allowance_mobile += amount
+                    else:
+                        allowance_other += amount
+                
+                # Calculate deductions
+                deduction_add = 0
+                deduction_ded = 0
+                deduction_other = 0
+                total_deductions = 0
+                
+                for item in period_items.filter(item_type=PayrollItem.DEDUCTION):
+                    amount = float(item.amount)
+                    total_deductions += amount
+                    # Categorize deductions
+                    if 'add' in item.name.lower() or 'advance' in item.name.lower():
+                        deduction_add += amount
+                    elif 'ded' in item.name.lower() or 'deduction' in item.name.lower():
+                        deduction_ded += amount
+                    else:
+                        deduction_other += amount
+                
+                # Late policy: 3 lates = 1 day salary deduction
+                late_days = attendances.filter(is_late=True).count()
+                late_day_equivalents = late_days // 3
+                late_deduction = 0
+                if base_pay and late_day_equivalents:
+                    late_deduction = round((base_pay / 30.0) * late_day_equivalents, 2)
+                    total_deductions += late_deduction
+                    deduction_ded += late_deduction
+                
+                # Unpaid leave deduction
+                unpaid_leave_deduction = 0
+                if base_pay and absences:
+                    unpaid_leave_deduction = round((base_pay / 30.0) * absences, 2)
+                    total_deductions += unpaid_leave_deduction
+                    deduction_ded += unpaid_leave_deduction
+                
+                # Tax calculation
+                taxable_income = basic_salary + total_earnings
+                slab = TaxSlab.objects.order_by('min_income').filter(
+                    min_income__lte=taxable_income
+                ).filter(
+                    Q(max_income__gte=taxable_income) | Q(max_income__isnull=True)
+                ).first()
+                tax_amount = 0
+                if slab:
+                    tax_amount = round((taxable_income * float(slab.rate_percent) / 100.0) + float(slab.fixed_deduction), 2)
+                    if tax_amount > 0:
+                        total_deductions += tax_amount
+                        deduction_other += tax_amount
+                
+                # Loan repayments
+                loan_installment_total = 0
+                active_loans = Loan.objects.filter(employee=employee, is_active=True)
+                for loan in active_loans:
+                    if float(loan.balance) > 0 and float(loan.monthly_installment) > 0:
+                        installment = float(loan.monthly_installment)
+                        if installment > float(loan.balance):
+                            installment = float(loan.balance)
+                        loan_installment_total += installment
+                if loan_installment_total:
+                    total_deductions += loan_installment_total
+                    deduction_ded += loan_installment_total
+                
+                # Opening balance (from previous period's closing balance)
+                prev_payslip = Payslip.objects.filter(
+                    employee=employee,
+                    period_end__lt=period_start
+                ).order_by('-period_end').first()
+                opening_balance = 0
+                if prev_payslip:
+                    # Get closing balance from previous payslip metadata if stored
+                    opening_balance = 0  # Can be enhanced to store in Payslip model
+                
+                # Closing balance
+                closing_balance = opening_balance + deduction_add - deduction_ded
+                
+                # Gross salary (basic salary + all allowances/earnings)
+                gross_salary = basic_salary + total_earnings
+                
+                # Net pay
+                net_pay = gross_salary - total_deductions
+                
+                # Create payslip
+                payslip = Payslip.objects.create(
+                    employee=employee,
+                    date=timezone.now().date(),
+                    period_start=period_start,
+                    period_end=period_end,
+                    gross_pay=gross_salary,
+                    total_earnings=total_earnings,
+                    total_deductions=total_deductions,
+                    total=net_pay,
+                    created_by=request.user,
+                    status=Payslip.STATUS_PROCESSED,
+                )
+                
+                # Generate PDF
+                pdf_bytes = _render_payslip_pdf_to_bytes(
+                    payslip,
+                    period_items,
+                    context_extra={
+                        'base_salary': basic_salary,
+                        'unpaid_leave_deduction': unpaid_leave_deduction,
+                        'late_deduction': late_deduction,
+                        'tax_amount': tax_amount,
+                        'loan_installment_total': loan_installment_total,
+                    }
+                )
+                filename = f"payslip_{employee.user.username}_{period_start}_{period_end}.pdf"
+                payslip.pdf.save(filename, ContentFile(pdf_bytes))
+                payslip.save()
+                
+                created_count += 1
+            except Exception as e:
+                logger.error(f"Error processing payroll for employee {employee.id}: {str(e)}")
+                continue
+        
+        messages.success(request, f'Payroll processed successfully! Created {created_count} payslips for {month}/{year}.')
+        return redirect('monthly_payroll_register', month=month, year=year)
+    
+    # Get employee count for display
+    employees = Employee.objects.all()
+    departments = Department.objects.all().order_by('name')
+    existing_payslips_count = 0
+    if request.method == 'POST' and form.is_valid():
+        month = int(form.cleaned_data['month'])
+        year = int(form.cleaned_data['year'])
+        days_of_month = int(form.cleaned_data['days_of_month'])
+        department = form.cleaned_data.get('department')
+        period_start = date(year, month, 1)
+        period_end = date(year, month, days_of_month)
+        existing_payslips = Payslip.objects.filter(
+            period_start=period_start,
+            period_end=period_end
+        )
+        if department:
+            existing_payslips = existing_payslips.filter(employee__department=department)
+        existing_payslips_count = existing_payslips.count()
+    
+    context = {
+        'form': form,
+        'total_employees': employees.count(),
+        'existing_payslips_count': existing_payslips_count,
+        'departments': departments,
+    }
+    return render(request, 'core/monthly_payroll_create.html', context)
+
+@user_passes_test(is_admin)
+def monthly_payroll_register(request, month=None, year=None):
+    """Display monthly payroll register"""
+    from calendar import monthrange
+    from datetime import date
+    
+    # Get month and year from URL, GET parameters, or use current
+    if not month:
+        month = request.GET.get('month')
+    if not year:
+        year = request.GET.get('year')
+    
+    if not month or not year:
+        today = timezone.now().date()
+        month = today.month
+        year = today.year
+    
+    month = int(month)
+    year = int(year)
+    
+    # Calculate period
+    days_of_month = monthrange(year, month)[1]
+    period_start = date(year, month, 1)
+    period_end = date(year, month, days_of_month)
+    
+    # Get all payslips for this period
+    payslips = Payslip.objects.filter(
+        period_start=period_start,
+        period_end=period_end
+    ).select_related('employee__user', 'employee__designation').order_by('employee__user__first_name', 'employee__user__last_name')
+    
+    # Build register data
+    register_data = []
+    for payslip in payslips:
+        employee = payslip.employee
+        
+        # Get attendance data
+        attendances = Attendance.objects.filter(
+            employee=employee,
+            date__gte=period_start,
+            date__lte=period_end
+        )
+        work_days = attendances.filter(status='present').count()
+        absences = attendances.filter(status='absent').count()
+        
+        # Get leaves
+        leaves = Leave.objects.filter(
+            employee=employee,
+            status='approved',
+            start_date__lte=period_end,
+            end_date__gte=period_start
+        )
+        leave_days = 0
+        for leave in leaves:
+            overlap_start = max(leave.start_date, period_start)
+            overlap_end = min(leave.end_date, period_end)
+            if overlap_start <= overlap_end:
+                leave_days += (overlap_end - overlap_start).days + 1
+        
+        # Get payroll items
+        period_items = PayrollItem.objects.filter(employee=employee).filter(
+            (
+                Q(is_recurring=False) & Q(date__gte=period_start, date__lte=period_end)
+            ) | (
+                Q(is_recurring=True) & (
+                    (Q(start_date__lte=period_end) | Q(start_date__isnull=True)) & 
+                    (Q(end_date__gte=period_start) | Q(end_date__isnull=True))
+                )
+            )
+        )
+        
+        # Calculate allowances
+        allowance_fuel = 0
+        allowance_mobile = 0
+        allowance_other = 0
+        
+        for item in period_items.filter(item_type=PayrollItem.EARNING):
+            amount = float(item.amount)
+            if 'fuel' in item.name.lower():
+                allowance_fuel += amount
+            elif 'mobile' in item.name.lower():
+                allowance_mobile += amount
+            else:
+                allowance_other += amount
+        
+        # Calculate deductions
+        deduction_add = 0
+        deduction_ded = 0
+        deduction_other = 0
+        
+        for item in period_items.filter(item_type=PayrollItem.DEDUCTION):
+            amount = float(item.amount)
+            if 'add' in item.name.lower() or 'advance' in item.name.lower():
+                deduction_add += amount
+            elif 'ded' in item.name.lower() or 'deduction' in item.name.lower():
+                deduction_ded += amount
+            else:
+                deduction_other += amount
+        
+        # Base pay and basic salary
+        base_pay = float(employee.salary or 0)
+        basic_salary = base_pay
+        if work_days > 0 and days_of_month > 0:
+            per_day_salary = base_pay / days_of_month
+            basic_salary = base_pay - (per_day_salary * absences)
+        else:
+            basic_salary = 0
+        
+        # Opening and closing balance (simplified)
+        opening_balance = 0
+        closing_balance = opening_balance + deduction_add - deduction_ded
+        
+        # Gross and net (use payslip data)
+        gross_salary = float(payslip.gross_pay or 0)
+        net_pay = float(payslip.total or 0)
+        
+        register_data.append({
+            'employee_no': employee.id,
+            'employee': employee,
+            'designation': employee.designation.name if employee.designation else '',
+            'base_pay': base_pay,
+            'work_days': work_days,
+            'absences': absences,
+            'leaves': leave_days,
+            'basic_salary': basic_salary,
+            'allowance_fuel': allowance_fuel,
+            'allowance_mobile': allowance_mobile,
+            'allowance_other': allowance_other,
+            'gross_salary': gross_salary,
+            'opening_balance': opening_balance,
+            'deduction_add': deduction_add,
+            'deduction_ded': deduction_ded,
+            'deduction_other': deduction_other,
+            'closing_balance': closing_balance,
+            'net_pay': net_pay,
+            'payslip': payslip,
+        })
+    
+    # Get city from company settings
+    city = 'N/A'
+    try:
+        settings_obj = CompanySettings.objects.first()
+        if settings_obj and settings_obj.city:
+            city = settings_obj.city
+    except:
+        pass
+    
+    month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December']
+    month_list = [(i, month_names[i]) for i in range(1, 13)]
+    
+    context = {
+        'register_data': register_data,
+        'month': month,
+        'year': year,
+        'month_name': month_names[month],
+        'month_list': month_list,
+        'days_of_month': days_of_month,
+        'period_start': period_start,
+        'period_end': period_end,
+        'city': city,
+        'total_employees': len(register_data),
+    }
+    return render(request, 'core/monthly_payroll_register.html', context)
 
 # Notification views
 def create_notification(recipient, sender, notification_type, title, message, link=None):

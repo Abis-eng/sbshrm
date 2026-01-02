@@ -1,0 +1,227 @@
+{% extends 'core/base.html' %}
+{% load crispy_forms_tags %}
+{% block page_title %}Monthly Payroll Creation{% endblock %}
+{% block content %}
+<style>
+    body {
+        background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
+        min-height: 100vh;
+    }
+    .payroll-form-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 30px;
+    }
+    .form-header {
+        background: linear-gradient(135deg, #ec4899 0%, #db2777 50%, #be185d 100%);
+        border-radius: 20px;
+        padding: 30px;
+        color: #fff;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(236, 72, 153, 0.3);
+    }
+    .form-header h2 {
+        margin: 0;
+        font-weight: 700;
+        font-size: 1.75rem;
+    }
+    .form-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.1);
+        border: 2px solid #fce7f3;
+    }
+    .form-group {
+        margin-bottom: 25px;
+    }
+    .form-label {
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 10px;
+        display: block;
+        font-size: 0.95rem;
+    }
+    .form-control, .form-select {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 12px 18px;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+        width: 100%;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #ec4899;
+        box-shadow: 0 0 0 4px rgba(236, 72, 153, 0.1);
+        outline: none;
+    }
+    .info-text {
+        color: #64748b;
+        font-size: 0.85rem;
+        margin-top: 5px;
+        font-style: italic;
+    }
+    .btn-process {
+        background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+        color: #fff;
+        font-weight: 700;
+        font-size: 1.1rem;
+        border-radius: 50px;
+        padding: 15px 60px;
+        border: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 8px 25px rgba(236, 72, 153, 0.4);
+        width: 100%;
+        margin-top: 20px;
+    }
+    .btn-process:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 35px rgba(236, 72, 153, 0.5);
+        color: #fff;
+    }
+    .btn-process:active {
+        transform: translateY(-1px);
+    }
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 0 -15px;
+    }
+    .col-md-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+        padding: 0 15px;
+    }
+    .col-md-12 {
+        flex: 0 0 100%;
+        max-width: 100%;
+        padding: 0 15px;
+    }
+    @media (max-width: 768px) {
+        .col-md-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+    }
+</style>
+
+<div class="container-fluid py-5">
+    <div class="payroll-form-container">
+        <div class="form-header">
+            <h2><i class="fas fa-calendar-alt me-2"></i>MONTHLY PAYROLL CREATION</h2>
+        </div>
+        
+        <div class="form-card">
+            <form method="post" id="monthlyPayrollForm">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label class="form-label" for="id_city">
+                        <i class="fas fa-city me-2"></i>City
+                    </label>
+                    {{ form.city }}
+                    {% if form.city.errors %}
+                        <div class="text-danger small">{{ form.city.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group" id="department-group" style="display: none;">
+                    <label class="form-label" for="id_department">
+                        <i class="fas fa-building me-2"></i>Department (Optional)
+                    </label>
+                    {{ form.department }}
+                    {% if form.department.errors %}
+                        <div class="text-danger small">{{ form.department.errors }}</div>
+                    {% endif %}
+                    <div class="info-text">Select a department to filter employees, or leave blank for all departments</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="id_number_of_employees">
+                        <i class="fas fa-users me-2"></i>Number of Employees
+                    </label>
+                    <input type="text" class="form-control" value="{{ total_employees }}" readonly id="id_number_of_employees">
+                    <div class="info-text">({{ total_employees }} Employees Exist in Prior Processing)</div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label" for="id_month">
+                                <i class="fas fa-calendar me-2"></i>Payroll For the Month of
+                            </label>
+                            {{ form.month }}
+                            {% if form.month.errors %}
+                                <div class="text-danger small">{{ form.month.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label" for="id_year">
+                                <i class="fas fa-calendar-alt me-2"></i>Year
+                            </label>
+                            {{ form.year }}
+                            {% if form.year.errors %}
+                                <div class="text-danger small">{{ form.year.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="id_days_of_month">
+                        <i class="fas fa-calendar-day me-2"></i>Days of the Month
+                    </label>
+                    {{ form.days_of_month }}
+                    {% if form.days_of_month.errors %}
+                        <div class="text-danger small">{{ form.days_of_month.errors }}</div>
+                    {% endif %}
+                </div>
+                
+                <button type="submit" class="btn btn-process">
+                    <i class="fas fa-cog me-2"></i>Process Payroll
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Auto-calculate days of month when month/year changes
+    document.getElementById('id_month').addEventListener('change', updateDaysOfMonth);
+    document.getElementById('id_year').addEventListener('change', updateDaysOfMonth);
+    
+    function updateDaysOfMonth() {
+        const month = parseInt(document.getElementById('id_month').value);
+        const year = parseInt(document.getElementById('id_year').value);
+        
+        if (month && year) {
+            const daysInMonth = new Date(year, month, 0).getDate();
+            document.getElementById('id_days_of_month').value = daysInMonth;
+        }
+    }
+    
+    // Show department field when city is entered
+    document.getElementById('id_city').addEventListener('input', function() {
+        const cityValue = this.value.trim();
+        const departmentGroup = document.getElementById('department-group');
+        if (cityValue.length > 0) {
+            departmentGroup.style.display = 'block';
+        } else {
+            departmentGroup.style.display = 'none';
+        }
+    });
+    
+    // Initialize days on page load
+    if (document.getElementById('id_month').value && document.getElementById('id_year').value) {
+        updateDaysOfMonth();
+    }
+    
+    // Show department field if city already has value
+    if (document.getElementById('id_city').value.trim().length > 0) {
+        document.getElementById('department-group').style.display = 'block';
+    }
+</script>
+{% endblock %}
+

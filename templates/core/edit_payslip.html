@@ -82,6 +82,9 @@
             <div class="form-card">
                 <form method="post">
                     {% csrf_token %}
+                    {% if redirect_to %}
+                        <input type="hidden" name="redirect_to" value="{{ redirect_to }}">
+                    {% endif %}
                     <div class="row g-4 mb-4">
                         <div class="col-md-6">
                             <label class="form-label" for="{{ form.date.id_for_label }}">
@@ -112,9 +115,15 @@
                         <button type="submit" class="btn btn-submit me-3">
                             <i class="fas fa-save me-2"></i>Save Changes
                         </button>
-                        <a href="{% url 'admin_payslips' %}" class="btn btn-cancel">
-                            <i class="fas fa-times me-2"></i>Cancel
-                        </a>
+                        {% if redirect_to == 'register' and payslip.period_start %}
+                            <a href="{% url 'monthly_payroll_register' month=payslip.period_start.month year=payslip.period_start.year %}" class="btn btn-cancel">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                        {% else %}
+                            <a href="{% url 'admin_payslips' %}" class="btn btn-cancel">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                        {% endif %}
                     </div>
                 </form>
             </div>

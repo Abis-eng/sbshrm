@@ -562,6 +562,207 @@ class PayslipEditForm(forms.ModelForm):
             'status': forms.Select(attrs={'class': 'form-select'}),
         }
 
+class PayslipRegisterEditForm(forms.Form):
+    """Comprehensive form for editing all payslip amounts shown in register"""
+    # Basic fields
+    base_pay = forms.DecimalField(
+        required=True,
+        min_value=0,
+        decimal_places=2,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01'
+        }),
+        label='Basic Pay'
+    )
+    work_days = forms.IntegerField(
+        required=True,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'type': 'number'
+        }),
+        label='Work Days'
+    )
+    absences = forms.IntegerField(
+        required=True,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'type': 'number'
+        }),
+        label='Absences'
+    )
+    leaves = forms.IntegerField(
+        required=True,
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'type': 'number'
+        }),
+        label='Leaves'
+    )
+    basic_salary = forms.DecimalField(
+        required=True,
+        min_value=0,
+        decimal_places=2,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01'
+        }),
+        label='Basic Salary'
+    )
+    
+    # Allowances
+    allowance_fuel = forms.DecimalField(
+        required=True,
+        min_value=0,
+        decimal_places=2,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01'
+        }),
+        label='Allowance - Fuel'
+    )
+    allowance_mobile = forms.DecimalField(
+        required=True,
+        min_value=0,
+        decimal_places=2,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01'
+        }),
+        label='Allowance - Mobile'
+    )
+    allowance_other = forms.DecimalField(
+        required=True,
+        min_value=0,
+        decimal_places=2,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01'
+        }),
+        label='Allowance - Other'
+    )
+    
+    # Gross and Net
+    gross_pay = forms.DecimalField(
+        required=True,
+        min_value=0,
+        decimal_places=2,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01'
+        }),
+        label='Gross Salary'
+    )
+    
+    # Opening/Closing Balance
+    opening_balance = forms.DecimalField(
+        required=True,
+        decimal_places=2,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01'
+        }),
+        label='Opening Balance'
+    )
+    
+    # Deductions
+    deduction_add = forms.DecimalField(
+        required=True,
+        min_value=0,
+        decimal_places=2,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01'
+        }),
+        label='Deduction - Add'
+    )
+    deduction_ded = forms.DecimalField(
+        required=True,
+        min_value=0,
+        decimal_places=2,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01'
+        }),
+        label='Deduction - Ded.'
+    )
+    deduction_other = forms.DecimalField(
+        required=True,
+        min_value=0,
+        decimal_places=2,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01'
+        }),
+        label='Deduction - Other'
+    )
+    
+    closing_balance = forms.DecimalField(
+        required=True,
+        decimal_places=2,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01'
+        }),
+        label='Closing Balance'
+    )
+    
+    # Net Pay
+    net_pay = forms.DecimalField(
+        required=True,
+        decimal_places=2,
+        max_digits=10,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'step': '0.01'
+        }),
+        label='Net Pay'
+    )
+    
+    # Payslip fields
+    date = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control'
+        }),
+        required=True
+    )
+    period_start = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control'
+        }),
+        required=False
+    )
+    period_end = forms.DateField(
+        widget=forms.DateInput(attrs={
+            'type': 'date',
+            'class': 'form-control'
+        }),
+        required=False
+    )
+    status = forms.ChoiceField(
+        choices=[('pending', 'Pending'), ('processed', 'Processed'), ('paid', 'Paid')],
+        widget=forms.Select(attrs={
+            'class': 'form-select'
+        }),
+        required=True
+    )
+
 class TaxSlabForm(forms.ModelForm):
     class Meta:
         model = TaxSlab
@@ -617,3 +818,59 @@ class NoticeForm(forms.ModelForm):
             'image_display_mode': forms.Select(attrs={'class': 'form-control form-select'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+
+class MonthlyPayrollForm(forms.Form):
+    MONTH_CHOICES = [
+        (1, 'January'), (2, 'February'), (3, 'March'), (4, 'April'),
+        (5, 'May'), (6, 'June'), (7, 'July'), (8, 'August'),
+        (9, 'September'), (10, 'October'), (11, 'November'), (12, 'December')
+    ]
+    
+    city = forms.CharField(
+        max_length=100,
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter City',
+            'id': 'id_city'
+        })
+    )
+    department = forms.ModelChoiceField(
+        queryset=None,
+        required=False,
+        empty_label='All Departments',
+        widget=forms.Select(attrs={
+            'class': 'form-control form-select',
+            'id': 'id_department'
+        })
+    )
+    month = forms.ChoiceField(
+        choices=MONTH_CHOICES,
+        required=True,
+        widget=forms.Select(attrs={
+            'class': 'form-control form-select'
+        })
+    )
+    year = forms.IntegerField(
+        required=True,
+        min_value=2000,
+        max_value=2100,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Year (e.g., 2025)'
+        })
+    )
+    days_of_month = forms.IntegerField(
+        required=True,
+        min_value=28,
+        max_value=31,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Days in month'
+        })
+    )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .models import Department
+        self.fields['department'].queryset = Department.objects.all().order_by('name')
