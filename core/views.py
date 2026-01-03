@@ -3390,9 +3390,9 @@ def settings_main(request):
         form = CompanySettingsForm(request.POST, request.FILES, instance=settings_obj)
         if form.is_valid():
             try:
-            form.save()
+                form.save()
                 messages.success(request, 'Company settings updated successfully!')
-            return redirect('settings_main')
+                return redirect('settings_main')
             except Exception as e:
                 messages.error(request, f'Error saving settings: {str(e)}')
         else:
