@@ -3,12 +3,47 @@
 {% block content %}
 <div class="card mt-4">
   <div class="card-body">
-    <h4 class="card-title">Employee Created Successfully!</h4>
+    <h4 class="card-title"><i class="fas fa-check-circle text-success me-2"></i>Employee Created Successfully!</h4>
     <p class="card-text">The new employee account has been created.</p>
-    <p><strong>Username:</strong> {{ username }}</p>
-    <p><strong>Password:</strong> {{ password }}</p>
-    <a href="{% url 'add_employee' %}" class="btn btn-success">Add Another Employee</a>
-    <a href="{% url 'employee_list' %}" class="btn btn-secondary">Back to Employee List</a>
+    <div class="alert alert-info">
+      <h5><i class="fas fa-key me-2"></i>Login Credentials:</h5>
+      <p class="mb-1"><strong>Username:</strong> <code>{{ username }}</code></p>
+      <p class="mb-0"><strong>Password:</strong> <code>{{ password }}</code></p>
+    </div>
+    
+    {% if employee_email %}
+      {% if email_sent %}
+        <div class="alert alert-success">
+          <i class="fas fa-envelope-check me-2"></i>
+          <strong>Welcome email sent successfully!</strong> An email with login credentials has been sent to <strong>{{ employee_email }}</strong>.
+        </div>
+      {% elif email_error %}
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <strong>Email not sent:</strong> {{ email_error }}
+          <br><small>Please check email settings in Company Settings or manually share the credentials with the employee.</small>
+        </div>
+      {% else %}
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Email not configured.</strong> Please manually share the credentials with the employee or configure email settings.
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>No email address provided.</strong> Welcome email could not be sent. Please manually share the credentials with the employee.
+      </div>
+    {% endif %}
+    
+    <div class="mt-3">
+      <a href="{% url 'add_employee' %}" class="btn btn-success">
+        <i class="fas fa-user-plus me-2"></i>Add Another Employee
+      </a>
+      <a href="{% url 'employee_list' %}" class="btn btn-secondary">
+        <i class="fas fa-list me-2"></i>Back to Employee List
+      </a>
+    </div>
   </div>
 </div>
 {% endblock %} 

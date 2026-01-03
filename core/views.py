@@ -407,6 +407,7 @@ def add_employee(request):
             password=make_password(password),
             first_name=first_name,
             last_name=last_name,
+            email=email if email else '',
         )
         salary = request.POST.get('salary') or None
         employee = Employee.objects.create(
@@ -423,7 +424,26 @@ def add_employee(request):
             card_id=card_id if card_id else None,
             profile_picture=profile_picture,
         )
-        return render(request, 'core/employee_created.html', {'username': username, 'password': password})
+        
+        # Send welcome email if email is configured
+        from .email_utils import send_welcome_email
+        email_sent = False
+        email_error = None
+        if employee.user.email:
+            try:
+                email_sent = send_welcome_email(employee, username, password)
+                if not email_sent:
+                    email_error = "Failed to send welcome email. Please check email settings."
+            except Exception as e:
+                email_error = f"Error sending email: {str(e)}"
+        
+        return render(request, 'core/employee_created.html', {
+            'username': username, 
+            'password': password,
+            'email_sent': email_sent,
+            'email_error': email_error,
+            'employee_email': employee.user.email if employee.user.email else None
+        })
     return render(request, 'core/add_employee.html', {'departments': departments, 'designations': designations, 'error': error})
 
 class DepartmentForm(ModelForm):
@@ -1990,26 +2010,78 @@ def manage_employee_machine_ids(request):
 
 @user_passes_test(is_admin)
 def manual_attendance_entry(request):
-    """Manual attendance entry"""
+    """Manual attendance entry - Direct attendance record creation"""
     if request.method == 'POST':
         form = ManualAttendanceForm(request.POST)
         if form.is_valid():
-            # Create attendance log
-            AttendanceLog.objects.create(
-                employee=form.cleaned_data['employee'],
-                attendance_type=form.cleaned_data['attendance_type'],
-                source='manual',
-                timestamp=form.cleaned_data['timestamp'],
-                notes=form.cleaned_data['notes']
-            )
+            employee = form.cleaned_data['employee']
+            date = form.cleaned_data['date']
+            status = form.cleaned_data['status']
+            check_in = form.cleaned_data.get('check_in')
+            check_out = form.cleaned_data.get('check_out')
+            break_start = form.cleaned_data.get('break_start')
+            break_end = form.cleaned_data.get('break_end')
+            is_late = form.cleaned_data.get('is_late', False)
+            late_minutes = form.cleaned_data.get('late_minutes', 0) or 0
+            notes = form.cleaned_data.get('notes', '') or ''
             
-            # Process attendance logs
-            zkt_service.process_attendance_logs()
-            
-            messages.success(request, 'Manual attendance entry recorded successfully!')
-            return redirect('manual_attendance_entry')
+            try:
+                # Convert datetime fields to timezone-aware if provided and naive
+                if check_in:
+                    if timezone.is_naive(check_in):
+                        check_in = timezone.make_aware(check_in)
+                if check_out:
+                    if timezone.is_naive(check_out):
+                        check_out = timezone.make_aware(check_out)
+                if break_start:
+                    if timezone.is_naive(break_start):
+                        break_start = timezone.make_aware(break_start)
+                if break_end:
+                    if timezone.is_naive(break_end):
+                        break_end = timezone.make_aware(break_end)
+                
+                # Get or create attendance record
+                attendance, created = Attendance.objects.get_or_create(
+                    employee=employee,
+                    date=date,
+                    defaults={
+                        'status': status,
+                        'check_in': check_in,
+                        'check_out': check_out,
+                        'break_start': break_start,
+                        'break_end': break_end,
+                        'is_late': is_late,
+                        'late_minutes': late_minutes,
+                        'notes': notes
+                    }
+                )
+                
+                # If record already exists, update it
+                if not created:
+                    attendance.status = status
+                    attendance.check_in = check_in if check_in else attendance.check_in
+                    attendance.check_out = check_out if check_out else attendance.check_out
+                    attendance.break_start = break_start if break_start else attendance.break_start
+                    attendance.break_end = break_end if break_end else attendance.break_end
+                    attendance.is_late = is_late
+                    attendance.late_minutes = late_minutes
+                    attendance.notes = notes if notes else attendance.notes
+                    attendance.save()
+                
+                # Calculate work hours if check_in and check_out are provided
+                if attendance.check_in and attendance.check_out:
+                    attendance.calculate_hours()
+                
+                messages.success(request, f'Attendance record {"created" if created else "updated"} successfully for {employee.user.get_full_name() or employee.user.username} on {date}!')
+                return redirect('all_attendance')
+            except Exception as e:
+                import traceback
+                logger.error(f"Error creating manual attendance: {str(e)}\n{traceback.format_exc()}")
+                messages.error(request, f'Error recording attendance: {str(e)}')
     else:
         form = ManualAttendanceForm()
+        # Set default date to today
+        form.initial['date'] = timezone.now().date()
     
     return render(request, 'core/manual_attendance_entry.html', {
         'form': form,
@@ -3272,15 +3344,107 @@ def delete_user(request, user_id):
 @user_passes_test(is_admin)
 def settings_main(request):
     settings_obj, _ = CompanySettings.objects.get_or_create(pk=1)
+    
+    # Auto-setup Gmail if email settings are empty or update to new email
+    if not settings_obj.email_host or settings_obj.email_host_user != 'technologiessbs15@gmail.com':
+        settings_obj.email_host = 'smtp.gmail.com'
+        settings_obj.email_port = 587
+        settings_obj.email_use_tls = True
+        settings_obj.email_use_ssl = False
+        if not settings_obj.email_host_user or settings_obj.email_host_user == 'it@sbstechnologies.pk':
+            settings_obj.email_host_user = 'technologiessbs15@gmail.com'
+        settings_obj.email_from_name = 'SBS Technologies HRM'
+        settings_obj.save()
+    
     if request.method == 'POST':
+        # Check if this is a quick setup request
+        if 'quick_setup_gmail' in request.POST:
+            settings_obj.email_host = 'smtp.gmail.com'
+            settings_obj.email_port = 587
+            settings_obj.email_use_tls = True
+            settings_obj.email_use_ssl = False
+            settings_obj.email_host_user = 'technologiessbs15@gmail.com'
+            settings_obj.email_from_name = 'SBS Technologies HRM'
+            settings_obj.save()
+            messages.success(request, 'Gmail settings configured! Now enter your email password and enable email, then save.')
+            return redirect('settings_main')
+        
         form = CompanySettingsForm(request.POST, request.FILES, instance=settings_obj)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Company settings updated!')
-            return redirect('settings_main')
+            try:
+                form.save()
+                messages.success(request, 'Company settings updated successfully!')
+                return redirect('settings_main')
+            except Exception as e:
+                messages.error(request, f'Error saving settings: {str(e)}')
+        else:
+            # Display form errors
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f'{field}: {error}')
     else:
         form = CompanySettingsForm(instance=settings_obj)
+        # Ensure email is set if empty
+        if not settings_obj.email_host_user or settings_obj.email_host_user == 'it@sbstechnologies.pk':
+            settings_obj.email_host_user = 'technologiessbs15@gmail.com'
+            settings_obj.save()
+            form = CompanySettingsForm(instance=settings_obj)  # Reload form with updated instance
     return render(request, 'core/settings_main.html', {'form': form, 'active_section': 'company', 'settings_obj': settings_obj})
+
+@user_passes_test(is_admin)
+def test_email_config(request):
+    """Test email configuration by sending a test email"""
+    if request.method == 'POST':
+        recipient_email = request.POST.get('recipient_email')
+        if not recipient_email:
+            messages.error(request, 'Please provide a recipient email address.')
+            return redirect('settings_main')
+        
+        from .email_utils import send_test_email
+        import traceback
+        
+        try:
+            # Check settings first
+            from .models import CompanySettings
+            company_settings = CompanySettings.objects.first()
+            
+            if not company_settings:
+                messages.error(request, 'Company settings not found. Please configure company settings first.')
+                return redirect('settings_main')
+            
+            if not company_settings.email_enabled:
+                messages.error(request, 'Email is not enabled. Please enable email in settings and save first.')
+                return redirect('settings_main')
+            
+            if not company_settings.email_host_user or not company_settings.email_host_password:
+                messages.error(request, 'Email username or password not configured. Please check your email settings.')
+                return redirect('settings_main')
+            
+            success, message = send_test_email(recipient_email)
+            
+            if success:
+                messages.success(request, f'✅ Test email sent successfully to {recipient_email}! Please check the inbox (and spam/junk folder).')
+            else:
+                # Show the detailed error message
+                error_details = message
+                
+                # Add helpful links and instructions
+                help_text = ""
+                if "authentication" in message.lower() or "login" in message.lower() or "password" in message.lower():
+                    help_text = "<br><br><strong>💡 Solution:</strong> For Gmail, if you have 2-Step Verification enabled, you MUST use an App Password instead of your regular password.<br>Get App Password: <a href='https://myaccount.google.com/apppasswords' target='_blank'>https://myaccount.google.com/apppasswords</a>"
+                elif "connection" in message.lower() or "cannot connect" in message.lower():
+                    help_text = "<br><br><strong>💡 Solution:</strong> Check your SMTP settings. For Gmail: Host=smtp.gmail.com, Port=587, Use TLS=Yes, Use SSL=No"
+                elif "tls" in message.lower() or "ssl" in message.lower():
+                    help_text = "<br><br><strong>💡 Solution:</strong> For Gmail with port 587, check 'Use TLS' and uncheck 'Use SSL'. For port 465, check 'Use SSL' and uncheck 'Use TLS'"
+                
+                messages.error(request, f'❌ Failed to send test email: {error_details}{help_text}', extra_tags='safe')
+        except Exception as e:
+            error_msg = f"Error sending test email: {str(e)}"
+            logger.error(f"Test email error: {error_msg}\n{traceback.format_exc()}")
+            messages.error(request, f'❌ Error: {error_msg}. Please check your email settings and try again.')
+        
+        return redirect('settings_main')
+    return redirect('settings_main')
 
 @user_passes_test(is_admin)
 def settings_localization(request):

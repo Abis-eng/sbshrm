@@ -44,6 +44,7 @@ urlpatterns = [
     path('users/<int:user_id>/delete/', views.delete_user, name='delete_user'),
     path('settings/', views.settings_main, name='settings_main'),
     path('settings/localization/', views.settings_localization, name='settings_localization'),
+    path('settings/test-email/', views.test_email_config, name='test_email_config'),
     path('settings/invoice/', views.settings_invoice, name='settings_invoice'),
     path('settings/salary/', views.settings_salary, name='settings_salary'),
     path('settings/theme/', views.settings_theme, name='settings_theme'),

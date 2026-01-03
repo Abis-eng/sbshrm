@@ -160,12 +160,19 @@ class AssetForm(forms.ModelForm):
         } 
 
 class CompanySettingsForm(forms.ModelForm):
+    email_host_password = forms.CharField(
+        required=False,
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control', 
+            'placeholder': 'Leave blank to keep current password'
+        }),
+        help_text="Leave blank to keep current password"
+    )
+    
     class Meta:
         model = CompanySettings
-        fields = ['company_name', 'contact_person', 'address', 'country', 'city', 'state_province', 'postal_code', 'email', 'phone_number', 'mobile_number', 'fax', 'website_url', 'logo']
-        widgets = {
-            'logo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
-        }
+        fields = ['company_name', 'contact_person', 'address', 'country', 'city', 'state_province', 'postal_code', 'email', 'phone_number', 'mobile_number', 'fax', 'website_url', 'logo',
+                  'email_host', 'email_port', 'email_use_tls', 'email_use_ssl', 'email_host_user', 'email_host_password', 'email_from_name', 'email_enabled']
         widgets = {
             'company_name': forms.TextInput(attrs={'class': 'form-control'}),
             'contact_person': forms.TextInput(attrs={'class': 'form-control'}),
@@ -179,7 +186,29 @@ class CompanySettingsForm(forms.ModelForm):
             'mobile_number': forms.TextInput(attrs={'class': 'form-control'}),
             'fax': forms.TextInput(attrs={'class': 'form-control'}),
             'website_url': forms.URLInput(attrs={'class': 'form-control'}),
-        } 
+            'logo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'email_host': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'smtp.gmail.com'}),
+            'email_port': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 65535}),
+            'email_use_tls': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'email_use_ssl': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'email_host_user': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'your-email@gmail.com'}),
+            'email_from_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'HRM System'}),
+            'email_enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        # Only update password if a new one was provided
+        password = self.cleaned_data.get('email_host_password')
+        if password:
+            instance.email_host_password = password
+        elif not instance.pk:
+            # If creating new and no password provided, set empty
+            instance.email_host_password = ''
+        
+        if commit:
+            instance.save()
+        return instance 
 
 class LocalizationSettingsForm(forms.ModelForm):
     class Meta:
@@ -331,28 +360,69 @@ class EmployeeMachineForm(ModelForm):
         }
 
 class ManualAttendanceForm(forms.Form):
-    """Form for manual attendance entry"""
-    ATTENDANCE_TYPE_CHOICES = [
-        ('check_in', 'Check In'),
-        ('check_out', 'Check Out'),
-        ('break_start', 'Break Start'),
-        ('break_end', 'Break End'),
+    """Form for manual attendance entry - Direct attendance record creation"""
+    STATUS_CHOICES = [
+        ('present', 'Present'),
+        ('absent', 'Absent'),
+        ('late', 'Late'),
+        ('half_day', 'Half Day'),
+        ('leave', 'Leave'),
+        ('holiday', 'Holiday'),
     ]
     
     employee = forms.ModelChoiceField(
-        queryset=Employee.objects.all(),
+        queryset=Employee.objects.select_related('user').all().order_by('user__first_name', 'user__last_name'),
         widget=forms.Select(attrs={'class': 'form-control'}),
-        label="Employee"
+        label="Employee",
+        required=True
     )
-    attendance_type = forms.ChoiceField(
-        choices=ATTENDANCE_TYPE_CHOICES,
+    date = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+        label="Date",
+        initial=timezone.now().date(),
+        required=True
+    )
+    status = forms.ChoiceField(
+        choices=STATUS_CHOICES,
         widget=forms.Select(attrs={'class': 'form-control'}),
-        label="Attendance Type"
+        label="Status",
+        required=True,
+        initial='present'
     )
-    timestamp = forms.DateTimeField(
-        widget=forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
-        label="Timestamp",
-        initial=timezone.now
+    check_in = forms.DateTimeField(
+        widget=forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local', 'id': 'id_check_in'}, format='%Y-%m-%dT%H:%M'),
+        label="Check In",
+        required=False,
+        input_formats=['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
+    )
+    check_out = forms.DateTimeField(
+        widget=forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local', 'id': 'id_check_out'}, format='%Y-%m-%dT%H:%M'),
+        label="Check Out",
+        required=False,
+        input_formats=['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
+    )
+    break_start = forms.DateTimeField(
+        widget=forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local', 'id': 'id_break_start'}, format='%Y-%m-%dT%H:%M'),
+        label="Break Start",
+        required=False,
+        input_formats=['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
+    )
+    break_end = forms.DateTimeField(
+        widget=forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local', 'id': 'id_break_end'}, format='%Y-%m-%dT%H:%M'),
+        label="Break End",
+        required=False,
+        input_formats=['%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M']
+    )
+    is_late = forms.BooleanField(
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        label="Is Late",
+        required=False
+    )
+    late_minutes = forms.IntegerField(
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '0'}),
+        label="Late Minutes",
+        required=False,
+        initial=0
     )
     notes = forms.CharField(
         widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),

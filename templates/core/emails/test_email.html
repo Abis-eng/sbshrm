@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Email - {{ company_name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .email-container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            text-align: center;
+            margin: -30px -30px 30px -30px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .success-box {
+            background-color: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #4B49AC;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>✅ Email Test Successful!</h1>
+        </div>
+        
+        <div class="content">
+            <div class="success-box">
+                <strong>Congratulations!</strong> Your email configuration is working correctly.
+            </div>
+            
+            <p>This is a test email from the <strong>{{ company_name }}</strong> HRM System.</p>
+            
+            <div class="info-box">
+                <h3 style="margin-top: 0; color: #4B49AC;">Email Configuration Details:</h3>
+                <p><strong>SMTP Host:</strong> {{ email_host }}</p>
+                <p><strong>SMTP Port:</strong> {{ email_port }}</p>
+                <p><strong>Company:</strong> {{ company_name }}</p>
+            </div>
+            
+            <p>If you received this email, it means:</p>
+            <ul>
+                <li>✅ SMTP server connection is working</li>
+                <li>✅ Authentication credentials are correct</li>
+                <li>✅ Email sending functionality is operational</li>
+            </ul>
+            
+            <p>You can now use the email notification features in the HRM System.</p>
+            
+            <p>Best regards,<br>
+            <strong>{{ company_name }} HRM System</strong></p>
+        </div>
+        
+        <div class="footer">
+            <p>This is a test email. Please do not reply to this message.</p>
+            <p>&copy; {{ company_name }}. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+

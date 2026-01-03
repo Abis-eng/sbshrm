@@ -787,6 +787,16 @@ class CompanySettings(models.Model):
     fax = models.CharField(max_length=30, blank=True)
     website_url = models.CharField(max_length=255, blank=True)
     logo = models.ImageField(upload_to='company_logos/', blank=True, null=True, help_text="Company logo for payslips and documents")
+    
+    # Email Settings
+    email_host = models.CharField(max_length=255, blank=True, default='smtp.gmail.com', help_text="SMTP server host (e.g., smtp.gmail.com)")
+    email_port = models.IntegerField(default=587, help_text="SMTP server port (587 for TLS, 465 for SSL)")
+    email_use_tls = models.BooleanField(default=True, help_text="Use TLS encryption")
+    email_use_ssl = models.BooleanField(default=False, help_text="Use SSL encryption")
+    email_host_user = models.EmailField(blank=True, default='technologiessbs15@gmail.com', help_text="Email address for SMTP authentication")
+    email_host_password = models.CharField(max_length=255, blank=True, help_text="Password for SMTP authentication")
+    email_from_name = models.CharField(max_length=255, blank=True, default="SBS Technologies HRM", help_text="Name shown in 'From' field")
+    email_enabled = models.BooleanField(default=False, help_text="Enable email notifications")
 
     def __str__(self):
         return self.company_name or 'Company Settings'
