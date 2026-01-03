@@ -325,7 +325,7 @@
                     {% if asset.cost %}
                     <div class="info-item">
                         <i class="fas fa-dollar-sign"></i>
-                        <span><strong>Cost:</strong> ${{ asset.cost }}</span>
+                        <span><strong>Cost:</strong> {{ currency_symbol|default:"$" }}{{ asset.cost }}</span>
                     </div>
                     {% endif %}
                     {% if asset.condition %}

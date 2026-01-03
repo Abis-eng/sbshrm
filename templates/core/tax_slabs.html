@@ -248,11 +248,11 @@
                 <div class="slab-info">
                     <div class="info-item">
                         <i class="fas fa-dollar-sign"></i>
-                        <span><strong>Min Income:</strong> ${{ slab.min_income }}</span>
+                        <span><strong>Min Income:</strong> {{ currency_symbol|default:"$" }}{{ slab.min_income }}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-dollar-sign"></i>
-                        <span><strong>Max Income:</strong> {% if slab.max_income %}${{ slab.max_income }}{% else %}∞{% endif %}</span>
+                        <span><strong>Max Income:</strong> {% if slab.max_income %}{{ currency_symbol|default:"$" }}{{ slab.max_income }}{% else %}∞{% endif %}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-percent"></i>
@@ -260,7 +260,7 @@
                     </div>
                     <div class="info-item">
                         <i class="fas fa-dollar-sign"></i>
-                        <span><strong>Fixed Deduction:</strong> ${{ slab.fixed_deduction }}</span>
+                        <span><strong>Fixed Deduction:</strong> {{ currency_symbol|default:"$" }}{{ slab.fixed_deduction }}</span>
                     </div>
                 </div>
             </div>

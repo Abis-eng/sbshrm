@@ -206,15 +206,15 @@
                 <div class="payslip-info">
                     <div class="info-item">
                         <i class="fas fa-dollar-sign"></i>
-                        <span><strong>Gross Pay:</strong> ${{ payslip.gross_pay }}</span>
+                        <span><strong>Gross Pay:</strong> {{ currency_symbol|default:"$" }}{{ payslip.gross_pay }}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-arrow-up"></i>
-                        <span><strong>Earnings:</strong> ${{ payslip.total_earnings }}</span>
+                        <span><strong>Earnings:</strong> {{ currency_symbol|default:"$" }}{{ payslip.total_earnings }}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-arrow-down"></i>
-                        <span><strong>Deductions:</strong> ${{ payslip.total_deductions }}</span>
+                        <span><strong>Deductions:</strong> {{ currency_symbol|default:"$" }}{{ payslip.total_deductions }}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-calendar"></i>

@@ -81,7 +81,7 @@ def login_view(request):
         if user is not None:
             login(request, user)
             # Redirect all users to dashboard after login
-            return redirect('dashboard')
+                return redirect('dashboard')
         else:
             messages.error(request, 'Invalid username or password.')
     return render(request, 'core/login.html')
@@ -3390,9 +3390,9 @@ def settings_main(request):
         form = CompanySettingsForm(request.POST, request.FILES, instance=settings_obj)
         if form.is_valid():
             try:
-                form.save()
+            form.save()
                 messages.success(request, 'Company settings updated successfully!')
-                return redirect('settings_main')
+            return redirect('settings_main')
             except Exception as e:
                 messages.error(request, f'Error saving settings: {str(e)}')
         else:
@@ -3865,6 +3865,14 @@ def _render_payslip_pdf_to_bytes(payslip, items, context_extra=None):
     from reportlab.platypus import Table, TableStyle, Paragraph, Spacer, KeepTogether
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    
+    # Get currency symbol from settings
+    try:
+        from .models import LocalizationSettings
+        loc_settings = LocalizationSettings.objects.first()
+        currency_symbol = loc_settings.currency_symbol if loc_settings else '$'
+    except:
+        currency_symbol = '$'
     from reportlab.pdfgen import canvas
     from datetime import datetime
     from reportlab.lib.colors import HexColor
@@ -4088,21 +4096,21 @@ def _render_payslip_pdf_to_bytes(payslip, items, context_extra=None):
     
     # Base Salary
     if base_salary > 0:
-        earnings_data.append([Paragraph("Base Salary", value_style), Paragraph(f"${base_salary:,.2f}", value_style)])
+        earnings_data.append([Paragraph("Base Salary", value_style), Paragraph(f"{currency_symbol}{base_salary:,.2f}", value_style)])
         earnings_total += base_salary
     
     # Additional Earnings
     for item in items:
         if item.item_type == PayrollItem.EARNING:
             amount = float(item.amount)
-            earnings_data.append([Paragraph(item.name, value_style), Paragraph(f"${amount:,.2f}", value_style)])
+            earnings_data.append([Paragraph(item.name, value_style), Paragraph(f"{currency_symbol}{amount:,.2f}", value_style)])
             earnings_total += amount
     
     if len(earnings_data) == 1:
-        earnings_data.append([Paragraph("No additional earnings", value_style), Paragraph('$0.00', value_style)])
+        earnings_data.append([Paragraph("No additional earnings", value_style), Paragraph(f'{currency_symbol}0.00', value_style)])
     
     earnings_data.append([Paragraph("<b>TOTAL EARNINGS</b>", ParagraphStyle('BoldTotal', parent=value_style, fontName='Helvetica-Bold', fontSize=9)), 
-                         Paragraph(f"<b>${earnings_total:,.2f}</b>", ParagraphStyle('BoldTotal', parent=value_style, fontName='Helvetica-Bold', fontSize=9))])
+                         Paragraph(f"<b>{currency_symbol}{earnings_total:,.2f}</b>", ParagraphStyle('BoldTotal', parent=value_style, fontName='Helvetica-Bold', fontSize=9))])
     
     earnings_table = Table(earnings_data, colWidths=[140*mm, 50*mm])
     earnings_table.setStyle(TableStyle([
@@ -4131,36 +4139,36 @@ def _render_payslip_pdf_to_bytes(payslip, items, context_extra=None):
     
     # Tax
     if tax_amount > 0:
-        deductions_data.append([Paragraph("Income Tax", value_style), Paragraph(f"${tax_amount:,.2f}", value_style)])
+        deductions_data.append([Paragraph("Income Tax", value_style), Paragraph(f"{currency_symbol}{tax_amount:,.2f}", value_style)])
         deductions_total += tax_amount
     
     # Loan Installments
     if loan_installment_total > 0:
-        deductions_data.append([Paragraph("Loan Repayment", value_style), Paragraph(f"${loan_installment_total:,.2f}", value_style)])
+        deductions_data.append([Paragraph("Loan Repayment", value_style), Paragraph(f"{currency_symbol}{loan_installment_total:,.2f}", value_style)])
         deductions_total += loan_installment_total
     
     # Unpaid Leaves
     if unpaid_leave_deduction > 0:
-        deductions_data.append([Paragraph("Unpaid Leave Deduction", value_style), Paragraph(f"${unpaid_leave_deduction:,.2f}", value_style)])
+        deductions_data.append([Paragraph("Unpaid Leave Deduction", value_style), Paragraph(f"{currency_symbol}{unpaid_leave_deduction:,.2f}", value_style)])
         deductions_total += unpaid_leave_deduction
     
     # Late Deduction
     if late_deduction > 0:
-        deductions_data.append([Paragraph("Late Arrival Deduction", value_style), Paragraph(f"${late_deduction:,.2f}", value_style)])
+        deductions_data.append([Paragraph("Late Arrival Deduction", value_style), Paragraph(f"{currency_symbol}{late_deduction:,.2f}", value_style)])
         deductions_total += late_deduction
     
     # Additional Deductions
     for item in items:
         if item.item_type == PayrollItem.DEDUCTION:
             amount = float(item.amount)
-            deductions_data.append([Paragraph(item.name, value_style), Paragraph(f"${amount:,.2f}", value_style)])
+            deductions_data.append([Paragraph(item.name, value_style), Paragraph(f"{currency_symbol}{amount:,.2f}", value_style)])
             deductions_total += amount
     
     if len(deductions_data) == 1:
-        deductions_data.append([Paragraph("No deductions", value_style), Paragraph('$0.00', value_style)])
+        deductions_data.append([Paragraph("No deductions", value_style), Paragraph(f'{currency_symbol}0.00', value_style)])
     
     deductions_data.append([Paragraph("<b>TOTAL DEDUCTIONS</b>", ParagraphStyle('BoldTotal', parent=value_style, fontName='Helvetica-Bold', fontSize=9)), 
-                            Paragraph(f"<b>${deductions_total:,.2f}</b>", ParagraphStyle('BoldTotal', parent=value_style, fontName='Helvetica-Bold', fontSize=9))])
+                            Paragraph(f"<b>{currency_symbol}{deductions_total:,.2f}</b>", ParagraphStyle('BoldTotal', parent=value_style, fontName='Helvetica-Bold', fontSize=9))])
     
     deductions_table = Table(deductions_data, colWidths=[140*mm, 50*mm])
     deductions_table.setStyle(TableStyle([
@@ -4190,12 +4198,12 @@ def _render_payslip_pdf_to_bytes(payslip, items, context_extra=None):
     summary_data = [
         [Paragraph("<b>PAYMENT SUMMARY</b>", section_title_style), ''],
         [Paragraph("Gross Pay:", ParagraphStyle('SummaryLabel', parent=value_style, fontName='Helvetica-Bold', fontSize=9)), 
-         Paragraph(f"${gross_pay:,.2f}", value_style)],
+         Paragraph(f"{currency_symbol}{gross_pay:,.2f}", value_style)],
         [Paragraph("Total Deductions:", ParagraphStyle('SummaryLabel', parent=value_style, fontName='Helvetica-Bold', fontSize=9)), 
-         Paragraph(f"${deductions_total:,.2f}", value_style)],
+         Paragraph(f"{currency_symbol}{deductions_total:,.2f}", value_style)],
         ['', ''],
         [Paragraph("<b>NET PAY</b>", ParagraphStyle('NetPayLabel', parent=value_style, fontName='Helvetica-Bold', fontSize=12, textColor=HexColor('#28a745'))), 
-         Paragraph(f"<b>${net_pay:,.2f}</b>", ParagraphStyle('NetPayValue', parent=value_style, fontName='Helvetica-Bold', fontSize=13, textColor=HexColor('#28a745')))],
+         Paragraph(f"<b>{currency_symbol}{net_pay:,.2f}</b>", ParagraphStyle('NetPayValue', parent=value_style, fontName='Helvetica-Bold', fontSize=13, textColor=HexColor('#28a745')))],
     ]
     
     summary_table = Table(summary_data, colWidths=[140*mm, 50*mm])

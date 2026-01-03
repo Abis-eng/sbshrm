@@ -237,7 +237,7 @@
                         <div class="col-md-2">
                             <label class="form-label small fw-bold">Approved Amount</label>
                             <div class="input-group">
-                                <span class="input-group-text" style="border-radius: 10px 0 0 10px;">$</span>
+                                <span class="input-group-text" style="border-radius: 10px 0 0 10px;">{{ currency_symbol|default:"$" }}</span>
                                 <input type="number" name="approved_amount" id="approved_amount_{{ adv.id }}" 
                                        class="form-control approved-amount-input" 
                                        value="{{ adv.amount }}" step="0.01" min="0"

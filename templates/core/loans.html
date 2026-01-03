@@ -287,15 +287,15 @@
                 <div class="loan-info">
                     <div class="info-item">
                         <i class="fas fa-dollar-sign"></i>
-                        <span><strong>Principal:</strong> ${{ loan.principal_amount }}</span>
+                        <span><strong>Principal:</strong> {{ currency_symbol|default:"$" }}{{ loan.principal_amount }}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-calendar"></i>
-                        <span><strong>Monthly Installment:</strong> ${{ loan.monthly_installment }}</span>
+                        <span><strong>Monthly Installment:</strong> {{ currency_symbol|default:"$" }}{{ loan.monthly_installment }}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-wallet"></i>
-                        <span><strong>Balance:</strong> ${{ loan.balance }}</span>
+                        <span><strong>Balance:</strong> {{ currency_symbol|default:"$" }}{{ loan.balance }}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-calendar-alt"></i>
