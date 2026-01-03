@@ -110,6 +110,16 @@
                             <label for="phone" class="form-label">Phone</label>
                             <input type="tel" class="form-control" id="phone" name="phone" placeholder="+1 234 567 8900">
                         </div>
+                        <div class="col-md-6">
+                            <label for="city" class="form-label">City</label>
+                            <input type="text" class="form-control" id="city" name="city" list="city-list" placeholder="Enter or select city">
+                            <datalist id="city-list">
+                                {% for city in existing_cities %}
+                                <option value="{{ city }}">
+                                {% endfor %}
+                            </datalist>
+                            <small class="text-muted">Type to search or select from existing cities</small>
+                        </div>
                         <div class="col-12">
                             <label for="address" class="form-label">Address</label>
                             <textarea class="form-control" id="address" name="address" rows="2" placeholder="Enter full address"></textarea>

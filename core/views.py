@@ -80,10 +80,8 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            if user.is_superuser:
-                return redirect('dashboard')
-            else:
-                return redirect('employee_dashboard')
+            # Redirect all users to dashboard after login
+            return redirect('dashboard')
         else:
             messages.error(request, 'Invalid username or password.')
     return render(request, 'core/login.html')
@@ -94,7 +92,7 @@ def is_admin(user):
 def is_employee(user):
     return user.is_authenticated and not user.is_superuser
 
-@user_passes_test(is_admin)
+@login_required
 def dashboard(request):
     from django.db.models import Count, Sum, Q
     from django.db.models.functions import TruncMonth
@@ -389,6 +387,8 @@ def add_employee(request):
         address = request.POST.get('address')
         if not address:
             address = ''
+        city = request.POST.get('city', '').strip()
+        email = request.POST.get('email', '').strip()
         date_of_joining = request.POST.get('date_of_joining')
         if not date_of_joining:
             date_of_joining = None
@@ -400,7 +400,13 @@ def add_employee(request):
         
         if User.objects.filter(username=username).exists():
             error = 'Username already exists. Please choose another.'
-            return render(request, 'core/add_employee.html', {'departments': departments, 'designations': designations, 'error': error})
+            existing_cities = Employee.objects.exclude(city__isnull=True).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
+            return render(request, 'core/add_employee.html', {
+                'departments': departments, 
+                'designations': designations, 
+                'error': error,
+                'existing_cities': existing_cities
+            })
         
         user = User.objects.create(
             username=username,
@@ -417,6 +423,7 @@ def add_employee(request):
             salary=salary if salary else None,
             phone=phone,
             address=address,
+            city=city,
             date_of_joining=date_of_joining,
             machine_id=machine_id if machine_id else None,
             fingerprint_id=fingerprint_id if fingerprint_id else None,
@@ -444,7 +451,14 @@ def add_employee(request):
             'email_error': email_error,
             'employee_email': employee.user.email if employee.user.email else None
         })
-    return render(request, 'core/add_employee.html', {'departments': departments, 'designations': designations, 'error': error})
+    # Get all existing cities for autocomplete
+    existing_cities = Employee.objects.exclude(city__isnull=True).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
+    return render(request, 'core/add_employee.html', {
+        'departments': departments, 
+        'designations': designations, 
+        'error': error,
+        'existing_cities': existing_cities
+    })
 
 class DepartmentForm(ModelForm):
     class Meta:
@@ -2279,6 +2293,7 @@ def edit_employee(request, employee_id):
         salary = request.POST.get('salary') or None
         employee.phone = phone
         employee.address = address
+        employee.city = request.POST.get('city', '').strip()
         employee.department_id = department_id
         employee.designation_id = designation_id
         employee.salary = salary if salary else None
@@ -2291,11 +2306,14 @@ def edit_employee(request, employee_id):
             employee.profile_picture = profile_picture
         employee.save()
         return redirect('employee_list')
+    # Get all existing cities for autocomplete
+    existing_cities = Employee.objects.exclude(city__isnull=True).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
     return render(request, 'core/edit_employee.html', {
         'employee': employee,
         'departments': departments,
         'designations': designations,
-        'error': error
+        'error': error,
+        'existing_cities': existing_cities
     })
 
 @user_passes_test(is_admin)
@@ -5141,12 +5159,64 @@ def monthly_payroll_register(request, month=None, year=None):
     month_names = ['', 'January', 'February', 'March', 'April', 'May', 'June',
                       'July', 'August', 'September', 'October', 'November', 'December']
     month_list = [(i, month_names[i]) for i in range(1, 13)]
+    month_name = month_names[month]
+    
+    # Check for export format
+    export_format = request.GET.get('format', '')
+    if export_format and register_data:
+        from .report_utils import export_to_pdf, export_to_excel, export_to_csv
+        
+        # Prepare export data
+        headers = [
+            'No.', 'Name', 'Designation', 'Basic Pay', 'Work Days', 'Abs', 'Lvs',
+            'Basic Salary', 'Fuel Allowance', 'Mobile Allowance', 'Other Allowance',
+            'Gross Salary', 'Open Bal.', 'Add Deduction', 'Ded Deduction', 'Other Deduction',
+            'Close Bal.', 'Net Pay'
+        ]
+        
+        export_data = []
+        for idx, data in enumerate(register_data, 1):
+            export_data.append([
+                idx,
+                data['employee'].user.get_full_name() or data['employee'].user.username,
+                data['designation'] or 'N/A',
+                round(data['base_pay'], 2),
+                data['work_days'],
+                data['absences'],
+                data['leaves'],
+                round(data['basic_salary'], 2),
+                round(data['allowance_fuel'], 2),
+                round(data['allowance_mobile'], 2),
+                round(data['allowance_other'], 2),
+                round(data['gross_salary'], 2),
+                round(data['opening_balance'], 2),
+                round(data['deduction_add'], 2),
+                round(data['deduction_ded'], 2),
+                round(data['deduction_other'], 2),
+                round(data['closing_balance'], 2),
+                round(data['net_pay'], 2),
+            ])
+        
+        title = f"Monthly Payroll Register - {month_name}, {year}"
+        filename = f"payroll_register_{month_name}_{year}_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
+        
+        try:
+            if export_format == 'pdf':
+                return export_to_pdf(export_data, title, headers, filename)
+            elif export_format == 'excel':
+                return export_to_excel(export_data, title, headers, filename)
+            elif export_format == 'csv':
+                return export_to_csv(export_data, title, headers, filename)
+        except Exception as e:
+            from django.contrib import messages
+            messages.error(request, f'Export error: {str(e)}')
+            # Continue to show the page with error message
     
     context = {
         'register_data': register_data,
         'month': month,
         'year': year,
-        'month_name': month_names[month],
+        'month_name': month_name,
         'month_list': month_list,
         'days_of_month': days_of_month,
         'period_start': period_start,

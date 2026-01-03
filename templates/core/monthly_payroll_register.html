@@ -134,6 +134,24 @@
     .mb-3 {
         margin-bottom: 1rem;
     }
+    .btn-group .dropdown-menu {
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border: none;
+        padding: 0.5rem;
+    }
+    .btn-group .dropdown-item {
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        transition: all 0.2s ease;
+    }
+    .btn-group .dropdown-item:hover {
+        background: #f0fdfa;
+        color: #047857;
+    }
+    .btn-group .dropdown-item i {
+        width: 20px;
+    }
 </style>
 
 <div class="container-fluid py-4">
@@ -142,24 +160,38 @@
             <a href="{% url 'monthly_payroll_create' %}" class="btn btn-back">
                 <i class="fas fa-plus me-2"></i>Create New Payroll
             </a>
-            <div class="month-selector">
-                <form method="get" action="{% url 'monthly_payroll_register' %}" class="d-flex gap-2 align-items-end">
-                    <div>
-                        <label class="form-label mb-1">Month</label>
-                        <select name="month" class="form-control form-select" style="width: 150px;">
-                            {% for m in month_list %}
-                                <option value="{{ m.0 }}" {% if m.0 == month %}selected{% endif %}>{{ m.1 }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label mb-1">Year</label>
-                        <input type="number" name="year" value="{{ year }}" class="form-control" style="width: 100px;" min="2000" max="2100">
-                    </div>
-                    <button type="submit" class="btn btn-back" style="height: fit-content; padding: 12px 20px;">
-                        <i class="fas fa-search me-2"></i>View
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+                {% if register_data %}
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-back dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 50px;">
+                        <i class="fas fa-download me-2"></i>Export
                     </button>
-                </form>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="?month={{ month }}&year={{ year }}&format=pdf"><i class="fas fa-file-pdf me-2 text-danger"></i>Export as PDF</a></li>
+                        <li><a class="dropdown-item" href="?month={{ month }}&year={{ year }}&format=excel"><i class="fas fa-file-excel me-2 text-success"></i>Export as Excel</a></li>
+                        <li><a class="dropdown-item" href="?month={{ month }}&year={{ year }}&format=csv"><i class="fas fa-file-csv me-2 text-info"></i>Export as CSV</a></li>
+                    </ul>
+                </div>
+                {% endif %}
+                <div class="month-selector">
+                    <form method="get" action="{% url 'monthly_payroll_register' %}" class="d-flex gap-2 align-items-end">
+                        <div>
+                            <label class="form-label mb-1">Month</label>
+                            <select name="month" class="form-control form-select" style="width: 150px;">
+                                {% for m in month_list %}
+                                    <option value="{{ m.0 }}" {% if m.0 == month %}selected{% endif %}>{{ m.1 }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label mb-1">Year</label>
+                            <input type="number" name="year" value="{{ year }}" class="form-control" style="width: 100px;" min="2000" max="2100">
+                        </div>
+                        <button type="submit" class="btn btn-back" style="height: fit-content; padding: 12px 20px;">
+                            <i class="fas fa-search me-2"></i>View
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
         
