@@ -115,34 +115,81 @@
             <form method="post" id="monthlyPayrollForm">
                 {% csrf_token %}
                 
-                <div class="form-group">
-                    <label class="form-label" for="id_city">
-                        <i class="fas fa-city me-2"></i>City
-                    </label>
-                    {{ form.city }}
-                    {% if form.city.errors %}
-                        <div class="text-danger small">{{ form.city.errors }}</div>
-                    {% endif %}
-                </div>
-                
-                <div class="form-group" id="department-group" style="display: none;">
-                    <label class="form-label" for="id_department">
-                        <i class="fas fa-building me-2"></i>Department (Optional)
-                    </label>
-                    {{ form.department }}
-                    {% if form.department.errors %}
-                        <div class="text-danger small">{{ form.department.errors }}</div>
-                    {% endif %}
-                    <div class="info-text">Select a department to filter employees, or leave blank for all departments</div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="form-label" for="id_city">
+                                <i class="fas fa-city me-2"></i>City (Optional)
+                            </label>
+                            {{ form.city }}
+                            {% if form.city.errors %}
+                                <div class="text-danger small">{{ form.city.errors }}</div>
+                            {% endif %}
+                            <div class="info-text">Select a city to filter employees by location</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group" id="department-group">
+                            <label class="form-label" for="id_department">
+                                <i class="fas fa-building me-2"></i>Department (Optional)
+                            </label>
+                            {{ form.department }}
+                            {% if form.department.errors %}
+                                <div class="text-danger small">{{ form.department.errors }}</div>
+                            {% endif %}
+                            <div class="info-text">Select a department to filter employees</div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="form-group">
                     <label class="form-label" for="id_number_of_employees">
                         <i class="fas fa-users me-2"></i>Number of Employees
                     </label>
-                    <input type="text" class="form-control" value="{{ total_employees }}" readonly id="id_number_of_employees">
-                    <div class="info-text">({{ total_employees }} Employees Exist in Prior Processing)</div>
+                    <input type="text" class="form-control" value="{{ total_employees|default:0 }}" readonly id="id_number_of_employees">
+                    <div class="info-text" id="employee-count-info">
+                        {% if selected_city and selected_department %}
+                            Showing {{ total_employees }} employee(s) from {{ selected_city }}, {{ selected_department.name }} department
+                        {% elif selected_city %}
+                            Showing {{ total_employees }} employee(s) from {{ selected_city }}
+                        {% elif selected_department %}
+                            Showing {{ total_employees }} employee(s) from {{ selected_department.name }} department
+                        {% else %}
+                            Select a city to see employee count
+                        {% endif %}
+                    </div>
                 </div>
+                
+                {% if employees_list %}
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-list me-2"></i>Employees in Selected City
+                    </label>
+                    <div style="max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; background: #f8fafc;">
+                        <table class="table table-sm table-hover" style="margin: 0;">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>City</th>
+                                    <th>Department</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for emp in employees_list %}
+                                <tr>
+                                    <td>{{ emp.user.get_full_name|default:emp.user.username }}</td>
+                                    <td>{{ emp.city|default:"-" }}</td>
+                                    <td>{{ emp.department.name|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% if employees_list|length >= 50 %}
+                        <div class="info-text mt-2">Showing first 50 employees. Total count: {{ total_employees }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
                 
                 <div class="row">
                     <div class="col-md-6">
@@ -202,26 +249,58 @@
         }
     }
     
-    // Show department field when city is entered
-    document.getElementById('id_city').addEventListener('input', function() {
-        const cityValue = this.value.trim();
-        const departmentGroup = document.getElementById('department-group');
-        if (cityValue.length > 0) {
-            departmentGroup.style.display = 'block';
+    // Reload page when city is selected to show filtered employees
+    document.getElementById('id_city').addEventListener('change', function() {
+        const cityValue = this.value;
+        const departmentSelect = document.getElementById('id_department');
+        const deptValue = departmentSelect ? departmentSelect.value : '';
+        
+        if (cityValue && cityValue.length > 0) {
+            if (deptValue) {
+                // Reload page with both city and department filters
+                window.location.href = `/payroll/monthly/create/?city=${encodeURIComponent(cityValue)}&department=${encodeURIComponent(deptValue)}`;
+            } else {
+                // Reload page with only city filter
+                window.location.href = `/payroll/monthly/create/?city=${encodeURIComponent(cityValue)}`;
+            }
         } else {
-            departmentGroup.style.display = 'none';
+            if (deptValue) {
+                // Reload page with only department filter
+                window.location.href = `/payroll/monthly/create/?department=${encodeURIComponent(deptValue)}`;
+            } else {
+                // Reload page to show all employees
+                window.location.href = '/payroll/monthly/create/';
+            }
         }
     });
+    
+    // Reload page when department is selected to update employee count
+    const departmentSelect = document.getElementById('id_department');
+    if (departmentSelect) {
+        departmentSelect.addEventListener('change', function() {
+            const cityValue = document.getElementById('id_city').value;
+            const deptValue = this.value;
+            
+            if (cityValue && cityValue.length > 0) {
+                if (deptValue) {
+                    window.location.href = `/payroll/monthly/create/?city=${encodeURIComponent(cityValue)}&department=${encodeURIComponent(deptValue)}`;
+                } else {
+                    window.location.href = `/payroll/monthly/create/?city=${encodeURIComponent(cityValue)}`;
+                }
+            } else if (deptValue) {
+                window.location.href = `/payroll/monthly/create/?department=${encodeURIComponent(deptValue)}`;
+            } else {
+                window.location.href = '/payroll/monthly/create/';
+            }
+        });
+    }
     
     // Initialize days on page load
     if (document.getElementById('id_month').value && document.getElementById('id_year').value) {
         updateDaysOfMonth();
     }
     
-    // Show department field if city already has value
-    if (document.getElementById('id_city').value.trim().length > 0) {
-        document.getElementById('department-group').style.display = 'block';
-    }
+    // Department field is always visible now, no need to show/hide it
 </script>
 {% endblock %}
 

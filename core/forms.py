@@ -896,12 +896,11 @@ class MonthlyPayrollForm(forms.Form):
         (9, 'September'), (10, 'October'), (11, 'November'), (12, 'December')
     ]
     
-    city = forms.CharField(
-        max_length=100,
-        required=True,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Enter City',
+    city = forms.ChoiceField(
+        required=False,
+        choices=[],
+        widget=forms.Select(attrs={
+            'class': 'form-control form-select',
             'id': 'id_city'
         })
     )
@@ -941,6 +940,19 @@ class MonthlyPayrollForm(forms.Form):
     )
     
     def __init__(self, *args, **kwargs):
+        city_filter = kwargs.pop('city_filter', None)
         super().__init__(*args, **kwargs)
-        from .models import Department
-        self.fields['department'].queryset = Department.objects.all().order_by('name')
+        from .models import Department, Employee
+        
+        # Get all unique cities from employees
+        cities = Employee.objects.exclude(city__isnull=True).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
+        city_choices = [('', 'All Cities')] + [(city, city) for city in cities]
+        self.fields['city'].choices = city_choices
+        
+        # Filter departments by city if city is provided
+        if city_filter:
+            self.fields['department'].queryset = Department.objects.filter(
+                employees__city=city_filter
+            ).distinct().order_by('name')
+        else:
+            self.fields['department'].queryset = Department.objects.all().order_by('name')

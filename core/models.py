@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.db import IntegrityError
 
 # Create your models here.
 
@@ -106,6 +107,8 @@ class UserProfile(models.Model):
 def create_user_profile(sender, instance, created, **kwargs):
     """Create UserProfile when a new User is created"""
     if created:
+        # Use get_or_create to safely create UserProfile
+        # This prevents IntegrityError if profile already exists
         UserProfile.objects.get_or_create(user=instance)
 
 
@@ -152,6 +155,7 @@ class Employee(models.Model):
     last_pay_date = models.DateField(null=True, blank=True)
     phone = models.CharField(max_length=20, blank=True)
     address = models.TextField(blank=True)
+    city = models.CharField(max_length=100, blank=True, help_text="City where the employee is located")
     date_of_joining = models.DateField(null=True, blank=True)
     is_restricted = models.BooleanField(default=False)
     can_view_attendance = models.BooleanField(default=True)

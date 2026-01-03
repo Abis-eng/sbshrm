@@ -194,11 +194,52 @@ class UserProfileInline(admin.StackedInline):
     verbose_name_plural = 'Company Profile'
     fields = ('company', 'is_company_admin')
     fk_name = 'user'
+    extra = 0
+    max_num = 1
 
 
 class UserAdmin(BaseUserAdmin):
     """Extended User Admin with company profile"""
     inlines = (UserProfileInline,)
+    
+    def save_formset(self, request, form, formset, change):
+        """Handle UserProfile inline saving to avoid duplicates"""
+        if formset.model == UserProfile:
+            # Check if UserProfile already exists (created by signal)
+            existing_profile = None
+            try:
+                existing_profile = UserProfile.objects.get(user=form.instance)
+            except UserProfile.DoesNotExist:
+                pass
+            
+            instances = formset.save(commit=False)
+            for instance in instances:
+                # Ensure UserProfile is linked to the user
+                if not instance.user_id:
+                    instance.user = form.instance
+                
+                if existing_profile:
+                    # Update existing profile instead of creating new one
+                    existing_profile.company = instance.company
+                    existing_profile.is_company_admin = instance.is_company_admin
+                    existing_profile.save()
+                else:
+                    # Use get_or_create to avoid IntegrityError (race condition protection)
+                    profile, created = UserProfile.objects.get_or_create(
+                        user=form.instance,
+                        defaults={
+                            'company': instance.company,
+                            'is_company_admin': instance.is_company_admin
+                        }
+                    )
+                    if not created:
+                        # Update existing profile (in case it was created between check and create)
+                        profile.company = instance.company
+                        profile.is_company_admin = instance.is_company_admin
+                        profile.save()
+            formset.save_m2m()
+        else:
+            super().save_formset(request, form, formset, change)
 
 
 # Unregister default User admin and register extended version

@@ -4653,7 +4653,24 @@ def monthly_payroll_create(request):
     from calendar import monthrange
     from datetime import date
     
-    form = MonthlyPayrollForm(request.POST or None)
+    # Get selected city from GET parameter
+    selected_city_get = request.GET.get('city', None)
+    
+    # Get all unique cities from employees for display
+    all_cities = Employee.objects.exclude(city__isnull=True).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
+    
+    # Get selected department from GET parameter (before form initialization)
+    selected_department_get = request.GET.get('department', None)
+    
+    # Initialize form with city filter if provided
+    form = MonthlyPayrollForm(request.POST or None, city_filter=selected_city_get)
+    
+    # Set initial department value if provided in GET
+    if selected_department_get and not request.POST:
+        try:
+            form.initial['department'] = selected_department_get
+        except:
+            pass
     
     # Set default values
     if not request.POST:
@@ -4663,13 +4680,19 @@ def monthly_payroll_create(request):
             'year': today.year,
             'days_of_month': monthrange(today.year, today.month)[1],
         }
-        # Get city from company settings
-        try:
-            settings_obj = CompanySettings.objects.first()
-            if settings_obj and settings_obj.city:
-                form.initial['city'] = settings_obj.city
-        except:
-            pass
+        # Set city from GET parameter or company settings
+        if selected_city_get:
+            form.initial['city'] = selected_city_get
+        else:
+            try:
+                settings_obj = CompanySettings.objects.first()
+                if settings_obj and settings_obj.city:
+                    form.initial['city'] = settings_obj.city
+            except:
+                pass
+    
+    # Get employees count for display (before filtering)
+    total_employees_all = Employee.objects.count()
     
     if request.method == 'POST' and form.is_valid():
         city = form.cleaned_data['city']
@@ -4682,8 +4705,10 @@ def monthly_payroll_create(request):
         period_start = date(year, month, 1)
         period_end = date(year, month, days_of_month)
         
-        # Get employees - filter by department if selected
+        # Get employees - filter by city and/or department if selected
         employees = Employee.objects.select_related('user', 'designation', 'company', 'department').all()
+        if city:
+            employees = employees.filter(city=city)
         if department:
             employees = employees.filter(department=department)
         
@@ -4888,8 +4913,52 @@ def monthly_payroll_create(request):
         messages.success(request, f'Payroll processed successfully! Created {created_count} payslips for {month}/{year}.')
         return redirect('monthly_payroll_register', month=month, year=year)
     
-    # Get employee count for display
+    # Get selected department from GET parameter
+    selected_department_get = request.GET.get('department', None)
+    
+    # Get employees list for display (filtered by city and department if selected)
+    employees_list = Employee.objects.select_related('user', 'designation', 'department').all()
+    selected_city = selected_city_get
+    selected_department = None
+    
+    if request.method == 'GET':
+        # Get from GET parameters
+        if selected_city:
+            employees_list = employees_list.filter(city=selected_city)
+        if selected_department_get:
+            try:
+                selected_department = Department.objects.get(id=selected_department_get)
+                employees_list = employees_list.filter(department=selected_department)
+            except (Department.DoesNotExist, ValueError):
+                pass
+    elif request.method == 'POST' and form.is_valid():
+        selected_city = form.cleaned_data.get('city')
+        if selected_city:
+            employees_list = employees_list.filter(city=selected_city)
+        selected_department = form.cleaned_data.get('department')
+        if selected_department:
+            employees_list = employees_list.filter(department=selected_department)
+    
+    # Get departments for the selected city
+    departments_for_city = Department.objects.none()
+    if selected_city:
+        departments_for_city = Department.objects.filter(
+            employees__city=selected_city
+        ).distinct().order_by('name')
+    
+    # Get employee count for display (filtered by both city and department)
     employees = Employee.objects.all()
+    if selected_city:
+        employees = employees.filter(city=selected_city)
+    if selected_department:
+        employees = employees.filter(department=selected_department)
+    elif selected_department_get:
+        try:
+            selected_department = Department.objects.get(id=selected_department_get)
+            employees = employees.filter(department=selected_department)
+        except (Department.DoesNotExist, ValueError):
+            pass
+    
     departments = Department.objects.all().order_by('name')
     existing_payslips_count = 0
     if request.method == 'POST' and form.is_valid():
@@ -4903,6 +4972,8 @@ def monthly_payroll_create(request):
             period_start=period_start,
             period_end=period_end
         )
+        if selected_city:
+            existing_payslips = existing_payslips.filter(employee__city=selected_city)
         if department:
             existing_payslips = existing_payslips.filter(employee__department=department)
         existing_payslips_count = existing_payslips.count()
@@ -4912,6 +4983,11 @@ def monthly_payroll_create(request):
         'total_employees': employees.count(),
         'existing_payslips_count': existing_payslips_count,
         'departments': departments,
+        'all_cities': all_cities,
+        'employees_list': employees_list[:50],  # Limit to 50 for display
+        'selected_city': selected_city,
+        'selected_department': selected_department,
+        'departments_for_city': departments_for_city,
     }
     return render(request, 'core/monthly_payroll_create.html', context)
 
