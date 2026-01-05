@@ -2,213 +2,213 @@
 {% block page_title %}{{ action }} Budget{% endblock %}
 {% block content %}
 <style>
-    body {
-        background: linear-gradient(135deg, #f0fdfa 0%, #e6fffa 100%);
-        min-height: 100vh;
-    }
-    .page-header {
-        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 50%, #0f766e 100%);
-        border-radius: 20px;
-        padding: 30px;
-        color: #fff;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 40px rgba(20, 184, 166, 0.3);
-    }
     .form-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        padding: 0;
         background: #fff;
-        border-radius: 20px;
-        padding: 40px;
-        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.1);
-        border: 2px solid #e6fffa;
+    }
+    .section-header {
+        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        color: white;
+        padding: 1.25rem 2rem;
+        border-radius: 12px 12px 0 0;
+    }
+    .section-header h5 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    .card-body {
+        padding: 2rem;
     }
     .form-section {
-        margin-bottom: 30px;
-        padding-bottom: 30px;
-        border-bottom: 2px solid #f1f5f9;
-    }
-    .form-section:last-child {
-        border-bottom: none;
+        margin-bottom: 1.5rem;
     }
     .form-section-title {
-        color: #14b8a6;
-        font-weight: 700;
-        font-size: 1.3rem;
-        margin-bottom: 20px;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e9ecef;
         display: flex;
         align-items: center;
     }
     .form-section-title i {
-        margin-right: 12px;
+        margin-right: 0.5rem;
+        color: #14b8a6;
+        font-size: 1rem;
     }
     .form-label {
         font-weight: 600;
-        color: #334155;
-        margin-bottom: 10px;
-        display: flex;
-        align-items: center;
-    }
-    .form-label i {
-        margin-right: 8px;
-        color: #14b8a6;
+        color: #495057;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        display: block;
     }
     .form-control, .form-select {
-        border-radius: 12px;
-        border: 2px solid #e2e8f0;
-        padding: 14px 20px;
-        transition: all 0.3s ease;
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+        padding: 0.625rem 0.875rem;
+        transition: all 0.2s;
+        font-size: 0.95rem;
     }
     .form-control:focus, .form-select:focus {
         border-color: #14b8a6;
-        box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.1);
+        box-shadow: 0 0 0 0.2rem rgba(20, 184, 166, 0.15);
         outline: none;
     }
-    .btn-submit {
-        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
-        color: #fff;
-        border-radius: 50px;
-        padding: 15px 60px;
-        font-weight: 700;
-        border: none;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(20, 184, 166, 0.3);
+    textarea.form-control {
+        min-height: 100px;
+        resize: vertical;
     }
-    .btn-submit:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(20, 184, 166, 0.4);
-        color: #fff;
+    .form-group-spacing {
+        margin-bottom: 1.25rem;
     }
-    .btn-cancel {
-        background: #64748b;
-        color: #fff;
-        border-radius: 50px;
-        padding: 15px 50px;
-        font-weight: 600;
-        border: none;
-        transition: all 0.3s ease;
+    .form-actions {
+        padding: 1.5rem 0 0 0;
+        margin-top: 1.5rem;
+        border-top: 1px solid #e9ecef;
     }
-    .btn-cancel:hover {
-        background: #475569;
-        color: #fff;
+    .file-upload-area {
+        border: 2px dashed #14b8a6;
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+        background: #f0fdfa;
+        transition: all 0.2s;
+        margin-top: 0.75rem;
+    }
+    .file-upload-area:hover {
+        background: #e6fffa;
+        border-color: #0d9488;
+    }
+    small.text-muted {
+        font-size: 0.85rem;
+        line-height: 1.5;
+        margin-top: 0.375rem;
+        display: block;
     }
 </style>
 
-<div class="container-fluid py-4">
-    <div class="page-header">
-        <h2><i class="fas fa-wallet me-2"></i>{{ action }} Budget</h2>
-    </div>
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <div class="form-card">
+<div class="row justify-content-center">
+    <div class="col-12 col-lg-10">
+        <div class="card form-card">
+            <div class="section-header">
+                <h5><i class="fas fa-wallet me-2"></i>{{ action }} Budget</h5>
+            </div>
+            <div class="card-body">
                 <form method="post" enctype="multipart/form-data">
                     {% csrf_token %}
+                    
+                    <!-- Basic Information -->
                     <div class="form-section">
                         <div class="form-section-title">
-                            <i class="fas fa-info-circle"></i> Basic Information
+                            <i class="fas fa-info-circle"></i>Basic Information
                         </div>
-                        <div class="row g-4">
-                            <div class="col-md-6">
+                        <div class="row">
+                            <div class="col-md-6 form-group-spacing">
                                 <label class="form-label" for="{{ form.type.id_for_label }}">
-                                    <i class="fas fa-list"></i>Budget Type <span class="text-danger">*</span>
+                                    Budget Type <span class="text-danger">*</span>
                                 </label>
                                 {{ form.type }}
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-6 form-group-spacing">
                                 <label class="form-label" for="{{ form.name.id_for_label }}">
-                                    <i class="fas fa-tag"></i>Budget Name <span class="text-danger">*</span>
+                                    Budget Name <span class="text-danger">*</span>
                                 </label>
                                 {{ form.name }}
                             </div>
-                            <div class="col-md-6" id="categoryField">
+                            <div class="col-md-6 form-group-spacing" id="categoryField">
                                 <label class="form-label" for="{{ form.category.id_for_label }}">
-                                    <i class="fas fa-tags"></i>Category
+                                    Category
                                 </label>
                                 {{ form.category }}
+                                <small class="text-muted">Select a category for category-based budgets</small>
                             </div>
-                            <div class="col-md-6" id="projectField">
+                            <div class="col-md-6 form-group-spacing" id="projectField">
                                 <label class="form-label" for="{{ form.project.id_for_label }}">
-                                    <i class="fas fa-project-diagram"></i>Project
+                                    Project
                                 </label>
                                 {{ form.project }}
+                                <small class="text-muted">Select a project for project-based budgets</small>
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Period & Tax -->
                     <div class="form-section">
                         <div class="form-section-title">
-                            <i class="fas fa-calendar-alt"></i> Period & Tax
+                            <i class="fas fa-calendar-alt"></i>Period & Tax
                         </div>
-                        <div class="row g-4">
-                            <div class="col-md-4">
+                        <div class="row">
+                            <div class="col-md-4 form-group-spacing">
                                 <label class="form-label" for="{{ form.period_start.id_for_label }}">
-                                    <i class="fas fa-calendar"></i>Start Date <span class="text-danger">*</span>
+                                    Start Date <span class="text-danger">*</span>
                                 </label>
                                 {{ form.period_start }}
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-4 form-group-spacing">
                                 <label class="form-label" for="{{ form.period_end.id_for_label }}">
-                                    <i class="fas fa-calendar"></i>End Date <span class="text-danger">*</span>
+                                    End Date <span class="text-danger">*</span>
                                 </label>
                                 {{ form.period_end }}
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-4 form-group-spacing">
                                 <label class="form-label" for="{{ form.tax.id_for_label }}">
-                                    <i class="fas fa-percent"></i>Tax (%)
+                                    Tax (%)
                                 </label>
                                 {{ form.tax }}
+                                <small class="text-muted">Enter tax percentage (optional)</small>
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Additional Information -->
                     <div class="form-section">
                         <div class="form-section-title">
-                            <i class="fas fa-file-alt"></i> Additional Information
+                            <i class="fas fa-file-alt"></i>Additional Information
                         </div>
-                        <div class="row g-4">
-                            <div class="col-md-12">
+                        <div class="row">
+                            <div class="col-12 form-group-spacing">
                                 <label class="form-label" for="{{ form.note.id_for_label }}">
-                                    <i class="fas fa-sticky-note"></i>Notes
+                                    Notes
                                 </label>
                                 {{ form.note }}
+                                <small class="text-muted">Add any additional notes or comments</small>
                             </div>
-                            <div class="col-md-12">
-                                <label class="form-label">
-                                    <i class="fas fa-paperclip"></i>Attachments (Multiple Files)
-                                </label>
-                                <div class="file-upload-area" style="border: 2px dashed #667eea; border-radius: 10px; padding: 1.5rem; text-align: center; background: #f8f9ff;">
+                            <div class="col-12 form-group-spacing">
+                                <label class="form-label">Attachments (Optional)</label>
+                                <div class="file-upload-area">
                                     <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
-                                    <p class="mb-2 small">Click to browse or drag and drop files</p>
+                                    <p class="mb-3 small text-muted">Click to browse or drag and drop files here</p>
                                     <input type="file" name="attachments" id="attachments" multiple 
                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xlsx,.xls" 
                                            class="d-none" onchange="showFiles(this)">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('attachments').click()">
+                                    <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('attachments').click()">
                                         <i class="fas fa-folder-open me-2"></i>Choose Files
                                     </button>
                                     <div id="filePreview" class="mt-3" style="display: none;"></div>
                                 </div>
-                                <small class="text-muted">Supported formats: PDF, DOC, DOCX, JPG, PNG, TXT, XLS, XLSX (Max 10MB per file)</small>
-                                <script>
-                                    function showFiles(input) {
-                                        const preview = document.getElementById('filePreview');
-                                        if (input.files.length > 0) {
-                                            preview.style.display = 'block';
-                                            preview.innerHTML = '<strong>Selected Files (' + input.files.length + '):</strong><br>';
-                                            for (let i = 0; i < input.files.length; i++) {
-                                                preview.innerHTML += '<span class="badge bg-secondary me-1 mb-1"><i class="fas fa-file me-1"></i>' + input.files[i].name + '</span>';
-                                            }
-                                        } else {
-                                            preview.style.display = 'none';
-                                            preview.innerHTML = '';
-                                        }
-                                    }
-                                </script>
+                                <small class="text-muted">
+                                    Supported formats: PDF, DOC, DOCX, JPG, PNG, TXT, XLS, XLSX (Max 10MB per file)
+                                </small>
                             </div>
                         </div>
                     </div>
-                    <div class="text-center mt-5">
-                        <button type="submit" class="btn btn-submit me-3">
-                            <i class="fas fa-save me-2"></i>{{ action }}
-                        </button>
-                        <a href="{% url 'budget_list' %}" class="btn btn-cancel">
-                            <i class="fas fa-times me-2"></i>Cancel
-                        </a>
+                    
+                    <!-- Form Actions -->
+                    <div class="form-actions">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% url 'budget_list' %}" class="btn btn-light">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>{{ action }}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -217,21 +217,60 @@
 </div>
 
 <script>
+    function showFiles(input) {
+        const preview = document.getElementById('filePreview');
+        if (input.files.length > 0) {
+            preview.style.display = 'block';
+            preview.innerHTML = '<div class="mb-2" style="font-weight: 600; color: #495057; font-size: 0.9rem;">Selected Files (' + input.files.length + '):</div>';
+            for (let i = 0; i < input.files.length; i++) {
+                const fileItem = document.createElement('div');
+                fileItem.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.625rem 0.875rem; background: white; border-radius: 6px; margin-bottom: 0.5rem; border: 1px solid #e9ecef;';
+                fileItem.innerHTML = '<span><i class="fas fa-file text-primary me-2"></i><strong>' + input.files[i].name + '</strong> <span class="text-muted" style="font-size: 0.85rem;">(' + (input.files[i].size / 1024).toFixed(2) + ' KB)</span></span>';
+                preview.appendChild(fileItem);
+            }
+        } else {
+            preview.style.display = 'none';
+            preview.innerHTML = '';
+        }
+    }
+    
+    // Drag and drop
     document.addEventListener('DOMContentLoaded', function() {
+        const uploadArea = document.querySelector('.file-upload-area');
+        if (uploadArea) {
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.background = '#e6fffa';
+            });
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.style.background = '#f0fdfa';
+            });
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.background = '#f0fdfa';
+                const files = e.dataTransfer.files;
+                document.getElementById('attachments').files = files;
+                showFiles(document.getElementById('attachments'));
+            });
+        }
+        
+        // Toggle category/project fields based on budget type
         const typeField = document.getElementById('{{ form.type.id_for_label }}');
         const categoryField = document.getElementById('categoryField');
         const projectField = document.getElementById('projectField');
         
         function toggleFields() {
-            if (typeField.value === 'category') {
-                categoryField.style.display = 'block';
-                projectField.style.display = 'none';
-            } else if (typeField.value === 'project') {
-                categoryField.style.display = 'none';
-                projectField.style.display = 'block';
-            } else {
-                categoryField.style.display = 'block';
-                projectField.style.display = 'block';
+            if (typeField && categoryField && projectField) {
+                if (typeField.value === 'category') {
+                    categoryField.style.display = 'block';
+                    projectField.style.display = 'none';
+                } else if (typeField.value === 'project') {
+                    categoryField.style.display = 'none';
+                    projectField.style.display = 'block';
+                } else {
+                    categoryField.style.display = 'block';
+                    projectField.style.display = 'block';
+                }
             }
         }
         

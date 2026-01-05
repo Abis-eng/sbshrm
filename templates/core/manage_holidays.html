@@ -18,47 +18,85 @@
 <style>
     .form-card {
         border: none;
-        border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        padding: 2rem;
-        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        padding: 0;
+        background: #fff;
         margin-bottom: 2rem;
+    }
+    .section-header {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+        padding: 1.25rem 2rem;
+        border-radius: 12px 12px 0 0;
+    }
+    .section-header h5 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    .card-body {
+        padding: 2rem;
+    }
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        display: block;
+    }
+    .form-control {
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+        padding: 0.625rem 0.875rem;
+        transition: all 0.2s;
+        font-size: 0.95rem;
+    }
+    .form-control:focus {
+        border-color: #f59e0b;
+        box-shadow: 0 0 0 0.2rem rgba(245, 158, 11, 0.15);
+        outline: none;
+    }
+    .form-group-spacing {
+        margin-bottom: 1.25rem;
     }
     .holiday-card {
         border: none;
-        border-radius: 15px;
-        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         transition: all 0.3s ease;
         background: white;
         overflow: hidden;
         margin-bottom: 1rem;
     }
     .holiday-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 25px rgba(255, 193, 7, 0.2);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
     }
     .holiday-date {
-        background: linear-gradient(135deg, #d97706 0%, #d97706 100%);
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         color: white;
-        padding: 1.5rem;
+        padding: 1.25rem;
         text-align: center;
-        min-width: 120px;
+        min-width: 100px;
     }
     .holiday-day {
-        font-size: 2rem;
+        font-size: 1.75rem;
         font-weight: 700;
+        line-height: 1.2;
     }
     .holiday-month {
-        font-size: 0.9rem;
-        opacity: 0.9;
+        font-size: 0.85rem;
+        opacity: 0.95;
+        margin-top: 0.25rem;
     }
     .holiday-content {
-        padding: 1.5rem;
+        padding: 1.25rem;
         flex-grow: 1;
     }
     .holiday-name {
-        font-size: 1.2rem;
-        font-weight: 700;
+        font-size: 1.1rem;
+        font-weight: 600;
         color: #2d3748;
         margin-bottom: 0.5rem;
     }
@@ -66,36 +104,35 @@
 
 <!-- Add Holiday Form -->
 <div class="form-card">
-    <div class="d-flex align-items-center mb-3">
-        <div class="flex-grow-1">
-            <h5 class="mb-0 fw-bold">
-                <i class="fas fa-plus-circle me-2 text-primary"></i>Add New Holiday
-            </h5>
-        </div>
+    <div class="section-header">
+        <h5><i class="fas fa-plus-circle me-2"></i>Add New Holiday</h5>
     </div>
-    <form method="post" class="row g-3">
-        {% csrf_token %}
-        <div class="col-md-4">
-            <label for="id_name" class="form-label fw-bold">Holiday Name</label>
-            <input type="text" class="form-control" id="id_name" name="name" required 
-                   placeholder="Enter holiday name" style="border-radius: 10px; border: 2px solid #e9ecef; padding: 0.75rem;">
-        </div>
-        <div class="col-md-4">
-            <label for="id_date" class="form-label fw-bold">Date</label>
-            <input type="date" class="form-control" id="id_date" name="date" required 
-                   style="border-radius: 10px; border: 2px solid #e9ecef; padding: 0.75rem;">
-        </div>
-        <div class="col-md-3">
-            <label for="id_description" class="form-label fw-bold">Description</label>
-            <input type="text" class="form-control" id="id_description" name="description" 
-                   placeholder="Optional description" style="border-radius: 10px; border: 2px solid #e9ecef; padding: 0.75rem;">
-        </div>
-        <div class="col-md-1 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary w-100" style="border-radius: 10px;">
-                <i class="fas fa-plus"></i>
-            </button>
-        </div>
-    </form>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-md-4 form-group-spacing">
+                    <label for="id_name" class="form-label">Holiday Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="id_name" name="name" required 
+                           placeholder="Enter holiday name">
+                </div>
+                <div class="col-md-4 form-group-spacing">
+                    <label for="id_date" class="form-label">Date <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control" id="id_date" name="date" required>
+                </div>
+                <div class="col-md-4 form-group-spacing">
+                    <label for="id_description" class="form-label">Description (Optional)</label>
+                    <input type="text" class="form-control" id="id_description" name="description" 
+                           placeholder="Enter description">
+                </div>
+            </div>
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Add Holiday
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Holidays List -->

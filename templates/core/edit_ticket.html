@@ -23,50 +23,177 @@
 <style>
     .form-card {
         border: none;
-        border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        padding: 2rem;
-    }
-    .form-label {
-        font-weight: 600;
-        color: #333;
-        margin-bottom: 0.5rem;
-    }
-    .form-control, .form-select {
-        border-radius: 10px;
-        border: 2px solid #e9ecef;
-        padding: 0.75rem;
-        transition: all 0.3s;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-    }
-    .info-badge {
-        display: inline-block;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-weight: 600;
-        font-size: 0.9rem;
-        margin-bottom: 1rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        padding: 0;
+        background: #fff;
     }
     .section-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 10px 10px 0 0;
-        margin: -2rem -2rem 1.5rem -2rem;
+        padding: 1.25rem 2rem;
+        border-radius: 12px 12px 0 0;
+    }
+    .section-header h5 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.2rem;
+    }
+    .card-body {
+        padding: 2rem;
+    }
+    .form-section {
+        margin-bottom: 1.5rem;
+    }
+    .form-section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+    }
+    .form-section-title i {
+        margin-right: 0.5rem;
+        color: #667eea;
+        font-size: 1rem;
+    }
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        display: block;
+    }
+    .form-control, .form-select {
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+        padding: 0.625rem 0.875rem;
+        transition: all 0.2s;
+        font-size: 0.95rem;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
+        outline: none;
+    }
+    textarea.form-control {
+        min-height: 100px;
+        resize: vertical;
+    }
+    .info-badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-right: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    .badge-container {
+        padding: 1.25rem 0;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .progress-controls {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1.25rem;
+        margin-top: 0.75rem;
+        border: 1px solid #e9ecef;
+    }
+    .progress-buttons {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        align-items: center;
+    }
+    .progress-buttons .btn {
+        flex: 0 0 auto;
+        min-width: 60px;
+        border-radius: 6px;
+        font-weight: 500;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+    }
+    .progress-buttons input {
+        max-width: 80px !important;
+        font-weight: 600;
+        font-size: 1rem;
+        margin: 0 0.5rem;
+    }
+    .progress-slider-container {
+        margin: 1rem 0;
+    }
+    .progress-slider-container input[type="range"] {
+        width: 100%;
+        height: 6px;
+        cursor: pointer;
+    }
+    .progress-display {
+        text-align: center;
+        font-weight: 600;
+        color: #495057;
+        margin-top: 0.75rem;
+        font-size: 0.95rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #e9ecef;
+    }
+    .file-upload-area {
+        border: 2px dashed #667eea;
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+        background: #f8f9ff;
+        transition: all 0.2s;
+        margin-top: 0.75rem;
+    }
+    .file-upload-area:hover {
+        background: #f0f2ff;
+        border-color: #5568d3;
+    }
+    .form-actions {
+        padding: 1.5rem 0 0 0;
+        margin-top: 1.5rem;
+        border-top: 1px solid #e9ecef;
+    }
+    .form-group-spacing {
+        margin-bottom: 1.25rem;
+    }
+    .form-group-spacing:last-child {
+        margin-bottom: 0;
+    }
+    small.text-muted {
+        font-size: 0.85rem;
+        line-height: 1.5;
+        margin-top: 0.375rem;
+        display: block;
+    }
+    .form-check {
+        padding-left: 1.75rem;
+        margin-top: 1rem;
+    }
+    .form-check-input {
+        width: 1.1rem;
+        height: 1.1rem;
+        margin-top: 0.2rem;
+    }
+    .form-check-label {
+        font-size: 0.9rem;
+        padding-left: 0.5rem;
     }
 </style>
 
 <div class="row justify-content-center">
-    <div class="col-lg-10">
+    <div class="col-12 col-lg-10">
         <div class="card form-card">
             <div class="section-header">
-                <h5 class="mb-0"><i class="fas fa-ticket-alt me-2"></i>Ticket Information</h5>
+                <h5><i class="fas fa-ticket-alt me-2"></i>Ticket Information</h5>
             </div>
             <div class="card-body">
-                <div class="mb-3">
+                <div class="badge-container">
                     <span class="info-badge bg-primary">{{ ticket.tk_id }}</span>
                     <span class="info-badge bg-{{ ticket.get_status_color }}">{{ ticket.get_status_display }}</span>
                     <span class="info-badge bg-{{ ticket.get_priority_color }}">{{ ticket.priority|title }} Priority</span>
@@ -75,176 +202,180 @@
                 <form method="post" enctype="multipart/form-data">
                     {% csrf_token %}
                     
-                    <div class="row g-3">
-                        <div class="col-md-8">
-                            <label for="title" class="form-label">
-                                <i class="fas fa-heading me-2"></i>Title <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" class="form-control" id="title" name="title" required 
-                                   value="{{ ticket.title }}" placeholder="Enter ticket title">
+                    <!-- Basic Information -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-info-circle"></i>Basic Information
                         </div>
-                        
-                        <div class="col-md-4">
-                            <label for="priority" class="form-label">
-                                <i class="fas fa-flag me-2"></i>Priority <span class="text-danger">*</span>
-                            </label>
-                            <select class="form-select" id="priority" name="priority" required>
-                                <option value="low" {% if ticket.priority == 'low' %}selected{% endif %}>Low</option>
-                                <option value="medium" {% if ticket.priority == 'medium' %}selected{% endif %}>Medium</option>
-                                <option value="high" {% if ticket.priority == 'high' %}selected{% endif %}>High</option>
-                            </select>
+                        <div class="row">
+                            <div class="col-12 form-group-spacing">
+                                <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="title" name="title" required 
+                                       value="{{ ticket.title }}" placeholder="Enter ticket title">
+                            </div>
+                            
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="subject" class="form-label">Subject (Optional)</label>
+                                <input type="text" class="form-control" id="subject" name="subject" 
+                                       value="{{ ticket.subject }}" placeholder="Enter subject or category">
+                            </div>
+                            
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="assigned_to" class="form-label">Assign To</label>
+                                <select class="form-select" id="assigned_to" name="assigned_to">
+                                    <option value="">Unassigned</option>
+                                    {% for employee in employees %}
+                                    <option value="{{ employee.id }}" {% if ticket.assigned_to == employee %}selected{% endif %}>
+                                        {{ employee.get_full_name|default:employee.username }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-12 form-group-spacing">
+                                <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="description" name="description" rows="4" required 
+                                          placeholder="Provide detailed information about the ticket...">{{ ticket.description }}</textarea>
+                            </div>
                         </div>
-                        
-                        <div class="col-md-6">
-                            <label for="subject" class="form-label">
-                                <i class="fas fa-tag me-2"></i>Subject (Optional)
-                            </label>
-                            <input type="text" class="form-control" id="subject" name="subject" 
-                                   value="{{ ticket.subject }}" placeholder="Enter subject or category">
+                    </div>
+                    
+                    <!-- Status & Priority -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-cog"></i>Status & Priority
                         </div>
-                        
-                        <div class="col-md-6">
-                            <label for="status" class="form-label">
-                                <i class="fas fa-info-circle me-2"></i>Status <span class="text-danger">*</span>
-                            </label>
-                            <select class="form-select" id="status" name="status" required>
-                                <option value="new" {% if ticket.status == 'new' %}selected{% endif %}>New</option>
-                                <option value="open" {% if ticket.status == 'open' %}selected{% endif %}>Open</option>
-                                <option value="reopen" {% if ticket.status == 'reopen' %}selected{% endif %}>Reopen</option>
-                                <option value="onhold" {% if ticket.status == 'onhold' %}selected{% endif %}>On Hold</option>
-                                <option value="in_progress" {% if ticket.status == 'in_progress' %}selected{% endif %}>In Progress</option>
-                                <option value="cancelled" {% if ticket.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
-                                <option value="completed" {% if ticket.status == 'completed' %}selected{% endif %}>Completed</option>
-                                <option value="closed" {% if ticket.status == 'closed' %}selected{% endif %}>Closed</option>
-                            </select>
+                        <div class="row">
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
+                                <select class="form-select" id="status" name="status" required>
+                                    <option value="new" {% if ticket.status == 'new' %}selected{% endif %}>New</option>
+                                    <option value="open" {% if ticket.status == 'open' %}selected{% endif %}>Open</option>
+                                    <option value="reopen" {% if ticket.status == 'reopen' %}selected{% endif %}>Reopen</option>
+                                    <option value="onhold" {% if ticket.status == 'onhold' %}selected{% endif %}>On Hold</option>
+                                    <option value="in_progress" {% if ticket.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                                    <option value="cancelled" {% if ticket.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                    <option value="completed" {% if ticket.status == 'completed' %}selected{% endif %}>Completed</option>
+                                    <option value="closed" {% if ticket.status == 'closed' %}selected{% endif %}>Closed</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="priority" class="form-label">Priority <span class="text-danger">*</span></label>
+                                <select class="form-select" id="priority" name="priority" required>
+                                    <option value="low" {% if ticket.priority == 'low' %}selected{% endif %}>Low</option>
+                                    <option value="medium" {% if ticket.priority == 'medium' %}selected{% endif %}>Medium</option>
+                                    <option value="high" {% if ticket.priority == 'high' %}selected{% endif %}>High</option>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="end_date" class="form-label">Due Date (Optional)</label>
+                                <input type="date" class="form-control" id="end_date" name="end_date" 
+                                       value="{% if ticket.end_date %}{{ ticket.end_date|date:'Y-m-d' }}{% endif %}">
+                            </div>
+                            
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="related_task" class="form-label">Link to Task (Optional)</label>
+                                <select class="form-select" id="related_task" name="related_task">
+                                    <option value="">No task linked</option>
+                                    {% for task in tasks %}
+                                    <option value="{{ task.id }}" {% if ticket.related_task == task %}selected{% endif %}>
+                                        {{ task.title }} - {{ task.project.name }} (Assigned to: {{ task.assigned_to.user.get_full_name|default:task.assigned_to.user.username }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted">Link this ticket to a task. Employee will be able to update progress if linked.</small>
+                            </div>
                         </div>
-                        
-                        <div class="col-md-6">
-                            <label for="assigned_to" class="form-label">
-                                <i class="fas fa-user-check me-2"></i>Assign To
-                            </label>
-                            <select class="form-select" id="assigned_to" name="assigned_to">
-                                <option value="">Unassigned</option>
-                                {% for employee in employees %}
-                                <option value="{{ employee.id }}" {% if ticket.assigned_to == employee %}selected{% endif %}>
-                                    {{ employee.get_full_name|default:employee.username }}
-                                </option>
-                                {% endfor %}
-                            </select>
+                    </div>
+                    
+                    <!-- Progress Tracking -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-chart-line"></i>Progress Tracking
                         </div>
-                        
-                        <div class="col-md-6">
-                            <label for="end_date" class="form-label">
-                                <i class="fas fa-calendar-alt me-2"></i>Due Date (Optional)
-                            </label>
-                            <input type="date" class="form-control" id="end_date" name="end_date" 
-                                   value="{% if ticket.end_date %}{{ ticket.end_date|date:'Y-m-d' }}{% endif %}">
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label for="related_task" class="form-label">
-                                <i class="fas fa-tasks me-2"></i>Link to Task (Optional)
-                            </label>
-                            <select class="form-select" id="related_task" name="related_task">
-                                <option value="">No task linked</option>
-                                {% for task in tasks %}
-                                <option value="{{ task.id }}" {% if ticket.related_task == task %}selected{% endif %}>
-                                    {{ task.title }} - {{ task.project.name }} (Assigned to: {{ task.assigned_to.user.get_full_name|default:task.assigned_to.user.username }})
-                                </option>
-                                {% endfor %}
-                            </select>
-                            <small class="text-muted">Link this ticket to a task. Employee will be able to update progress if linked.</small>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label for="progress_percentage" class="form-label">
-                                <i class="fas fa-percentage me-2"></i>Progress Percentage
-                            </label>
-                            <div class="input-group">
-                                <button class="btn btn-outline-secondary" type="button" onclick="adjustProgress(-10)">
-                                    <i class="fas fa-minus"></i> -10
-                                </button>
-                                <button class="btn btn-outline-secondary" type="button" onclick="adjustProgress(-5)">
-                                    <i class="fas fa-minus"></i> -5
-                                </button>
+                        <div class="progress-controls">
+                            <label for="progress_percentage" class="form-label">Progress Percentage</label>
+                            
+                            <div class="progress-buttons">
+                                <button class="btn btn-outline-secondary" type="button" onclick="adjustProgress(-10)">-10</button>
+                                <button class="btn btn-outline-secondary" type="button" onclick="adjustProgress(-5)">-5</button>
                                 <input type="number" class="form-control text-center" id="progress_percentage" name="progress_percentage" 
                                        min="0" max="100" value="{{ ticket.progress_percentage }}" 
                                        onchange="updateProgressBar(this.value)">
-                                <button class="btn btn-outline-secondary" type="button" onclick="adjustProgress(5)">
-                                    <i class="fas fa-plus"></i> +5
-                                </button>
-                                <button class="btn btn-outline-secondary" type="button" onclick="adjustProgress(10)">
-                                    <i class="fas fa-plus"></i> +10
-                                </button>
+                                <button class="btn btn-outline-secondary" type="button" onclick="adjustProgress(5)">+5</button>
+                                <button class="btn btn-outline-secondary" type="button" onclick="adjustProgress(10)">+10</button>
                             </div>
-                            <div class="mt-2">
+                            
+                            <div class="progress-slider-container">
                                 <input type="range" class="form-range" id="progress_slider" 
                                        min="0" max="100" value="{{ ticket.progress_percentage }}" 
                                        oninput="updateProgressInput(this.value)">
                             </div>
-                            <div class="mt-2">
-                                <div class="progress" style="height: 20px;">
-                                    <div class="progress-bar 
-                                                {% if ticket.progress_percentage < 25 %}bg-danger
-                                                {% elif ticket.progress_percentage < 50 %}bg-warning
-                                                {% elif ticket.progress_percentage < 75 %}bg-info
-                                                {% else %}bg-success{% endif %}" 
-                                         id="progress_bar_display" 
-                                         style="width: {{ ticket.progress_percentage }}%;">
-                                        {{ ticket.progress_percentage }}%
-                                    </div>
+                            
+                            <div class="progress" style="height: 28px; border-radius: 6px; overflow: hidden;">
+                                <div class="progress-bar 
+                                            {% if ticket.progress_percentage < 25 %}bg-danger
+                                            {% elif ticket.progress_percentage < 50 %}bg-warning
+                                            {% elif ticket.progress_percentage < 75 %}bg-info
+                                            {% else %}bg-success{% endif %}" 
+                                     id="progress_bar_display" 
+                                     style="width: {{ ticket.progress_percentage }}%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.9rem;">
+                                    {{ ticket.progress_percentage }}%
                                 </div>
                             </div>
-                            <small class="text-muted">Current progress: <span id="progress_display">{{ ticket.progress_percentage }}</span>%</small>
+                            
+                            <div class="progress-display">
+                                Current progress: <span id="progress_display" style="color: #667eea;">{{ ticket.progress_percentage }}</span>%
+                            </div>
+                            
                             {% if ticket.related_task %}
-                            <div class="form-check mt-2">
+                            <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="progress_locked" name="progress_locked" {% if ticket.progress_locked %}checked{% endif %}>
                                 <label class="form-check-label" for="progress_locked">
-                                    <i class="fas fa-lock me-1"></i>Lock progress (prevent employee from changing)
+                                    Lock progress (prevent employee from changing)
                                 </label>
                             </div>
                             {% endif %}
                         </div>
-                        
-                        <div class="col-12">
-                            <label for="description" class="form-label">
-                                <i class="fas fa-align-left me-2"></i>Description <span class="text-danger">*</span>
-                            </label>
-                            <textarea class="form-control" id="description" name="description" rows="6" required 
-                                      placeholder="Provide detailed information about the ticket...">{{ ticket.description }}</textarea>
-                        </div>
-                        
-                        <div class="col-12">
-                            <label class="form-label">
-                                <i class="fas fa-paperclip me-2"></i>Add Attachments (Optional)
-                            </label>
-                            <div class="file-upload-area" style="border: 2px dashed #667eea; border-radius: 10px; padding: 1.5rem; text-align: center; background: #f8f9ff;">
-                                <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
-                                <p class="mb-2 small">Click to browse or drag and drop files</p>
-                                <input type="file" name="attachments" id="attachments" multiple 
-                                       accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xlsx,.xls" 
-                                       class="d-none" onchange="showFiles(this)">
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('attachments').click()">
-                                    <i class="fas fa-folder-open me-2"></i>Choose Files
-                                </button>
-                                <div id="filePreview" class="mt-3" style="display: none;"></div>
-                            </div>
-                            <small class="text-muted">Supported formats: PDF, DOC, DOCX, JPG, PNG, TXT, XLS, XLSX (Max 10MB per file)</small>
-                        </div>
                     </div>
                     
-                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                        <a href="{% url 'ticket_detail' ticket.id %}" class="btn btn-light">
-                            <i class="fas fa-times me-2"></i>Cancel
-                        </a>
-                        <div>
-                            <a href="{% url 'delete_ticket' ticket.id %}" class="btn btn-danger me-2" 
-                               onclick="return confirm('Are you sure you want to delete ticket {{ ticket.tk_id }}?');">
-                                <i class="fas fa-trash me-2"></i>Delete Ticket
-                            </a>
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="fas fa-save me-2"></i>Save Changes
+                    <!-- Attachments -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-paperclip"></i>Attachments
+                        </div>
+                        <label class="form-label">Add Attachments (Optional)</label>
+                        <div class="file-upload-area">
+                            <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
+                            <p class="mb-3 small text-muted">Click to browse or drag and drop files here</p>
+                            <input type="file" name="attachments" id="attachments" multiple 
+                                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xlsx,.xls" 
+                                   class="d-none" onchange="showFiles(this)">
+                            <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('attachments').click()">
+                                <i class="fas fa-folder-open me-2"></i>Choose Files
                             </button>
+                            <div id="filePreview" class="mt-3" style="display: none;"></div>
+                        </div>
+                        <small class="text-muted">Supported formats: PDF, DOC, DOCX, JPG, PNG, TXT, XLS, XLSX (Max 10MB per file)</small>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="form-actions">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% url 'ticket_detail' ticket.id %}" class="btn btn-light">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <div>
+                                <a href="{% url 'delete_ticket' ticket.id %}" class="btn btn-danger me-2" 
+                                   onclick="return confirm('Are you sure you want to delete ticket {{ ticket.tk_id }}?');">
+                                    <i class="fas fa-trash me-2"></i>Delete Ticket
+                                </a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Save Changes
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -258,13 +389,13 @@
         const preview = document.getElementById('filePreview');
         if (input.files.length > 0) {
             preview.style.display = 'block';
-            preview.innerHTML = '<strong>Selected Files:</strong><br>';
+            preview.innerHTML = '<div class="mb-2" style="font-weight: 600; color: #495057; font-size: 0.9rem;">Selected Files:</div>';
             Array.from(input.files).forEach((file, index) => {
                 const fileItem = document.createElement('div');
                 fileItem.className = 'file-item';
-                fileItem.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: white; border-radius: 5px; margin-bottom: 0.5rem;';
+                fileItem.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 0.625rem 0.875rem; background: white; border-radius: 6px; margin-bottom: 0.5rem; border: 1px solid #e9ecef;';
                 fileItem.innerHTML = `
-                    <span><i class="fas fa-file me-2"></i>${file.name} (${(file.size / 1024).toFixed(2)} KB)</span>
+                    <span><i class="fas fa-file text-primary me-2"></i><strong>${file.name}</strong> <span class="text-muted" style="font-size: 0.85rem;">(${(file.size / 1024).toFixed(2)} KB)</span></span>
                 `;
                 preview.appendChild(fileItem);
             });

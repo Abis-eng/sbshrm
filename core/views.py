@@ -4939,14 +4939,16 @@ def monthly_payroll_create(request):
         messages.success(request, f'Payroll processed successfully! Created {created_count} payslips for {month}/{year}.')
         return redirect('monthly_payroll_register', month=month, year=year)
     
-    # Get selected department from GET parameter
-    selected_department_get = request.GET.get('department', None)
+    # Get selected department from GET parameter (already retrieved above, but ensure we have it)
+    if not selected_department_get:
+        selected_department_get = request.GET.get('department', None)
     
     # Get employees list for display (filtered by city and department if selected)
     employees_list = Employee.objects.select_related('user', 'designation', 'department').all()
     selected_city = selected_city_get
     selected_department = None
     
+    # Set selected_department from GET parameter or form data
     if request.method == 'GET':
         # Get from GET parameters
         if selected_city:
@@ -4956,7 +4958,7 @@ def monthly_payroll_create(request):
                 selected_department = Department.objects.get(id=selected_department_get)
                 employees_list = employees_list.filter(department=selected_department)
             except (Department.DoesNotExist, ValueError):
-                pass
+                selected_department = None
     elif request.method == 'POST' and form.is_valid():
         selected_city = form.cleaned_data.get('city')
         if selected_city:
@@ -4964,6 +4966,13 @@ def monthly_payroll_create(request):
         selected_department = form.cleaned_data.get('department')
         if selected_department:
             employees_list = employees_list.filter(department=selected_department)
+    else:
+        # For initial page load, try to get department from GET if not already set
+        if selected_department_get and not selected_department:
+            try:
+                selected_department = Department.objects.get(id=selected_department_get)
+            except (Department.DoesNotExist, ValueError):
+                selected_department = None
     
     # Get departments for the selected city
     departments_for_city = Department.objects.none()
@@ -4973,15 +4982,20 @@ def monthly_payroll_create(request):
         ).distinct().order_by('name')
     
     # Get employee count for display (filtered by both city and department)
+    # Use the same query as employees_list to ensure consistency
     employees = Employee.objects.all()
     if selected_city:
         employees = employees.filter(city=selected_city)
     if selected_department:
         employees = employees.filter(department=selected_department)
     elif selected_department_get:
+        # If selected_department is None but we have selected_department_get, try to use it
         try:
-            selected_department = Department.objects.get(id=selected_department_get)
-            employees = employees.filter(department=selected_department)
+            dept_obj = Department.objects.get(id=selected_department_get)
+            employees = employees.filter(department=dept_obj)
+            # Also set selected_department for context
+            if not selected_department:
+                selected_department = dept_obj
         except (Department.DoesNotExist, ValueError):
             pass
     
