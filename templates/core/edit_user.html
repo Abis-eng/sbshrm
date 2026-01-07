@@ -21,150 +21,232 @@
 
 {% block content %}
 <style>
+    body {
+        background: #f8f9fa;
+    }
     .form-card {
         border: none;
-        border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        padding: 0;
+        background: #fff;
+    }
+    .section-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 1.25rem 2rem;
+        border-radius: 12px 12px 0 0;
+    }
+    .section-header h5 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    .card-body {
         padding: 2rem;
-        background: white;
     }
     .form-section {
-        background: #f8f9ff;
-        border-radius: 10px;
-        padding: 1.5rem;
         margin-bottom: 1.5rem;
-        border-left: 4px solid #0e7490;
     }
-    .section-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #0e7490;
-        margin-bottom: 1rem;
+    .form-section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e9ecef;
         display: flex;
         align-items: center;
     }
-    .section-title i {
+    .form-section-title i {
         margin-right: 0.5rem;
+        color: #3b82f6;
+        font-size: 1rem;
     }
     .form-label {
         font-weight: 600;
-        color: #2d3748;
+        color: #495057;
         margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        display: block;
     }
-    .form-control, .form-select, .form-check-input {
-        border-radius: 10px;
-        border: 2px solid #e9ecef;
-        padding: 0.75rem;
-        transition: all 0.3s;
+    .form-control, .form-select {
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+        padding: 0.625rem 0.875rem;
+        transition: all 0.2s;
+        font-size: 0.95rem;
     }
     .form-control:focus, .form-select:focus {
-        border-color: #0e7490;
-        box-shadow: 0 0 0 0.2rem rgba(14, 116, 144, 0.25);
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+        outline: none;
+    }
+    .form-group-spacing {
+        margin-bottom: 1.25rem;
+    }
+    .form-actions {
+        padding: 1.5rem 0 0 0;
+        margin-top: 1.5rem;
+        border-top: 1px solid #e9ecef;
     }
     .form-check {
-        padding: 0.75rem;
-        background: white;
-        border-radius: 8px;
-        margin-bottom: 0.5rem;
-        border: 1px solid #e9ecef;
+        padding-left: 2rem;
+        margin-bottom: 1rem;
+    }
+    .form-check-input {
+        width: 1.1rem;
+        height: 1.1rem;
+        margin-top: 0.2rem;
+        border-radius: 4px;
+        border: 1px solid #ced4da;
+    }
+    .form-check-input:checked {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+    }
+    .form-check-input:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+    }
+    .form-check-label {
+        font-size: 0.9rem;
+        padding-left: 0.5rem;
+        cursor: pointer;
+    }
+    small.text-muted {
+        font-size: 0.85rem;
+        line-height: 1.5;
+        margin-top: 0.375rem;
+        display: block;
+        color: #6c757d;
+    }
+    .alert-danger {
+        background: #fee2e2;
+        border: 1px solid #fca5a5;
+        border-radius: 6px;
+        padding: 1rem;
+        color: #991b1b;
+        margin-bottom: 1.5rem;
+    }
+    .text-danger {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
     }
 </style>
 
 <div class="row justify-content-center">
-    <div class="col-lg-10">
-        <div class="form-card">
-            {% if form.errors %}
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-circle me-2"></i>Please correct the errors below.
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="col-12 col-lg-10">
+        <div class="card form-card">
+            <div class="section-header">
+                <h5><i class="fas fa-user-edit me-2"></i>Edit User: {{ user_obj.get_full_name|default:user_obj.username }}</h5>
             </div>
-            {% endif %}
-            
-            <form method="post" id="editUserForm">
-                {% csrf_token %}
-                
-                <!-- Basic Information -->
-                <div class="form-section">
-                    <div class="section-title">
-                        <i class="fas fa-user"></i>Basic Information
+            <div class="card-body">
+                <form method="post" id="editUserForm">
+                    {% csrf_token %}
+                    
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <strong><i class="fas fa-exclamation-triangle me-2"></i>Please fix the following errors:</strong>
+                        <ul class="mt-2 mb-0">
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                    <li>{{ field.label }}: {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        </ul>
                     </div>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="id_username" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="id_username" name="username" value="{{ form.username.value|default:user_obj.username }}" required>
-                            {% if form.username.errors %}
-                            <div class="text-danger small">{{ form.username.errors }}</div>
-                            {% endif %}
+                    {% endif %}
+                    
+                    <!-- Basic Information -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-user"></i>Basic Information
                         </div>
-                        <div class="col-md-6">
-                            <label for="id_email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="id_email" name="email" value="{{ form.email.value|default:user_obj.email }}">
-                            {% if form.email.errors %}
-                            <div class="text-danger small">{{ form.email.errors }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6">
-                            <label for="id_first_name" class="form-label">First Name</label>
-                            <input type="text" class="form-control" id="id_first_name" name="first_name" value="{{ form.first_name.value|default:user_obj.first_name }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="id_last_name" class="form-label">Last Name</label>
-                            <input type="text" class="form-control" id="id_last_name" name="last_name" value="{{ form.last_name.value|default:user_obj.last_name }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="id_password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="id_password" name="password">
-                            <small class="text-muted">Leave blank to keep current password</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Permissions -->
-                <div class="form-section">
-                    <div class="section-title">
-                        <i class="fas fa-shield-alt"></i>Permissions & Access
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="id_is_active" name="is_active" {% if form.is_active.value or user_obj.is_active %}checked{% endif %}>
-                                <label class="form-check-label" for="id_is_active">
-                                    <strong>Active</strong>
-                                    <small class="text-muted d-block">Allow this user to log in</small>
-                                </label>
+                        <div class="row">
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="id_username" class="form-label">Username <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="id_username" name="username" value="{{ form.username.value|default:user_obj.username }}" required>
+                                {% if form.username.errors %}
+                                <div class="text-danger">{{ form.username.errors }}</div>
+                                {% endif %}
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="id_is_staff" name="is_staff" {% if form.is_staff.value or user_obj.is_staff %}checked{% endif %}>
-                                <label class="form-check-label" for="id_is_staff">
-                                    <strong>Staff</strong>
-                                    <small class="text-muted d-block">Allow access to admin site</small>
-                                </label>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="id_email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="id_email" name="email" value="{{ form.email.value|default:user_obj.email }}">
+                                {% if form.email.errors %}
+                                <div class="text-danger">{{ form.email.errors }}</div>
+                                {% endif %}
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="id_is_superuser" name="is_superuser" {% if form.is_superuser.value or user_obj.is_superuser %}checked{% endif %}>
-                                <label class="form-check-label" for="id_is_superuser">
-                                    <strong>Superuser</strong>
-                                    <small class="text-muted d-block">Full administrative access (all permissions)</small>
-                                </label>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="id_first_name" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="id_first_name" name="first_name" value="{{ form.first_name.value|default:user_obj.first_name }}">
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="id_last_name" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="id_last_name" name="last_name" value="{{ form.last_name.value|default:user_obj.last_name }}">
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="id_password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="id_password" name="password">
+                                <small class="text-muted">Leave blank to keep current password</small>
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Form Actions -->
-                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                    <a href="{% url 'admin_user_list' %}" class="btn btn-light">
-                        <i class="fas fa-times me-2"></i>Cancel
-                    </a>
-                    <button type="submit" class="btn btn-primary btn-lg">
-                        <i class="fas fa-save me-2"></i>Save Changes
-                    </button>
-                </div>
-            </form>
+                    
+                    <!-- Permissions -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-shield-alt"></i>Permissions & Access
+                        </div>
+                        <div class="row">
+                            <div class="col-12 form-group-spacing">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="id_is_active" name="is_active" {% if form.is_active.value or user_obj.is_active %}checked{% endif %}>
+                                    <label class="form-check-label" for="id_is_active">
+                                        <strong>Active</strong>
+                                        <small class="text-muted d-block">Allow this user to log in</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12 form-group-spacing">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="id_is_staff" name="is_staff" {% if form.is_staff.value or user_obj.is_staff %}checked{% endif %}>
+                                    <label class="form-check-label" for="id_is_staff">
+                                        <strong>Staff</strong>
+                                        <small class="text-muted d-block">Allow access to admin site</small>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12 form-group-spacing">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="id_is_superuser" name="is_superuser" {% if form.is_superuser.value or user_obj.is_superuser %}checked{% endif %}>
+                                    <label class="form-check-label" for="id_is_superuser">
+                                        <strong>Superuser</strong>
+                                        <small class="text-muted d-block">Full administrative access (all permissions)</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="form-actions">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% url 'admin_user_list' %}" class="btn btn-light">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>

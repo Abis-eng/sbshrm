@@ -313,8 +313,8 @@ class EstimateForm(forms.ModelForm):
             'client': forms.Select(attrs={'class': 'form-select'}),
             'project': forms.Select(attrs={'class': 'form-select'}),
             'tax': forms.Select(attrs={'class': 'form-select'}),
-            'client_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-            'billing_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'client_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 1, 'style': 'min-height: 38px; resize: vertical;'}),
+            'billing_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 1, 'style': 'min-height: 38px; resize: vertical;'}),
             'estimate_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'expiry_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'discount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
@@ -338,8 +338,16 @@ class InvoiceForm(forms.ModelForm):
         model = Invoice
         fields = ['client', 'project', 'tax', 'client_address', 'billing_address', 'invoice_date', 'due_date', 'discount', 'other_info', 'status']
         widgets = {
+            'client': forms.Select(attrs={'class': 'form-select'}),
+            'project': forms.Select(attrs={'class': 'form-select'}),
+            'tax': forms.Select(attrs={'class': 'form-select'}),
+            'client_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 1, 'style': 'min-height: 38px; resize: vertical;'}),
+            'billing_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 1, 'style': 'min-height: 38px; resize: vertical;'}),
             'invoice_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'due_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'discount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'other_info': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
         }
 
 class InvoiceItemForm(forms.ModelForm):
@@ -850,12 +858,13 @@ class LoanForm(forms.ModelForm):
         model = Loan
         fields = ['employee', 'principal_amount', 'monthly_installment', 'balance', 'start_date', 'end_date', 'is_active']
         widgets = {
-            'employee': forms.Select(attrs={'class': 'form-control'}),
+            'employee': forms.Select(attrs={'class': 'form-select'}),
             'principal_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'monthly_installment': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'balance': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 class AdvanceRequestForm(forms.ModelForm):

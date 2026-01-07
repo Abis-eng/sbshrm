@@ -1,5 +1,5 @@
 {% extends 'core/base.html' %}
-{% block page_title %}Edit Project - {{ project.name }}{% endblock %}
+{% block page_title %}Edit Loan{% endblock %}
 {% block content %}
 <style>
     .form-card {
@@ -10,7 +10,7 @@
         background: #fff;
     }
     .section-header {
-        background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
         color: white;
         padding: 1.25rem 2rem;
         border-radius: 12px 12px 0 0;
@@ -38,7 +38,7 @@
     }
     .form-section-title i {
         margin-right: 0.5rem;
-        color: #14b8a6;
+        color: #3b82f6;
         font-size: 1rem;
     }
     .form-label {
@@ -56,8 +56,8 @@
         font-size: 0.95rem;
     }
     .form-control:focus, .form-select:focus {
-        border-color: #14b8a6;
-        box-shadow: 0 0 0 0.2rem rgba(20, 184, 166, 0.15);
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
         outline: none;
     }
     .form-group-spacing {
@@ -68,21 +68,24 @@
         margin-top: 1.5rem;
         border-top: 1px solid #e9ecef;
     }
-    .btn-add-client {
-        background: #14b8a6;
-        color: #fff;
-        border: none;
-        border-radius: 6px;
-        padding: 0.625rem 1rem;
-        font-weight: 500;
-        font-size: 0.875rem;
-        transition: all 0.2s;
-        white-space: nowrap;
+    .form-check {
+        padding-left: 2rem;
+        margin-top: 1rem;
     }
-    .btn-add-client:hover {
-        background: #0d9488;
-        color: #fff;
-        transform: translateY(-1px);
+    .form-check-input {
+        width: 1.1rem;
+        height: 1.1rem;
+        margin-top: 0.2rem;
+    }
+    .form-check-label {
+        font-size: 0.9rem;
+        padding-left: 0.5rem;
+    }
+    small.text-muted {
+        font-size: 0.85rem;
+        line-height: 1.5;
+        margin-top: 0.375rem;
+        display: block;
     }
     .alert-danger {
         background: #fee2e2;
@@ -96,28 +99,22 @@
         margin: 0.5rem 0 0 0;
         padding-left: 1.5rem;
     }
-    small.text-muted {
-        font-size: 0.85rem;
-        line-height: 1.5;
-        margin-top: 0.375rem;
-        display: block;
-    }
 </style>
 
 <div class="row justify-content-center">
-    <div class="col-12 col-lg-8">
+    <div class="col-12 col-lg-10">
         <div class="card form-card">
             <div class="section-header">
-                <h5><i class="fas fa-edit me-2"></i>Edit Project: {{ project.name }}</h5>
+                <h5><i class="fas fa-edit me-2"></i>Edit Loan</h5>
             </div>
             <div class="card-body">
-                <form method="post" id="editProjectForm">
+                <form method="post">
                     {% csrf_token %}
                     
                     {% if form.errors %}
                     <div class="alert alert-danger">
                         <strong><i class="fas fa-exclamation-triangle me-2"></i>Please fix the following errors:</strong>
-                        <ul class="mt-2">
+                        <ul class="mt-2 mb-0">
                             {% for field in form %}
                                 {% for error in field.errors %}
                                     <li>{{ field.label }}: {{ error }}</li>
@@ -129,68 +126,80 @@
                         </ul>
                     </div>
                     {% endif %}
-
+                    
                     <!-- Basic Information -->
                     <div class="form-section">
                         <div class="form-section-title">
-                            <i class="fas fa-info-circle"></i>Basic Information
+                            <i class="fas fa-info-circle"></i>Loan Information
                         </div>
                         <div class="row">
-                            <div class="col-12 form-group-spacing">
-                                <label class="form-label" for="{{ form.name.id_for_label }}">
-                                    Project Name <span class="text-danger">*</span>
+                            <div class="col-md-6 form-group-spacing">
+                                <label class="form-label" for="{{ form.employee.id_for_label }}">
+                                    Employee <span class="text-danger">*</span>
                                 </label>
-                                    {{ form.name }}
-                                <small class="text-muted">
-                                    Enter a descriptive name for your project
-                                </small>
+                                {{ form.employee }}
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label class="form-label" for="{{ form.principal_amount.id_for_label }}">
+                                    Principal Amount <span class="text-danger">*</span>
+                                </label>
+                                {{ form.principal_amount }}
+                            </div>
+                            <div class="col-md-4 form-group-spacing">
+                                <label class="form-label" for="{{ form.monthly_installment.id_for_label }}">
+                                    Monthly Installment <span class="text-danger">*</span>
+                                </label>
+                                {{ form.monthly_installment }}
+                            </div>
+                            <div class="col-md-4 form-group-spacing">
+                                <label class="form-label" for="{{ form.balance.id_for_label }}">
+                                    Balance <span class="text-danger">*</span>
+                                </label>
+                                {{ form.balance }}
+                                <small class="text-muted">Remaining loan balance</small>
+                            </div>
+                            <div class="col-md-4 form-group-spacing">
+                                <div class="form-check">
+                                    {{ form.is_active }}
+                                    <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                        <i class="fas fa-check-circle me-2"></i>Active Loan
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Client & Manager -->
+                    
+                    <!-- Dates -->
                     <div class="form-section">
                         <div class="form-section-title">
-                            <i class="fas fa-users"></i>Client & Management
+                            <i class="fas fa-calendar-alt"></i>Loan Period
                         </div>
                         <div class="row">
                             <div class="col-md-6 form-group-spacing">
-                                <label class="form-label" for="{{ form.client.id_for_label }}">
-                                    Client
+                                <label class="form-label" for="{{ form.start_date.id_for_label }}">
+                                    Start Date <span class="text-danger">*</span>
                                 </label>
-                                <div class="d-flex align-items-start gap-2">
-                                    <div class="flex-grow-1">
-                                    {{ form.client }}
-                                    </div>
-                                    <a href="{% url 'add_client' %}" target="_blank" class="btn btn-add-client">
-                                        <i class="fas fa-plus me-1"></i>Add
-                                    </a>
-                                </div>
-                                <small class="text-muted">
-                                    Select the client for this project
-                                </small>
+                                {{ form.start_date }}
                             </div>
                             <div class="col-md-6 form-group-spacing">
-                                <label class="form-label" for="{{ form.manager.id_for_label }}">
-                                    Project Manager
+                                <label class="form-label" for="{{ form.end_date.id_for_label }}">
+                                    End Date
                                 </label>
-                                {{ form.manager }}
-                                <small class="text-muted">
-                                    Assign a project manager (optional)
-                                </small>
+                                {{ form.end_date }}
+                                <small class="text-muted">Expected end date (optional)</small>
                             </div>
                         </div>
                     </div>
-
+                    
                     <!-- Form Actions -->
                     <div class="form-actions">
                         <div class="d-flex justify-content-between align-items-center">
-                            <a href="{% url 'project_list' %}" class="btn btn-light">
+                            <a href="{% url 'loans' %}" class="btn btn-light">
                                 <i class="fas fa-times me-2"></i>Cancel
                             </a>
                             <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-2"></i>Save Changes
-                        </button>
+                                <i class="fas fa-save me-2"></i>Save Changes
+                            </button>
                         </div>
                     </div>
                 </form>
@@ -199,3 +208,4 @@
     </div>
 </div>
 {% endblock %}
+

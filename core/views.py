@@ -3612,7 +3612,7 @@ def estimates(request):
     from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
     
     export_format = request.GET.get('format', '')
-    estimates = Estimate.objects.all().prefetch_related('items', 'client', 'project').order_by('-date')
+    estimates = Estimate.objects.all().prefetch_related('items', 'client', 'project').order_by('-estimate_date')
     for estimate in estimates:
         estimate.total_amount = sum(item.amount for item in estimate.items.all())
     
@@ -3656,7 +3656,7 @@ def invoice_list(request):
     from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
     
     export_format = request.GET.get('format', '')
-    invoices = Invoice.objects.all().select_related('client', 'project', 'tax').order_by('-date')
+    invoices = Invoice.objects.all().select_related('client', 'project', 'tax').order_by('-invoice_date')
     for invoice in invoices:
         invoice.total_amount = sum(item.amount for item in invoice.items.all())
     
@@ -3843,6 +3843,16 @@ def permissions_management(request):
         ('can_view_leaves', 'Leaves'),
     ]
     employees = Employee.objects.select_related('user', 'department', 'designation').all().order_by('user__first_name', 'user__last_name')
+    
+    # Calculate permission counts for each employee
+    employee_permissions = {}
+    for employee in employees:
+        count = 0
+        for field, _ in features:
+            if getattr(employee, field, False):
+                count += 1
+        employee_permissions[employee.id] = count
+    
     if request.method == 'POST':
         for employee in employees:
             for field, _ in features:
@@ -3855,6 +3865,7 @@ def permissions_management(request):
     return render(request, 'core/permissions.html', {
         'employees': employees,
         'features': features,
+        'employee_permissions': employee_permissions,
     })
 
 # ===================== PAYROLL =====================
@@ -4661,8 +4672,32 @@ def tax_slabs(request):
     form = TaxSlabForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         form.save()
+        messages.success(request, 'Tax slab added successfully!')
         return redirect('tax_slabs')
     return render(request, 'core/tax_slabs.html', {'slabs': slabs, 'form': form})
+
+@user_passes_test(is_admin)
+def edit_tax_slab(request, slab_id):
+    slab = get_object_or_404(TaxSlab, id=slab_id)
+    if request.method == 'POST':
+        form = TaxSlabForm(request.POST, instance=slab)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Tax slab updated successfully!')
+            return redirect('tax_slabs')
+    else:
+        form = TaxSlabForm(instance=slab)
+    return render(request, 'core/edit_tax_slab.html', {'form': form, 'slab': slab})
+
+@user_passes_test(is_admin)
+def delete_tax_slab(request, slab_id):
+    slab = get_object_or_404(TaxSlab, id=slab_id)
+    if request.method == 'POST':
+        slab_name = slab.name
+        slab.delete()
+        messages.success(request, f'Tax slab "{slab_name}" deleted successfully!')
+        return redirect('tax_slabs')
+    return render(request, 'core/delete_tax_slab.html', {'slab': slab})
 
 @user_passes_test(is_admin)
 def loans(request):
@@ -4670,8 +4705,44 @@ def loans(request):
     form = LoanForm(request.POST or None)
     if request.method == 'POST' and form.is_valid():
         loan = form.save()
+        messages.success(request, 'Loan added successfully!')
         return redirect('loans')
-    return render(request, 'core/loans.html', {'loans': loans_qs, 'form': form})
+    
+    # Calculate stats
+    total_loans = loans_qs.count()
+    active_loans = loans_qs.filter(is_active=True).count()
+    total_principal = sum(loan.principal_amount for loan in loans_qs)
+    
+    return render(request, 'core/loans.html', {
+        'loans': loans_qs, 
+        'form': form,
+        'total_loans': total_loans,
+        'active_loans': active_loans,
+        'total_principal': total_principal
+    })
+
+@user_passes_test(is_admin)
+def edit_loan(request, loan_id):
+    loan = get_object_or_404(Loan, id=loan_id)
+    if request.method == 'POST':
+        form = LoanForm(request.POST, instance=loan)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Loan updated successfully!')
+            return redirect('loans')
+    else:
+        form = LoanForm(instance=loan)
+    return render(request, 'core/edit_loan.html', {'form': form, 'loan': loan})
+
+@user_passes_test(is_admin)
+def delete_loan(request, loan_id):
+    loan = get_object_or_404(Loan, id=loan_id)
+    if request.method == 'POST':
+        employee_name = loan.employee.user.get_full_name() or loan.employee.user.username
+        loan.delete()
+        messages.success(request, f'Loan for {employee_name} deleted successfully!')
+        return redirect('loans')
+    return render(request, 'core/delete_loan.html', {'loan': loan})
 
 @user_passes_test(is_admin)
 def monthly_payroll_create(request):
@@ -4938,10 +5009,6 @@ def monthly_payroll_create(request):
         
         messages.success(request, f'Payroll processed successfully! Created {created_count} payslips for {month}/{year}.')
         return redirect('monthly_payroll_register', month=month, year=year)
-    
-    # Get selected department from GET parameter (already retrieved above, but ensure we have it)
-    if not selected_department_get:
-        selected_department_get = request.GET.get('department', None)
     
     # Get employees list for display (filtered by city and department if selected)
     employees_list = Employee.objects.select_related('user', 'designation', 'department').all()

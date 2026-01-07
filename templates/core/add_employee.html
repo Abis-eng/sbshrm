@@ -21,215 +21,291 @@
 
 {% block content %}
 <style>
+    body {
+        background: #f8f9fa;
+    }
     .form-card {
         border: none;
-        border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        padding: 0;
+        background: #fff;
+    }
+    .section-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 1.25rem 2rem;
+        border-radius: 12px 12px 0 0;
+    }
+    .section-header h5 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    .card-body {
         padding: 2rem;
-        background: white;
     }
     .form-section {
-        background: #f8f9ff;
-        border-radius: 10px;
-        padding: 1.5rem;
         margin-bottom: 1.5rem;
-        border-left: 4px solid #4B49AC;
     }
-    .section-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #4B49AC;
-        margin-bottom: 1rem;
+    .form-section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e9ecef;
         display: flex;
         align-items: center;
     }
-    .section-title i {
+    .form-section-title i {
         margin-right: 0.5rem;
+        color: #3b82f6;
+        font-size: 1rem;
     }
     .form-label {
         font-weight: 600;
-        color: #2d3748;
+        color: #495057;
         margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        display: block;
     }
     .form-control, .form-select {
-        border-radius: 10px;
-        border: 2px solid #e9ecef;
-        padding: 0.75rem;
-        transition: all 0.3s;
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+        padding: 0.625rem 0.875rem;
+        transition: all 0.2s;
+        font-size: 0.95rem;
     }
     .form-control:focus, .form-select:focus {
-        border-color: #4B49AC;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+        outline: none;
     }
-    .required-field::after {
-        content: " *";
-        color: #e53e3e;
+    textarea.form-control {
+        resize: vertical;
+    }
+    .form-group-spacing {
+        margin-bottom: 1.25rem;
+    }
+    .form-actions {
+        padding: 1.5rem 0 0 0;
+        margin-top: 1.5rem;
+        border-top: 1px solid #e9ecef;
+    }
+    small.text-muted {
+        font-size: 0.85rem;
+        line-height: 1.5;
+        margin-top: 0.375rem;
+        display: block;
+        color: #6c757d;
+    }
+    .alert-danger {
+        background: #fee2e2;
+        border: 1px solid #fca5a5;
+        border-radius: 6px;
+        padding: 1rem;
+        color: #991b1b;
+        margin-bottom: 1.5rem;
+    }
+    .alert-info {
+        background: #dbeafe;
+        border: 1px solid #93c5fd;
+        border-radius: 6px;
+        padding: 1rem;
+        color: #1e40af;
+        margin-bottom: 1rem;
+    }
+    .input-group-text {
+        background: #f8f9fa;
+        border: 1px solid #ced4da;
+        color: #495057;
+        border-radius: 6px 0 0 6px;
+    }
+    .input-group .form-control {
+        border-radius: 0 6px 6px 0;
+    }
+    #profile-preview {
+        margin-top: 1rem;
+    }
+    #preview-img {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #3b82f6;
     }
 </style>
 
 <div class="row justify-content-center">
-    <div class="col-lg-10">
-        <div class="form-card">
-            {% if error %}
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <div class="col-12 col-lg-10">
+        <div class="card form-card">
+            <div class="section-header">
+                <h5><i class="fas fa-user-plus me-2"></i>Add New Employee</h5>
             </div>
-            {% endif %}
-            
-            <form method="post" id="addEmployeeForm" enctype="multipart/form-data">
-                {% csrf_token %}
-                
-                <!-- Personal Information -->
-                <div class="form-section">
-                    <div class="section-title">
-                        <i class="fas fa-user"></i>Personal Information
+            <div class="card-body">
+                <form method="post" id="addEmployeeForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    {% if error %}
+                    <div class="alert alert-danger">
+                        <strong><i class="fas fa-exclamation-triangle me-2"></i>{{ error }}</strong>
                     </div>
-                    <div class="row g-3">
-                        <div class="col-md-12">
-                            <label for="profile_picture" class="form-label">Profile Picture</label>
-                            <input type="file" class="form-control" id="profile_picture" name="profile_picture" accept="image/*">
-                            <small class="text-muted">Upload a profile picture (JPG, PNG, etc.)</small>
-                            <div id="profile-preview" style="margin-top: 10px; display: none;">
-                                <img id="preview-img" src="" alt="Preview" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 2px solid #4B49AC;">
+                    {% endif %}
+                    
+                    <!-- Personal Information -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-user"></i>Personal Information
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 form-group-spacing">
+                                <label for="profile_picture" class="form-label">Profile Picture</label>
+                                <input type="file" class="form-control" id="profile_picture" name="profile_picture" accept="image/*">
+                                <small class="text-muted">Upload a profile picture (JPG, PNG, etc.)</small>
+                                <div id="profile-preview" style="display: none;">
+                                    <img id="preview-img" src="" alt="Preview">
+                                    <p class="text-muted small mt-2">Profile picture preview</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" required>
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" required>
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="phone" class="form-label">Phone</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" placeholder="+1 234 567 8900">
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="city" class="form-label">City</label>
+                                <input type="text" class="form-control" id="city" name="city" list="city-list" placeholder="Enter or select city">
+                                <datalist id="city-list">
+                                    {% for city in existing_cities %}
+                                    <option value="{{ city }}">
+                                    {% endfor %}
+                                </datalist>
+                                <small class="text-muted">Type to search or select from existing cities</small>
+                            </div>
+                            <div class="col-12 form-group-spacing">
+                                <label for="address" class="form-label">Address</label>
+                                <textarea class="form-control" id="address" name="address" rows="2" placeholder="Enter full address"></textarea>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <label for="first_name" class="form-label required-field">First Name</label>
-                            <input type="text" class="form-control" id="first_name" name="first_name" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="last_name" class="form-label required-field">Last Name</label>
-                            <input type="text" class="form-control" id="last_name" name="last_name" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="email" class="form-label required-field">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="phone" class="form-label">Phone</label>
-                            <input type="tel" class="form-control" id="phone" name="phone" placeholder="+1 234 567 8900">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="city" class="form-label">City</label>
-                            <input type="text" class="form-control" id="city" name="city" list="city-list" placeholder="Enter or select city">
-                            <datalist id="city-list">
-                                {% for city in existing_cities %}
-                                <option value="{{ city }}">
-                                {% endfor %}
-                            </datalist>
-                            <small class="text-muted">Type to search or select from existing cities</small>
-                        </div>
-                        <div class="col-12">
-                            <label for="address" class="form-label">Address</label>
-                            <textarea class="form-control" id="address" name="address" rows="2" placeholder="Enter full address"></textarea>
-                        </div>
                     </div>
-                </div>
-                
-                <!-- Account Information -->
-                <div class="form-section">
-                    <div class="section-title">
-                        <i class="fas fa-key"></i>Account Information
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="username" class="form-label required-field">Username</label>
-                            <input type="text" class="form-control" id="username" name="username" required>
-                            <small class="text-muted">Unique username for login</small>
+                    
+                    <!-- Account Information -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-key"></i>Account Information
                         </div>
-                        <div class="col-md-6">
-                            <label for="password" class="form-label required-field">Password</label>
-                            <input type="text" class="form-control" id="password" name="password" required>
-                            <small class="text-muted">Initial password (can be changed later)</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Employment Details -->
-                <div class="form-section">
-                    <div class="section-title">
-                        <i class="fas fa-briefcase"></i>Employment Details
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="department" class="form-label">Department</label>
-                            <select class="form-select" id="department" name="department">
-                                <option value="">Select Department</option>
-                                {% for dept in departments %}
-                                <option value="{{ dept.id }}">{{ dept.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="designation" class="form-label">Designation</label>
-                            <select class="form-select" id="designation" name="designation">
-                                <option value="">Select Designation</option>
-                                {% for desig in designations %}
-                                <option value="{{ desig.id }}">{{ desig.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="salary" class="form-label">Monthly Salary</label>
-                            <div class="input-group">
-                                <span class="input-group-text" style="border-radius: 10px 0 0 10px;">{{ currency_symbol|default:"$" }}</span>
-                                <input type="number" step="0.01" class="form-control" id="salary" name="salary" placeholder="0.00" style="border-radius: 0 10px 10px 0;">
+                        <div class="row">
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                                <small class="text-muted">Unique username for login</small>
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="password" name="password" required>
+                                <small class="text-muted">Initial password (can be changed later)</small>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <label for="date_of_joining" class="form-label">Date of Joining</label>
-                            <input type="date" class="form-control" id="date_of_joining" name="date_of_joining">
+                    </div>
+                    
+                    <!-- Employment Details -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-briefcase"></i>Employment Details
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="department" class="form-label">Department</label>
+                                <select class="form-select" id="department" name="department">
+                                    <option value="">Select Department</option>
+                                    {% for dept in departments %}
+                                    <option value="{{ dept.id }}">{{ dept.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="designation" class="form-label">Designation</label>
+                                <select class="form-select" id="designation" name="designation">
+                                    <option value="">Select Designation</option>
+                                    {% for desig in designations %}
+                                    <option value="{{ desig.id }}">{{ desig.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="salary" class="form-label">Monthly Salary</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">{{ currency_symbol|default:"$" }}</span>
+                                    <input type="number" step="0.01" class="form-control" id="salary" name="salary" placeholder="0.00">
+                                </div>
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="date_of_joining" class="form-label">Date of Joining</label>
+                                <input type="date" class="form-control" id="date_of_joining" name="date_of_joining">
+                            </div>
                         </div>
                     </div>
-                </div>
-                
-                <!-- ZKT Machine Configuration -->
-                <div class="form-section">
-                    <div class="section-title">
-                        <i class="fas fa-fingerprint"></i>Biometric Machine Configuration (Optional)
+                    
+                    <!-- Biometric Machine Configuration -->
+                    <div class="form-section">
+                        <div class="form-section-title">
+                            <i class="fas fa-fingerprint"></i>Biometric Machine Configuration (Optional)
+                        </div>
+                        <div class="alert alert-info">
+                            <strong><i class="fas fa-info-circle me-2"></i>Tip:</strong> The Machine ID should match the User ID registered in your biometric machine. 
+                            If the machine user ID is the same as the employee's database ID or user ID, you can use those values.
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="machine_id" class="form-label">Machine ID</label>
+                                <input type="text" class="form-control" id="machine_id" name="machine_id" placeholder="Enter Machine User ID (e.g., 1, 2, 3)">
+                                <small class="text-muted">
+                                    <strong>Important:</strong> This must match the User ID in your biometric machine. This is the primary field used to match attendance records.
+                                </small>
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="fingerprint_id" class="form-label">Fingerprint ID</label>
+                                <input type="text" class="form-control" id="fingerprint_id" name="fingerprint_id" placeholder="Enter Fingerprint ID (if different)">
+                                <small class="text-muted">Alternative ID if using fingerprint authentication</small>
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="face_id" class="form-label">Face ID</label>
+                                <input type="text" class="form-control" id="face_id" name="face_id" placeholder="Enter Face Recognition ID (if different)">
+                                <small class="text-muted">Alternative ID if using face recognition</small>
+                            </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="card_id" class="form-label">Card ID</label>
+                                <input type="text" class="form-control" id="card_id" name="card_id" placeholder="Enter Card/RFID ID (if different)">
+                                <small class="text-muted">Alternative ID if using card/RFID authentication</small>
+                            </div>
+                        </div>
                     </div>
-                    <div class="alert alert-info">
-                        <strong>💡 Tip:</strong> The Machine ID should match the User ID registered in your biometric machine. 
-                        If the machine user ID is the same as the employee's database ID or user ID, you can use those values.
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="machine_id" class="form-label">Machine ID <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="machine_id" name="machine_id" placeholder="Enter Machine User ID (e.g., 1, 2, 3)">
-                            <small class="text-muted">
-                                <strong>Important:</strong> This must match the User ID in your biometric machine.<br>
-                                This is the primary field used to match attendance records.
-                            </small>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="fingerprint_id" class="form-label">Fingerprint ID</label>
-                            <input type="text" class="form-control" id="fingerprint_id" name="fingerprint_id" placeholder="Enter Fingerprint ID (if different)">
-                            <small class="text-muted">Alternative ID if using fingerprint authentication</small>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="face_id" class="form-label">Face ID</label>
-                            <input type="text" class="form-control" id="face_id" name="face_id" placeholder="Enter Face Recognition ID (if different)">
-                            <small class="text-muted">Alternative ID if using face recognition</small>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="card_id" class="form-label">Card ID</label>
-                            <input type="text" class="form-control" id="card_id" name="card_id" placeholder="Enter Card/RFID ID (if different)">
-                            <small class="text-muted">Alternative ID if using card/RFID authentication</small>
+                    
+                    <!-- Form Actions -->
+                    <div class="form-actions">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% url 'employee_list' %}" class="btn btn-light">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Add Employee
+                            </button>
                         </div>
                     </div>
-                </div>
-                
-                <!-- Form Actions -->
-                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
-                    <a href="{% url 'employee_list' %}" class="btn btn-light">
-                        <i class="fas fa-times me-2"></i>Cancel
-                    </a>
-                    <button type="submit" class="btn btn-primary btn-lg">
-                        <i class="fas fa-save me-2"></i>Add Employee
-                    </button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 </div>

@@ -63,20 +63,38 @@
     }
     .form-label {
         font-weight: 600;
-        color: #334155;
-        margin-bottom: 8px;
+        color: #495057;
+        margin-bottom: 0.5rem;
         font-size: 0.9rem;
+        display: block;
     }
     .form-control, .form-select {
-        border-radius: 12px;
-        border: 2px solid #e2e8f0;
-        padding: 10px 15px;
-        transition: all 0.3s ease;
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+        padding: 0.625rem 0.875rem;
+        transition: all 0.2s;
+        font-size: 0.95rem;
     }
     .form-control:focus, .form-select:focus {
         border-color: #8b5cf6;
-        box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+        box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.15);
         outline: none;
+    }
+    textarea.form-control {
+        min-height: 80px;
+        resize: vertical;
+    }
+    .form-check {
+        padding-left: 2rem;
+    }
+    .form-check-input {
+        width: 1.1rem;
+        height: 1.1rem;
+        margin-top: 0.2rem;
+    }
+    .form-check-label {
+        font-size: 0.9rem;
+        padding-left: 0.5rem;
     }
     .item-card {
         background: #fff;
@@ -264,57 +282,60 @@
 
     <!-- Add Item Form -->
     <div class="form-card">
-        <h4 class="mb-4"><i class="fas fa-plus-circle me-2 text-primary"></i>Add Payroll Item</h4>
+        <div style="border-bottom: 2px solid #ede9fe; padding-bottom: 1rem; margin-bottom: 1.5rem;">
+            <h4 class="mb-0" style="color: #8b5cf6; font-weight: 600;">
+                <i class="fas fa-plus-circle me-2"></i>Add Payroll Item
+            </h4>
+        </div>
         <form method="post">
             {% csrf_token %}
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Employee</label>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Employee <span class="text-danger">*</span></label>
                     {{ form.employee }}
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Date</label>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Date <span class="text-danger">*</span></label>
                     {{ form.date }}
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Name</label>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Amount <span class="text-danger">*</span></label>
+                    {{ form.amount }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Name <span class="text-danger">*</span></label>
                     {{ form.name }}
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Type</label>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Type <span class="text-danger">*</span></label>
                     {{ form.item_type }}
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-4 mb-3">
                     <label class="form-label">Category</label>
                     {{ form.category }}
                 </div>
-                <div class="col-md-1">
-                    <label class="form-label">Amount</label>
-                    {{ form.amount }}
-                </div>
-            </div>
-            <div class="row g-3 mt-2">
-                <div class="col-md-2">
-                    <div class="form-check form-switch mt-4">
-                        {{ form.is_recurring }}
-                        <label class="form-check-label">Recurring</label>
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Start Date</label>
-                    {{ form.start_date }}
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">End Date</label>
-                    {{ form.end_date }}
-                </div>
-                <div class="col-md-4">
+                <div class="col-md-12 mb-3">
                     <label class="form-label">Description</label>
                     {{ form.description }}
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">&nbsp;</label>
-                    <button type="submit" class="btn btn-submit w-100">
+                <div class="col-md-12 mb-3">
+                    <div class="form-check form-switch">
+                        {{ form.is_recurring }}
+                        <label class="form-check-label" for="{{ form.is_recurring.id_for_label }}">
+                            <i class="fas fa-sync me-2"></i>Recurring Item
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3" id="startDateField" style="display: none;">
+                    <label class="form-label">Start Date</label>
+                    {{ form.start_date }}
+                </div>
+                <div class="col-md-6 mb-3" id="endDateField" style="display: none;">
+                    <label class="form-label">End Date</label>
+                    {{ form.end_date }}
+                </div>
+                <div class="col-md-12">
+                    <button type="submit" class="btn btn-submit">
                         <i class="fas fa-plus me-2"></i>Add Item
                     </button>
                 </div>
@@ -390,9 +411,30 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Toggle recurring date fields
+        const isRecurring = document.getElementById('{{ form.is_recurring.id_for_label }}');
+        const startDateField = document.getElementById('startDateField');
+        const endDateField = document.getElementById('endDateField');
+        
+        function toggleRecurringFields() {
+            if (isRecurring && isRecurring.checked) {
+                if (startDateField) startDateField.style.display = 'block';
+                if (endDateField) endDateField.style.display = 'block';
+            } else {
+                if (startDateField) startDateField.style.display = 'none';
+                if (endDateField) endDateField.style.display = 'none';
+            }
+        }
+        
+        if (isRecurring) {
+            isRecurring.addEventListener('change', toggleRecurringFields);
+            toggleRecurringFields(); // Initial call
+        }
+        
+        // Search functionality
         const searchInput = document.getElementById('searchInput');
         const itemsList = document.getElementById('itemsList');
-        const itemCards = itemsList.querySelectorAll('.item-card');
+        const itemCards = itemsList ? itemsList.querySelectorAll('.item-card') : [];
         
         if (searchInput) {
             searchInput.addEventListener('input', function(e) {
