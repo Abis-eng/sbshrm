@@ -2,7 +2,7 @@ from .models import (
     Department, Employee, Designation, Holiday, Leave, BudgetCategory, Budget, BudgetExpense, 
     BudgetRevenue, Asset, CompanySettings, LocalizationSettings, InvoiceSettings, SalarySettings, 
     ThemeSettings, Tax, Expense, Estimate, EstimateItem, Invoice, InvoiceItem, Attendance, 
-    AttendanceLog, AttendanceMachine, Company, Feature, UserProfile
+    AttendanceLog, AttendanceMachine, Company, Feature, UserProfile, EmployeeScreenshot
 )
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -85,6 +85,15 @@ class AttendanceMachineAdmin(admin.ModelAdmin):
         """Display connection string"""
         return obj.get_connection_string()
     get_connection_display.short_description = 'Connection'
+
+@admin.register(EmployeeScreenshot)
+class EmployeeScreenshotAdmin(admin.ModelAdmin):
+    list_display = ['employee', 'date', 'captured_at', 'is_active']
+    list_filter = ['date', 'captured_at', 'is_active', 'employee__department']
+    search_fields = ['employee__user__username', 'employee__user__first_name', 'employee__user__last_name']
+    date_hierarchy = 'captured_at'
+    readonly_fields = ['captured_at']
+    list_editable = ['is_active']
 
 
 # Multi-Tenant Company and Feature Management

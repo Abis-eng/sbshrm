@@ -46,6 +46,11 @@ urlpatterns = [
     path('my-attendance/', views.my_attendance, name='my_attendance'),  # employee
     path('all-attendance/', views.all_attendance, name='all_attendance'),  # admin
     path('attendance-logs/', views.attendance_logs, name='attendance_logs'),  # admin
+    # Screenshot monitoring
+    path('api/check-clock-status/', views.check_clock_status, name='check_clock_status'),  # employee API
+    path('api/upload-screenshot/', views.upload_screenshot, name='upload_screenshot'),  # employee API
+    path('employee-screenshots/', views.employee_screenshots, name='employee_screenshots'),  # admin
+    path('employee-screenshots/<int:employee_id>/', views.employee_screenshots, name='employee_screenshots'),  # admin
     path('sync-zkt-machine/', views.sync_zkt_machine, name='sync_zkt_machine'),  # admin (legacy - redirects to new sync)
     path('sync-attendance-machine/', views.sync_attendance_machine, name='sync_attendance_machine'),  # admin - sync all machines
     path('sync-attendance-machine/<int:machine_id>/', views.sync_attendance_machine, name='sync_attendance_machine'),  # admin - sync specific machine

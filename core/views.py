@@ -3,12 +3,12 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test, permission_required
 from django.contrib import messages
 from .company_utils import require_feature, require_company_admin, filter_by_company, get_user_company, is_super_admin, is_company_admin, has_feature_access, get_company_context
-from .models import Employee, Department, Designation, Attendance, AttendanceLog, AttendanceMachine, Ticket, Client, Holiday, Leave, Notice
+from .models import Employee, Department, Designation, Attendance, AttendanceLog, AttendanceMachine, Ticket, Client, Holiday, Leave, Notice, EmployeeScreenshot
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.contrib.auth.hashers import make_password
 from core.models import ChatMessage, Notification
-from django.db.models import Q, Max
+from django.db.models import Q, Max, Min
 from .models import OnlineUser
 from django.views.decorators.http import require_POST
 from django.utils import timezone
@@ -79,9 +79,16 @@ def login_view(request):
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
         if user is not None:
+            # Explicitly check if user is active
+            if not user.is_active:
+                messages.error(request, 'Your account has been deactivated. Please contact the administrator.')
+                return render(request, 'core/login.html')
             login(request, user)
-            # Redirect all users to dashboard after login
-            return redirect('dashboard')
+            # Redirect based on user type
+            if user.is_superuser:
+                return redirect('dashboard')  # Admin goes to admin dashboard
+            else:
+                return redirect('employee_dashboard')  # Employee goes to employee dashboard
         else:
             messages.error(request, 'Invalid username or password.')
     return render(request, 'core/login.html')
@@ -93,6 +100,7 @@ def is_employee(user):
     return user.is_authenticated and not user.is_superuser
 
 @login_required
+@user_passes_test(is_admin)
 def dashboard(request):
     from django.db.models import Count, Sum, Q
     from django.db.models.functions import TruncMonth
@@ -398,15 +406,98 @@ def add_employee(request):
         card_id = request.POST.get('card_id')
         profile_picture = request.FILES.get('profile_picture')
         
-        if User.objects.filter(username=username).exists():
-            error = 'Username already exists. Please choose another.'
-            existing_cities = Employee.objects.exclude(city__isnull=True).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
-            return render(request, 'core/add_employee.html', {
-                'departments': departments, 
-                'designations': designations, 
-                'error': error,
-                'existing_cities': existing_cities
-            })
+        # Check if username exists and if it's associated with an active employee
+        existing_user = User.objects.filter(username=username).first()
+        if existing_user:
+            # Check if user has an active employee record
+            try:
+                if hasattr(existing_user, 'employee') and existing_user.employee:
+                    error = 'Username already exists and is associated with an active employee. Please choose another username.'
+                    existing_cities = Employee.objects.exclude(city__isnull=True).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
+                    return render(request, 'core/add_employee.html', {
+                        'departments': departments, 
+                        'designations': designations, 
+                        'error': error,
+                        'existing_cities': existing_cities
+                    })
+            except Employee.DoesNotExist:
+                pass  # No employee record, continue with cleanup
+            
+            # User exists but has no employee record - this is a leftover from deletion
+            # Clean it up by deleting the user completely using raw SQL to force deletion
+            try:
+                from django.db import connection
+                from django.db.utils import OperationalError, ProgrammingError
+                user_id = existing_user.id
+                
+                # Use raw SQL to force delete all related records
+                with connection.cursor() as cursor:
+                    try:
+                        cursor.execute("DELETE FROM core_chatmessage WHERE sender_id = %s OR recipient_id = %s", [user_id, user_id])
+                    except (OperationalError, ProgrammingError):
+                        pass
+                    
+                    try:
+                        # Notification uses recipient_id and sender_id, not user_id
+                        cursor.execute("DELETE FROM core_notification WHERE recipient_id = %s OR sender_id = %s", [user_id, user_id])
+                    except (OperationalError, ProgrammingError):
+                        pass
+                    
+                    try:
+                        cursor.execute("DELETE FROM core_ticket WHERE created_by_id = %s", [user_id])
+                    except (OperationalError, ProgrammingError):
+                        pass
+                    
+                    try:
+                        cursor.execute("DELETE FROM core_userfamilyinfo WHERE user_id = %s", [user_id])
+                    except (OperationalError, ProgrammingError):
+                        pass
+                    
+                    try:
+                        cursor.execute("DELETE FROM core_onlineuser WHERE user_id = %s", [user_id])
+                    except (OperationalError, ProgrammingError):
+                        pass
+                    
+                    try:
+                        cursor.execute("DELETE FROM core_userprofile WHERE user_id = %s", [user_id])
+                    except (OperationalError, ProgrammingError):
+                        pass
+                    
+                    # Finally delete the user
+                    try:
+                        cursor.execute("DELETE FROM auth_user WHERE id = %s", [user_id])
+                        logger.info(f"Cleaned up leftover user account: {username} (ID: {user_id})")
+                    except (OperationalError, ProgrammingError) as e:
+                        logger.error(f"Failed to delete user {username}: {e}")
+                        # Try Django ORM as fallback
+                        existing_user.delete()
+                        logger.info(f"Cleaned up leftover user account using ORM: {username}")
+                
+            except Exception as e:
+                logger.error(f"Error cleaning up leftover user {username}: {e}")
+                # Last resort: try to delete using Django ORM
+                try:
+                    from .models import UserProfile, ChatMessage, Notification, Ticket, UserFamilyInfo, OnlineUser
+                    ChatMessage.objects.filter(sender=existing_user).delete()
+                    ChatMessage.objects.filter(recipient=existing_user).delete()
+                    Notification.objects.filter(recipient=existing_user).delete()
+                    Notification.objects.filter(sender=existing_user).delete()
+                    Ticket.objects.filter(created_by=existing_user).delete()
+                    UserFamilyInfo.objects.filter(user=existing_user).delete()
+                    OnlineUser.objects.filter(user=existing_user).delete()
+                    UserProfile.objects.filter(user=existing_user).delete()
+                    existing_user.delete()
+                    logger.info(f"Cleaned up leftover user account using ORM fallback: {username}")
+                except Exception as e2:
+                    logger.error(f"Complete cleanup failure for {username}: {e2}")
+                    error = f'Username exists but cleanup failed. Error: {str(e2)}. Please try a different username or contact administrator.'
+                    existing_cities = Employee.objects.exclude(city__isnull=True).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
+                    return render(request, 'core/add_employee.html', {
+                        'departments': departments, 
+                        'designations': designations, 
+                        'error': error,
+                        'existing_cities': existing_cities
+                    })
         
         user = User.objects.create(
             username=username,
@@ -1642,6 +1733,134 @@ def my_attendance(request):
         'today_logs': today_logs
     })
 
+@login_required
+@require_POST
+def check_clock_status(request):
+    """API endpoint to check if employee is currently clocked in"""
+    try:
+        employee = request.user.employee
+    except Exception:
+        return JsonResponse({'error': 'Employee not found'}, status=403)
+    
+    today = timezone.now().date()
+    today_record = Attendance.objects.filter(employee=employee, date=today).first()
+    
+    # Employee is clocked in if they have check_in but no check_out for today
+    is_clocked_in = False
+    if today_record and today_record.check_in and not today_record.check_out:
+        is_clocked_in = True
+    
+    return JsonResponse({
+        'is_clocked_in': is_clocked_in,
+        'check_in': today_record.check_in.isoformat() if today_record and today_record.check_in else None,
+        'check_out': today_record.check_out.isoformat() if today_record and today_record.check_out else None,
+    })
+
+@login_required
+@require_POST
+def upload_screenshot(request):
+    """API endpoint to upload employee screenshot"""
+    try:
+        employee = request.user.employee
+    except Exception:
+        return JsonResponse({'error': 'Employee not found'}, status=403)
+    
+    # Check if employee is clocked in
+    today = timezone.now().date()
+    today_record = Attendance.objects.filter(employee=employee, date=today).first()
+    
+    if not today_record or not today_record.check_in or today_record.check_out:
+        return JsonResponse({'error': 'You must be clocked in to capture screenshots'}, status=400)
+    
+    # Get screenshot from request
+    if 'screenshot' not in request.FILES:
+        return JsonResponse({'error': 'No screenshot file provided'}, status=400)
+    
+    screenshot_file = request.FILES['screenshot']
+    
+    # Validate file type
+    if not screenshot_file.content_type.startswith('image/'):
+        return JsonResponse({'error': 'Invalid file type. Only images are allowed'}, status=400)
+    
+    # Create screenshot record
+    try:
+        screenshot = EmployeeScreenshot.objects.create(
+            employee=employee,
+            screenshot=screenshot_file,
+            date=today,
+            captured_at=timezone.now()
+        )
+        return JsonResponse({
+            'success': True,
+            'message': 'Screenshot uploaded successfully',
+            'screenshot_id': screenshot.id,
+            'captured_at': screenshot.captured_at.isoformat()
+        })
+    except Exception as e:
+        logger.error(f"Error uploading screenshot: {str(e)}")
+        return JsonResponse({'error': f'Error uploading screenshot: {str(e)}'}, status=500)
+
+@user_passes_test(is_admin)
+def employee_screenshots(request, employee_id=None):
+    """Admin view to see employee screenshots"""
+    from django.db.models import Q
+    from .company_utils import get_user_company, is_super_admin, is_company_admin
+    
+    # Get user's company
+    user_company = get_user_company(request.user)
+    
+    # Get employees based on permissions
+    if is_super_admin(request.user):
+        employees = Employee.objects.select_related('user', 'department', 'company').all()
+    elif user_company:
+        employees = Employee.objects.filter(company=user_company).select_related('user', 'department', 'company')
+    else:
+        employees = Employee.objects.none()
+    
+    # Get selected employee from URL parameter or GET parameter
+    selected_employee_id = employee_id or request.GET.get('employee_id')
+    selected_employee = None
+    screenshots = EmployeeScreenshot.objects.none()
+    
+    if selected_employee_id:
+        try:
+            selected_employee = get_object_or_404(Employee, id=selected_employee_id)
+            # Verify access
+            if not is_super_admin(request.user) and selected_employee.company != user_company:
+                return HttpResponse('You do not have permission to view this employee\'s screenshots.', status=403)
+            
+            # Get date filter
+            date_filter = request.GET.get('date', '')
+            
+            # Get screenshots for selected employee
+            screenshots = EmployeeScreenshot.objects.filter(employee=selected_employee).order_by('-captured_at')
+            
+            if date_filter:
+                try:
+                    filter_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
+                    screenshots = screenshots.filter(date=filter_date)
+                except ValueError:
+                    pass
+        except Exception as e:
+            logger.error(f"Error loading employee screenshots: {str(e)}")
+    
+    # Get date range for filter
+    if selected_employee:
+        date_range = EmployeeScreenshot.objects.filter(employee=selected_employee).aggregate(
+            min_date=Min('date'),
+            max_date=Max('date')
+        )
+    else:
+        date_range = {'min_date': None, 'max_date': None}
+    
+    return render(request, 'core/employee_screenshots.html', {
+        'employees': employees,
+        'selected_employee': selected_employee,
+        'screenshots': screenshots,
+        'date_range': date_range,
+        'selected_date': request.GET.get('date', ''),
+    })
+
 @user_passes_test(is_admin)
 def all_attendance(request):
     from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
@@ -2318,108 +2537,129 @@ def edit_employee(request, employee_id):
 
 @user_passes_test(is_admin)
 def delete_employee(request, employee_id):
-    """FORCE DELETE - Uses raw SQL to bypass all constraints"""
+    """Completely delete employee and user from the system - FORCE DELETE with FK checks disabled"""
     from django.db import connection
     from django.db.utils import OperationalError, ProgrammingError
     
-    # Get employee
-    employee = get_object_or_404(Employee, id=employee_id)
-    user = employee.user
-    employee_name = employee.user.get_full_name() or employee.user.username
-    user_id = user.id
-    
-    # Prevent self-deletion
-    if user.id == request.user.id:
-        messages.warning(request, 'You cannot delete your own account.')
-        return redirect('employee_list')
-    
-    # FORCE DELETE using raw SQL - bypasses all Django ORM constraints
     try:
-        with connection.cursor() as cursor:
-            # Step 1: Clear SET_NULL relationships
-            try:
-                cursor.execute("UPDATE core_project SET manager_id = NULL WHERE manager_id = %s", [employee_id])
-            except:
-                pass
-            
-            try:
-                cursor.execute("UPDATE core_asset SET asset_user_id = NULL WHERE asset_user_id = %s", [employee_id])
-            except:
-                pass
-            
-            # Step 2: Delete all employee-related records using raw SQL (ignore missing tables)
-            tables_to_clean = [
-                ('core_attendance', 'employee_id'),
-                ('core_attendancelog', 'employee_id'),
-                ('core_leave', 'employee_id'),
-                ('core_payrollitem', 'employee_id'),
-                ('core_payslip', 'employee_id'),
-                ('core_loan', 'employee_id'),
-                ('core_advancerequest', 'employee_id'),
-                ('core_task', 'assigned_by_id'),
-                ('core_task', 'assigned_to_id'),
-                ('core_employeeeducation', 'employee_id'),
-                ('core_employeeworkexperience', 'employee_id'),
-                ('core_employeeallowance', 'employee_id'),
-                ('core_employeededuction', 'employee_id'),
-                ('core_employeesalarydetail', 'employee_id'),
-            ]
-            
-            for table, column in tables_to_clean:
-                try:
-                    if column == 'employee_id':
-                        cursor.execute(f"DELETE FROM {table} WHERE {column} = %s", [employee_id])
-                    elif column in ['assigned_by_id', 'assigned_to_id']:
-                        cursor.execute(f"DELETE FROM {table} WHERE {column} = %s", [employee_id])
-                except (OperationalError, ProgrammingError):
-                    # Table doesn't exist or column doesn't exist - skip it
-                    pass
-            
-            # Step 3: Delete task-related records (handle missing tables)
-            task_tables = [
-                ('core_taskcomment', 'created_by_id'),
-                ('core_taskfollower', 'employee_id'),
-                ('core_subtask', 'assigned_to_id'),
-            ]
-            
-            for table, column in task_tables:
-                try:
-                    cursor.execute(f"DELETE FROM {table} WHERE {column} = %s", [employee_id])
-                except (OperationalError, ProgrammingError):
-                    # Table doesn't exist - skip it
-                    pass
-            
-            # Step 4: Delete the employee record
-            cursor.execute("DELETE FROM core_employee WHERE id = %s", [employee_id])
-            
-            # Step 5: Delete user-related records (handle missing tables)
-            user_tables = [
-                ('core_chatmessage', 'sender_id'),
-                ('core_chatmessage', 'recipient_id'),
-                ('core_ticket', 'created_by_id'),
-                ('core_notification', 'user_id'),
-            ]
-            
-            for table, column in user_tables:
-                try:
-                    cursor.execute(f"DELETE FROM {table} WHERE {column} = %s", [user_id])
-                except (OperationalError, ProgrammingError):
-                    pass
-            
-            # Step 6: Finally delete the user
-            cursor.execute("DELETE FROM auth_user WHERE id = %s", [user_id])
+        # Get employee
+        employee = get_object_or_404(Employee, id=employee_id)
+        user = employee.user
+        employee_name = employee.user.get_full_name() or employee.user.username
+        username = user.username
+        user_id = user.id
         
-        messages.success(request, f'Employee "{employee_name}" has been FORCE DELETED successfully.')
+        # Prevent self-deletion
+        if user.id == request.user.id:
+            messages.warning(request, 'You cannot delete your own account.')
+            return redirect('employee_list')
+        
+        # FORCE DELETE using raw SQL with foreign key checks disabled
+        with connection.cursor() as cursor:
+            try:
+                # Disable foreign key checks temporarily (MySQL)
+                cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+                
+                # Delete all related records - comprehensive cleanup
+                tables_to_clean = [
+                    ('core_employeescreenshot', 'employee_id', employee_id),
+                    ('core_chatmessage', 'sender_id', user_id),
+                    ('core_chatmessage', 'recipient_id', user_id),
+                    ('core_notification', 'recipient_id', user_id),
+                    ('core_notification', 'sender_id', user_id),
+                    ('core_ticket', 'created_by_id', user_id),
+                    ('core_ticket', 'assigned_to_id', user_id),
+                    ('core_userfamilyinfo', 'user_id', user_id),
+                    ('core_onlineuser', 'user_id', user_id),
+                    ('core_userprofile', 'user_id', user_id),
+                    ('core_attendance', 'employee_id', employee_id),
+                    ('core_attendancelog', 'employee_id', employee_id),
+                    ('core_leave', 'employee_id', employee_id),
+                    ('core_payrollitem', 'employee_id', employee_id),
+                    ('core_payslip', 'employee_id', employee_id),
+                    ('core_loan', 'employee_id', employee_id),
+                    ('core_advancerequest', 'employee_id', employee_id),
+                    ('core_task', 'assigned_by_id', employee_id),
+                    ('core_task', 'assigned_to_id', employee_id),
+                    ('core_taskcomment', 'created_by_id', employee_id),
+                    ('core_taskfollower', 'employee_id', employee_id),
+                    ('core_subtask', 'assigned_to_id', employee_id),
+                    ('core_employeeeducation', 'employee_id', employee_id),
+                    ('core_employeeworkexperience', 'employee_id', employee_id),
+                    ('core_employeeallowance', 'employee_id', employee_id),
+                    ('core_employeededuction', 'employee_id', employee_id),
+                ]
+                
+                for table, column, id_value in tables_to_clean:
+                    try:
+                        if column.endswith('_id'):
+                            cursor.execute(f"DELETE FROM {table} WHERE {column} = %s", [id_value])
+                    except (OperationalError, ProgrammingError) as e:
+                        logger.warning(f"Could not delete from {table}.{column}: {e}")
+                
+                # Update tables that use SET_NULL
+                try:
+                    cursor.execute("UPDATE core_project SET manager_id = NULL WHERE manager_id = %s", [employee_id])
+                except:
+                    pass
+                
+                try:
+                    cursor.execute("UPDATE core_asset SET asset_user_id = NULL WHERE asset_user_id = %s", [employee_id])
+                except:
+                    pass
+                
+                # Delete employee record
+                try:
+                    cursor.execute("DELETE FROM core_employee WHERE id = %s", [employee_id])
+                except Exception as e:
+                    logger.error(f"Error deleting employee: {e}")
+                
+                # Finally delete user - THIS IS CRITICAL
+                try:
+                    cursor.execute("DELETE FROM auth_user WHERE id = %s", [user_id])
+                    # Verify deletion
+                    cursor.execute("SELECT COUNT(*) FROM auth_user WHERE id = %s", [user_id])
+                    count = cursor.fetchone()[0]
+                    if count > 0:
+                        logger.error(f"User {user_id} still exists after deletion!")
+                        # Try one more time
+                        cursor.execute("DELETE FROM auth_user WHERE id = %s", [user_id])
+                except Exception as e:
+                    logger.error(f"Error deleting user: {e}")
+                
+                # Re-enable foreign key checks
+                cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+                
+                # Final verification
+                cursor.execute("SELECT COUNT(*) FROM auth_user WHERE id = %s", [user_id])
+                user_exists = cursor.fetchone()[0] > 0
+                
+                cursor.execute("SELECT COUNT(*) FROM core_employee WHERE id = %s", [employee_id])
+                emp_exists = cursor.fetchone()[0] > 0
+                
+                if user_exists or emp_exists:
+                    logger.error(f"DELETION FAILED: User exists={user_exists}, Employee exists={emp_exists}")
+                    messages.error(request, f'Failed to completely delete employee "{employee_name}". User exists: {user_exists}, Employee exists: {emp_exists}. Please check database manually.')
+                else:
+                    messages.success(request, f'Employee "{employee_name}" (username: {username}) has been completely removed from the system. They can no longer access or login.')
+            
+            except Exception as inner_error:
+                # Error in inner try block - re-enable FK checks and re-raise
+                try:
+                    cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+                except:
+                    pass
+                raise inner_error
         
     except Exception as e:
-        # Even if there's an error, try to delete using raw SQL as last resort
+        logger.error(f"Error deleting employee {employee_id}: {str(e)}")
+        # Try to re-enable FK checks even if error occurred
         try:
             with connection.cursor() as cursor:
-                cursor.execute("DELETE FROM core_employee WHERE id = %s", [employee_id])
-                cursor.execute("DELETE FROM auth_user WHERE id = %s", [user_id])
-            messages.success(request, f'Employee "{employee_name}" has been FORCE DELETED (with some errors ignored).')
-        except Exception as e2:
-            messages.error(request, f'Error deleting employee: {str(e2)}')
+                cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
+        except:
+            pass
+        messages.error(request, f'Error deleting employee: {str(e)}. Please try again or contact support.')
     
     return redirect('employee_list')
 

@@ -296,8 +296,8 @@
                    class="btn btn-sm btn-danger action-btn" 
                    title="Delete Employee"
                    style="font-size: 0.75rem; padding: 0.25rem 0.5rem; text-decoration: none;"
-                   onclick="return confirm('Are you sure you want to delete {{ employee.user.get_full_name|default:employee.user.username }}? This will also delete their user account. This action cannot be undone.');">
-                    <i class="fas fa-trash me-1"></i>Del
+                   onclick="return confirm('Are you sure you want to permanently delete {{ employee.user.get_full_name|default:employee.user.username }}? This will completely remove them from the system and they will no longer be able to login. This action cannot be undone.');">
+                    <i class="fas fa-trash me-1"></i>Delete
                 </a>
                 {% endif %}
             </div>

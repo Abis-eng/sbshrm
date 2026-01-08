@@ -592,19 +592,36 @@
                         </li>
                         {% endif %}
                         
+                        {% if user.is_superuser %}
                         <li class="nav-item">
                             <a class="nav-link text-white" data-toggle-sidebar="employeeMenu" role="button">
                                 <i class="fas fa-users me-2"></i>Employees
                                 <i class="fas fa-chevron-right ms-auto float-end mt-1"></i>
                             </a>
                         </li>
+                        {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link text-white" data-toggle-sidebar="employeeMenu" role="button">
+                                <i class="fas fa-user me-2"></i>My Profile
+                                <i class="fas fa-chevron-right ms-auto float-end mt-1"></i>
+                            </a>
+                        </li>
+                        {% endif %}
                         
+                        {% if user.is_superuser %}
                         <li class="nav-item">
                             <a class="nav-link text-white" data-toggle-sidebar="projectsMenu" role="button">
                                 <i class="fas fa-project-diagram me-2"></i>Projects
                                 <i class="fas fa-chevron-right ms-auto float-end mt-1"></i>
                             </a>
                         </li>
+                        {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link text-white" href="{% url 'my_tasks' %}">
+                                <i class="fas fa-tasks me-2"></i>My Tasks
+                            </a>
+                        </li>
+                        {% endif %}
                         
                         {% if user.is_superuser %}
                         <li class="nav-item">
@@ -733,14 +750,21 @@
             <!-- Employees Sidebar -->
             <div class="submenu-sidebar" id="employeeMenu">
                 <div class="submenu-sidebar-header">
-                    <h5><i class="fas fa-users me-2"></i>Employees</h5>
+                    <h5><i class="fas fa-{% if user.is_superuser %}users{% else %}user{% endif %} me-2"></i>{% if user.is_superuser %}Employees{% else %}My Profile{% endif %}</h5>
                     <button class="submenu-sidebar-close" onclick="closeSidebar('employeeMenu')">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <div class="submenu-sidebar-content">
+                    {% if user.is_superuser %}
                     <a class="nav-link text-white" href="{% url 'employee_list' %}"><i class="fas fa-user me-2"></i>Employees</a>
+                    {% else %}
+                    <a class="nav-link text-white" href="{% url 'view_employee_profile' user.employee.id %}"><i class="fas fa-user me-2"></i>My Profile</a>
+                    {% endif %}
                     <a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'all_attendance' %}{% else %}{% url 'my_attendance' %}{% endif %}"><i class="fas fa-calendar-check me-2"></i>Attendance</a>
+                    {% if user.is_superuser %}
+                    <a class="nav-link text-white" href="{% url 'employee_screenshots' %}"><i class="fas fa-camera me-2"></i>Screenshots</a>
+                    {% endif %}
                     <a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_departments' %}{% else %}{% url 'my_department' %}{% endif %}"><i class="fas fa-building me-2"></i>Departments</a>
                     <a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_designations' %}{% else %}{% url 'my_designation' %}{% endif %}"><i class="fas fa-id-badge me-2"></i>Designations</a>
                     <a class="nav-link text-white" href="{% if user.is_superuser %}{% url 'manage_holidays' %}{% else %}{% url 'holidays' %}{% endif %}"><i class="fas fa-umbrella-beach me-2"></i>Holidays</a>
@@ -1801,5 +1825,379 @@
     </script>
     
     {% block extra_js %}{% endblock %}
+    
+    <!-- Desktop Screenshot Monitoring Script -->
+    {% if not user.is_superuser %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+    (function() {
+        let screenshotInterval = null;
+        let isMonitoring = false;
+        let mediaStream = null;
+        let videoElement = null;
+        let canvas = null;
+        let hasPermission = false;
+        
+        // Function to check clock status
+        async function checkClockStatus() {
+            try {
+                const response = await fetch('{% url "check_clock_status" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                return data.is_clocked_in;
+            } catch (error) {
+                console.error('Error checking clock status:', error);
+                return false;
+            }
+        }
+        
+        // Function to request screen capture permission
+        async function requestScreenCapture() {
+            try {
+                // First, try to use Chrome extension if available (more seamless)
+                if (window.hrmScreenCaptureExtension && window.hrmScreenCaptureExtension.available) {
+                    try {
+                        console.log('Using HRM Screen Capture Extension for seamless capture...');
+                        mediaStream = await window.hrmScreenCaptureExtension.requestScreen();
+                        console.log('✅ Extension-based screen capture active');
+                        
+                        // Create hidden video element to capture frames
+                        videoElement = document.createElement('video');
+                        videoElement.srcObject = mediaStream;
+                        videoElement.autoplay = true;
+                        videoElement.style.display = 'none';
+                        document.body.appendChild(videoElement);
+                        
+                        // Create canvas for capturing frames
+                        canvas = document.createElement('canvas');
+                        
+                        // Wait for video to be ready
+                        await new Promise((resolve) => {
+                            videoElement.onloadedmetadata = () => {
+                                canvas.width = videoElement.videoWidth;
+                                canvas.height = videoElement.videoHeight;
+                                resolve();
+                            };
+                        });
+                        
+                        hasPermission = true;
+                        
+                        // Handle stream end
+                        mediaStream.getVideoTracks()[0].addEventListener('ended', () => {
+                            console.log('Screen sharing ended - will attempt to reconnect if still clocked in');
+                            hasPermission = false;
+                            setTimeout(async () => {
+                                if (isMonitoring) {
+                                    const isClockedIn = await checkClockStatus();
+                                    if (isClockedIn) {
+                                        console.log('Still clocked in - attempting to reconnect screen capture');
+                                        await requestScreenCapture();
+                                    } else {
+                                        stopScreenshotMonitoring();
+                                    }
+                                }
+                            }, 3000);
+                        });
+                        
+                        return true;
+                    } catch (extError) {
+                        console.warn('Extension method failed, falling back to standard method:', extError);
+                        // Fall through to standard method
+                    }
+                }
+                
+                // Standard method (fallback or if extension not available)
+                // NOTE: Browser security requires employee to manually select "Entire screen" tab
+                // The dialog will appear - employee must click "Entire screen" tab, then "Share"
+                console.log('Using standard screen capture method...');
+                mediaStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: {
+                        mediaSource: 'screen', // Request entire screen (not just tab)
+                        displaySurface: 'monitor', // Prefer monitor/entire screen
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    },
+                    audio: false,
+                    preferCurrentTab: false // Don't prefer current tab, prefer entire screen
+                });
+                
+                // Check what was actually selected
+                const videoTrack = mediaStream.getVideoTracks()[0];
+                const settings = videoTrack.getSettings();
+                if (settings.displaySurface && settings.displaySurface !== 'monitor') {
+                    console.warn('⚠️ Employee selected tab/window instead of entire screen. For complete monitoring, please select "Entire screen" tab.');
+                } else {
+                    console.log('✅ Entire screen capture active');
+                }
+                
+                // Create hidden video element to capture frames
+                videoElement = document.createElement('video');
+                videoElement.srcObject = mediaStream;
+                videoElement.autoplay = true;
+                videoElement.style.display = 'none';
+                document.body.appendChild(videoElement);
+                
+                // Create canvas for capturing frames
+                canvas = document.createElement('canvas');
+                
+                // Wait for video to be ready
+                await new Promise((resolve) => {
+                    videoElement.onloadedmetadata = () => {
+                        canvas.width = videoElement.videoWidth;
+                        canvas.height = videoElement.videoHeight;
+                        resolve();
+                    };
+                });
+                
+                hasPermission = true;
+                console.log('Screen capture permission granted');
+                
+                // Handle stream end (user stops sharing or browser closes it)
+                mediaStream.getVideoTracks()[0].addEventListener('ended', () => {
+                    console.log('Screen sharing ended - will attempt to reconnect if still clocked in');
+                    hasPermission = false;
+                    // Don't stop monitoring, just try to reconnect
+                    // Check if still clocked in before reconnecting
+                    setTimeout(async () => {
+                        if (isMonitoring) {
+                            const isClockedIn = await checkClockStatus();
+                            if (isClockedIn) {
+                                console.log('Still clocked in - attempting to reconnect screen capture');
+                                await requestScreenCapture();
+                            } else {
+                                stopScreenshotMonitoring();
+                            }
+                        }
+                    }, 3000);
+                });
+                
+                return true;
+            } catch (error) {
+                console.error('Error requesting screen capture:', error);
+                hasPermission = false;
+                // If user denies permission, fall back to browser tab capture
+                return false;
+            }
+        }
+        
+        // Function to capture screenshot from video stream
+        function captureScreenshotFromStream() {
+            if (!videoElement || !canvas || !hasPermission) {
+                return null;
+            }
+            
+            try {
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                return canvas;
+            } catch (error) {
+                console.error('Error capturing from stream:', error);
+                return null;
+            }
+        }
+        
+        // Function to capture and upload screenshot
+        async function captureAndUploadScreenshot() {
+            try {
+                // Check if still clocked in
+                const isClockedIn = await checkClockStatus();
+                if (!isClockedIn) {
+                    stopScreenshotMonitoring();
+                    return;
+                }
+                
+                let canvasToUse = null;
+                
+                // Try to capture from screen stream first
+                if (hasPermission && mediaStream && videoElement) {
+                    canvasToUse = captureScreenshotFromStream();
+                }
+                
+                // If screen capture not available and we're monitoring, try to request it again
+                if (!canvasToUse && !hasPermission && isMonitoring) {
+                    const permissionGranted = await requestScreenCapture();
+                    if (permissionGranted) {
+                        // Wait a bit for video to be ready
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        canvasToUse = captureScreenshotFromStream();
+                    }
+                }
+                
+                // Fallback: if screen capture fails, capture browser tab
+                if (!canvasToUse) {
+                    // Use html2canvas as fallback (browser tab only)
+                    if (typeof html2canvas !== 'undefined') {
+                        canvasToUse = await html2canvas(document.body, {
+                            useCORS: true,
+                            logging: false,
+                            windowWidth: window.innerWidth,
+                            windowHeight: window.innerHeight
+                        });
+                    } else {
+                        console.warn('Screen capture not available and html2canvas not loaded');
+                        return;
+                    }
+                }
+                
+                // Convert canvas to blob
+                canvasToUse.toBlob(async function(blob) {
+                    if (!blob) {
+                        console.error('Failed to create screenshot blob');
+                        return;
+                    }
+                    
+                    // Create form data
+                    const formData = new FormData();
+                    formData.append('screenshot', blob, 'screenshot_' + Date.now() + '.png');
+                    
+                    // Upload screenshot
+                    try {
+                        const response = await fetch('{% url "upload_screenshot" %}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: formData
+                        });
+                        
+                        const result = await response.json();
+                        if (result.success) {
+                            console.log('Screenshot uploaded successfully at', result.captured_at);
+                        } else {
+                            console.error('Screenshot upload failed:', result.error);
+                        }
+                    } catch (error) {
+                        console.error('Error uploading screenshot:', error);
+                    }
+                }, 'image/png');
+            } catch (error) {
+                console.error('Error capturing screenshot:', error);
+            }
+        }
+        
+        // Function to start screenshot monitoring
+        async function startScreenshotMonitoring() {
+            if (isMonitoring) {
+                return; // Already monitoring
+            }
+            
+            isMonitoring = true;
+            console.log('Screenshot monitoring started - requesting screen capture permission...');
+            
+            // Automatically request screen capture permission when monitoring starts
+            // This happens when employee checks in
+            const permissionGranted = await requestScreenCapture();
+            
+            if (permissionGranted) {
+                console.log('Screen capture permission granted - starting automatic screenshots');
+                // Wait a moment for video stream to initialize
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Capture immediately
+                captureAndUploadScreenshot();
+                
+                // Then capture every 3 minutes (180000 milliseconds)
+                screenshotInterval = setInterval(captureAndUploadScreenshot, 180000);
+            } else {
+                console.log('Screen capture permission denied - falling back to browser tab capture');
+                // Fallback: use browser tab capture (html2canvas)
+                // Capture immediately
+                captureAndUploadScreenshot();
+                
+                // Then capture every 3 minutes
+                screenshotInterval = setInterval(captureAndUploadScreenshot, 180000);
+            }
+        }
+        
+        // Function to stop screenshot monitoring
+        function stopScreenshotMonitoring() {
+            if (screenshotInterval) {
+                clearInterval(screenshotInterval);
+                screenshotInterval = null;
+            }
+            
+            // Stop media stream
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            
+            // Remove video element
+            if (videoElement) {
+                videoElement.srcObject = null;
+                if (videoElement.parentNode) {
+                    videoElement.parentNode.removeChild(videoElement);
+                }
+                videoElement = null;
+            }
+            
+            hasPermission = false;
+            isMonitoring = false;
+            console.log('Screenshot monitoring stopped');
+        }
+        
+        // Check clock status on page load and start/stop monitoring accordingly
+        async function initScreenshotMonitoring() {
+            const isClockedIn = await checkClockStatus();
+            if (isClockedIn) {
+                // Automatically start monitoring when clocked in
+                // This will automatically request screen capture permission
+                startScreenshotMonitoring();
+            } else {
+                stopScreenshotMonitoring();
+            }
+        }
+        
+        // Initialize on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initScreenshotMonitoring);
+        } else {
+            initScreenshotMonitoring();
+        }
+        
+        // Re-check clock status every 10 seconds to catch check-in events quickly
+        setInterval(async function() {
+            const isClockedIn = await checkClockStatus();
+            if (isClockedIn && !isMonitoring) {
+                // Employee just checked in - automatically start monitoring
+                console.log('Employee checked in - automatically starting screen capture');
+                startScreenshotMonitoring();
+            } else if (!isClockedIn && isMonitoring) {
+                // Employee checked out - stop monitoring
+                console.log('Employee checked out - stopping screen capture');
+                stopScreenshotMonitoring();
+            }
+        }, 10000); // Check every 10 seconds for faster response to check-in
+        
+        // Also check when page becomes visible (user switches back to tab)
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                initScreenshotMonitoring();
+            }
+        });
+        
+        // Listen for check-in events from attendance page
+        // This allows immediate start when employee clicks check-in button
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'employee_checked_in' && e.newValue === 'true') {
+                if (!isMonitoring) {
+                    console.log('Check-in detected - starting screen capture');
+                    startScreenshotMonitoring();
+                }
+            } else if (e.key === 'employee_checked_in' && e.newValue === 'false') {
+                if (isMonitoring) {
+                    console.log('Check-out detected - stopping screen capture');
+                    stopScreenshotMonitoring();
+                }
+            }
+        });
+    })();
+    </script>
+    {% endif %}
 </body>
 </html> 

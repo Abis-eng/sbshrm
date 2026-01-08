@@ -1,0 +1,37 @@
+===========================================
+HRM SCREEN CAPTURE EXTENSION - QUICK INSTALL
+===========================================
+
+STEP 1: Open Chrome Extensions
+   - Open Google Chrome browser
+   - Type in address bar: chrome://extensions/
+   - Press Enter
+
+STEP 2: Enable Developer Mode
+   - Look for "Developer mode" toggle in top-right
+   - Turn it ON (toggle to the right)
+
+STEP 3: Load Extension
+   - Click "Load unpacked" button
+   - Navigate to: hrmsys4sbs/chrome_extension folder
+   - Click "Select Folder"
+
+STEP 4: Done!
+   - Extension is now installed
+   - Refresh your HRM system page
+   - When you check in, the extension will automatically request screen capture
+   - Select "Entire screen" and click "Share" (first time only)
+
+IMPORTANT NOTES:
+- The browser dialog will appear the FIRST TIME you check in
+- You MUST select "Entire screen" tab (not "Chrome tab")
+- After first time, Chrome may remember your choice
+- Extension only works in Chrome/Edge browsers
+
+TROUBLESHOOTING:
+- If extension doesn't work, refresh the HRM page
+- Check browser console (F12) for errors
+- Make sure extension is enabled in chrome://extensions/
+
+===========================================
+

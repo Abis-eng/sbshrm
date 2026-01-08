@@ -1,0 +1,151 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Employee Screenshots{% endblock %}
+
+{% block page_title %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="flex-grow-1">
+        <h1 class="h3 mb-1 fw-bold">
+            <i class="fas fa-camera me-2"></i>Employee Screenshots
+        </h1>
+        <p class="text-muted mb-0 small">Monitor employee screen activity during work hours</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <a href="{% url 'employee_list' %}" class="btn btn-sm btn-light">
+            <i class="fas fa-arrow-left me-1"></i>Back to Employees
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="header-title">Select Employee</h4>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3" id="employeeForm">
+                        <div class="col-md-6">
+                            <label for="employee_select" class="form-label">Employee</label>
+                            <select name="employee_id" id="employee_select" class="form-select" onchange="updateFormAction()">
+                                <option value="">-- Select Employee --</option>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}" {% if selected_employee and selected_employee.id == emp.id %}selected{% endif %}>
+                                    {{ emp.user.get_full_name|default:emp.user.username }} 
+                                    {% if emp.department %} - {{ emp.department.name }}{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if selected_employee %}
+                        <div class="col-md-4">
+                            <label for="date_filter" class="form-label">Filter by Date</label>
+                            <input type="date" name="date" id="date_filter" class="form-control" value="{{ selected_date }}" onchange="this.form.submit()">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label><br>
+                            <a href="{% url 'employee_screenshots' selected_employee.id %}" class="btn btn-secondary">Clear Date</a>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if selected_employee %}
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="header-title">
+                        Screenshots for {{ selected_employee.user.get_full_name|default:selected_employee.user.username }}
+                    </h4>
+                    <span class="badge bg-primary">{{ screenshots.count }} screenshot{{ screenshots.count|pluralize }}</span>
+                </div>
+                <div class="card-body">
+                    {% if screenshots %}
+                    <div class="row g-3">
+                        {% for screenshot in screenshots %}
+                        <div class="col-md-4 col-lg-3">
+                            <div class="card h-100">
+                                <div class="card-body p-2">
+                                    <a href="{{ screenshot.screenshot.url }}" target="_blank" class="d-block">
+                                        <img src="{{ screenshot.screenshot.url }}" 
+                                             alt="Screenshot {{ screenshot.captured_at }}" 
+                                             class="img-fluid rounded"
+                                             style="width: 100%; height: 200px; object-fit: cover; cursor: pointer;">
+                                    </a>
+                                </div>
+                                <div class="card-footer bg-white p-2">
+                                    <small class="text-muted d-block">
+                                        <i class="fas fa-clock me-1"></i>
+                                        {{ screenshot.captured_at|date:"M d, Y H:i:s" }}
+                                    </small>
+                                    <small class="text-muted d-block">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        {{ screenshot.date|date:"M d, Y" }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-camera fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No screenshots found</h5>
+                        <p class="text-muted">
+                            {% if selected_date %}
+                                No screenshots captured on {{ selected_date|date:"M d, Y" }}
+                            {% else %}
+                                No screenshots have been captured yet for this employee.
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-user-friends fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Select an Employee</h5>
+                    <p class="text-muted">Please select an employee from the dropdown above to view their screenshots.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .card img {
+        transition: transform 0.2s;
+    }
+    .card img:hover {
+        transform: scale(1.05);
+    }
+</style>
+<script>
+    function updateFormAction() {
+        const employeeId = document.getElementById('employee_select').value;
+        const form = document.getElementById('employeeForm');
+        if (employeeId) {
+            form.action = '{% url "employee_screenshots" 0 %}'.replace('0', employeeId);
+        } else {
+            form.action = '{% url "employee_screenshots" %}';
+        }
+        form.submit();
+    }
+</script>
+{% endblock %}
+

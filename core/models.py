@@ -464,6 +464,27 @@ class Attendance(models.Model):
         
         self.save()
 
+class EmployeeScreenshot(models.Model):
+    """Model to store employee screenshots captured during work hours"""
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='screenshots')
+    screenshot = models.ImageField(upload_to='employee_screenshots/', help_text="Screenshot image")
+    captured_at = models.DateTimeField(auto_now_add=True, help_text="When the screenshot was captured")
+    date = models.DateField(help_text="Date of the screenshot")
+    is_active = models.BooleanField(default=True, help_text="Whether screenshot monitoring is active")
+    
+    class Meta:
+        ordering = ['-captured_at']
+        indexes = [
+            models.Index(fields=['employee', 'date']),
+            models.Index(fields=['employee', 'captured_at']),
+            models.Index(fields=['date']),
+        ]
+        verbose_name = 'Employee Screenshot'
+        verbose_name_plural = 'Employee Screenshots'
+    
+    def __str__(self):
+        return f"{self.employee} - {self.captured_at.strftime('%Y-%m-%d %H:%M:%S')}"
+
 # SalarySlip model removed. PayrollItem and Payslip models will be added.
 
 class Holiday(models.Model):
