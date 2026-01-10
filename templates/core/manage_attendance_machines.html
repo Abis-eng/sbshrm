@@ -148,6 +148,69 @@
         </div>
 
         <div class="col-md-8">
+            {% if connection_test_result %}
+                {% with result=connection_test_result %}
+                <div class="card mb-3 border-{% if result.success %}success{% else %}danger{% endif %}">
+                    <div class="card-header bg-{% if result.success %}success{% else %}danger{% endif %} text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-{% if result.success %}check-circle{% else %}times-circle{% endif %}"></i>
+                            Connection Test Result: {{ result.machine_name }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <strong>Machine:</strong> {{ result.machine_name }}<br>
+                            <strong>IP Address:</strong> {{ result.machine_ip }}<br>
+                            <strong>Port:</strong> {{ result.machine_port }}<br>
+                            <strong>Status:</strong> 
+                            <span class="badge bg-{% if result.success %}success{% else %}danger{% endif %}">
+                                {% if result.success %}✓ Connected{% else %}✗ Failed{% endif %}
+                            </span>
+                        </div>
+                        
+                        <div class="alert alert-{% if result.success %}success{% else %}danger{% endif %}">
+                            <strong>Message:</strong> {{ result.message }}
+                        </div>
+                        
+                        {% if result.details %}
+                        <div class="mb-3">
+                            <h6>Connection Details:</h6>
+                            <ul class="list-unstyled">
+                                {% for key, value in result.details.items %}
+                                <li class="mb-1">
+                                    <code>{{ value }}</code>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        
+                        {% if result.machine_info %}
+                        <div class="mb-3">
+                            <h6>Machine Information:</h6>
+                            <ul class="list-unstyled">
+                                {% for key, value in result.machine_info.items %}
+                                <li><strong>{{ key|title }}:</strong> {{ value }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        
+                        {% if result.troubleshooting %}
+                        <div class="alert alert-info">
+                            <h6>Troubleshooting Steps:</h6>
+                            <ol class="mb-0">
+                                {% for tip in result.troubleshooting %}
+                                <li>{{ tip|slice:"3:" }}</li>
+                                {% endfor %}
+                            </ol>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endwith %}
+            {% endif %}
+            
             <div class="card">
                 <div class="card-header">
                     <h4 class="header-title">Registered Machines</h4>

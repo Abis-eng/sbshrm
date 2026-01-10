@@ -254,12 +254,17 @@ class ZKTDriver(MachineDriver):
             return []
     
     def test_connection(self) -> Dict[str, Any]:
-        """Test ZKT connection"""
+        """Test ZKT connection with detailed IP and network verification"""
         try:
             if not self.ZK:
                 return {
                     'success': False,
-                    'message': 'ZKT SDK not available. Please install "zk" or "pyzk" package.'
+                    'message': 'ZKT SDK not available. Please install "zk" or "pyzk" package.',
+                    'details': {
+                        'ip_check': 'Skipped - SDK not available',
+                        'port_check': 'Skipped - SDK not available',
+                        'connection_test': 'Failed - SDK not available'
+                    }
                 }
             
             ip = self.machine.ip_address
@@ -268,40 +273,131 @@ class ZKTDriver(MachineDriver):
             if not ip:
                 return {
                     'success': False,
-                    'message': 'IP address is not configured for this machine'
+                    'message': 'IP address is not configured for this machine',
+                    'details': {
+                        'ip_check': 'Failed - IP address not set',
+                        'port_check': 'Skipped',
+                        'connection_test': 'Skipped'
+                    }
                 }
             
-            # Try to connect
+            details = {}
+            
+            # Step 1: Check IP reachability (ping test)
+            try:
+                import socket
+                import subprocess
+                import platform
+                
+                # Try socket connection first (faster)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(2)
+                result = sock.connect_ex((ip, port))
+                sock.close()
+                
+                if result == 0:
+                    details['ip_check'] = f'✓ IP {ip} is reachable on port {port}'
+                    details['port_check'] = f'✓ Port {port} is open and accessible'
+                else:
+                    details['ip_check'] = f'⚠ IP {ip} may not be reachable (socket test failed)'
+                    details['port_check'] = f'⚠ Port {port} may be blocked or machine is offline'
+                    
+                    # Try ping if socket fails
+                    try:
+                        param = '-n' if platform.system().lower() == 'windows' else '-c'
+                        ping_result = subprocess.run(['ping', param, '1', ip], 
+                                                    capture_output=True, timeout=3)
+                        if ping_result.returncode == 0:
+                            details['ip_check'] = f'✓ IP {ip} is reachable (ping successful)'
+                            details['port_check'] = f'⚠ Port {port} may be blocked by firewall'
+                        else:
+                            details['ip_check'] = f'✗ IP {ip} is not reachable (ping failed)'
+                            details['port_check'] = f'✗ Cannot test port - IP unreachable'
+                    except:
+                        details['ip_check'] = f'⚠ Could not verify IP {ip} reachability'
+                        details['port_check'] = f'⚠ Could not test port {port}'
+                        
+            except Exception as e:
+                details['ip_check'] = f'⚠ Could not verify IP reachability: {str(e)}'
+                details['port_check'] = f'⚠ Could not test port: {str(e)}'
+            
+            # Step 2: Try to connect to machine
+            logger.info(f"Testing connection to {ip}:{port}")
             if self.connect():
-                # Try to get machine time to verify connection
+                details['connection_test'] = f'✓ Successfully connected to {ip}:{port}'
+                
+                # Step 3: Try to get machine information to verify connection
+                machine_info = {}
                 try:
                     machine_time = self.zk.get_time()
-                    self.disconnect()
-                    return {
-                        'success': True,
-                        'message': f'Successfully connected to {ip}:{port}. Machine time: {machine_time}'
-                    }
+                    machine_info['time'] = str(machine_time)
+                    details['machine_time'] = f'✓ Machine time: {machine_time}'
                 except Exception as e:
-                    self.disconnect()
-                    return {
-                        'success': True,
-                        'message': f'Successfully connected to {ip}:{port} (could not get machine time: {str(e)})'
-                    }
+                    details['machine_time'] = f'⚠ Could not get machine time: {str(e)}'
+                
+                try:
+                    users_count = len(self.zk.get_users())
+                    machine_info['users'] = users_count
+                    details['users'] = f'✓ Found {users_count} users in machine'
+                except Exception as e:
+                    details['users'] = f'⚠ Could not get users: {str(e)}'
+                
+                try:
+                    attendance_count = len(self.zk.get_attendance())
+                    machine_info['attendance'] = attendance_count
+                    details['attendance'] = f'✓ Found {attendance_count} attendance records'
+                except Exception as e:
+                    details['attendance'] = f'⚠ Could not get attendance: {str(e)}'
+                
+                self.disconnect()
+                
+                success_msg = f'✓ Connection successful! Connected to {ip}:{port}'
+                if machine_info:
+                    info_parts = [f"{k}: {v}" for k, v in machine_info.items()]
+                    success_msg += f" ({', '.join(info_parts)})"
+                
+                return {
+                    'success': True,
+                    'message': success_msg,
+                    'details': details,
+                    'machine_info': machine_info
+                }
             else:
+                error_msg = getattr(self, 'connection_error', 'Unknown connection error')
+                details['connection_test'] = f'✗ Connection failed: {error_msg}'
+                
+                # Provide troubleshooting tips
+                troubleshooting = []
+                troubleshooting.append(f"1. Verify machine IP address: {ip}")
+                troubleshooting.append(f"2. Check machine is powered on and connected to network")
+                troubleshooting.append(f"3. Verify port {port} is correct (default: 4370 for ZKT)")
+                troubleshooting.append(f"4. Check firewall settings - ensure port {port} is not blocked")
+                troubleshooting.append(f"5. Ensure machine and server are on the same network")
+                troubleshooting.append(f"6. Try pinging the IP address: ping {ip}")
+                troubleshooting.append(f"7. Check machine network settings match the configured IP")
+                
                 return {
                     'success': False,
-                    'message': f'Failed to connect to {ip}:{port}. Check IP address, port, network connectivity, and firewall settings.'
+                    'message': f'✗ Failed to connect to {ip}:{port}. {error_msg}',
+                    'details': details,
+                    'troubleshooting': troubleshooting
                 }
         except ConnectionError as e:
             return {
                 'success': False,
-                'message': str(e)
+                'message': f'Connection error: {str(e)}',
+                'details': {
+                    'connection_test': f'✗ Connection error: {str(e)}'
+                }
             }
         except Exception as e:
             error_type = type(e).__name__
             return {
                 'success': False,
-                'message': f'Connection error ({error_type}): {str(e)}'
+                'message': f'Error ({error_type}): {str(e)}',
+                'details': {
+                    'connection_test': f'✗ Error ({error_type}): {str(e)}'
+                }
             }
 
 

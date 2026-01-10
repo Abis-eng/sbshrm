@@ -316,21 +316,31 @@ class AttendanceService:
     @staticmethod
     def test_machine_connection(machine):
         """
-        Test connection to a machine
+        Test connection to a machine with detailed verification
         
         Args:
             machine: AttendanceMachine instance
         
         Returns:
-            Dict with 'success' (bool) and 'message' (str)
+            Dict with 'success' (bool), 'message' (str), 'details' (dict), and other info
         """
         try:
             driver = get_machine_driver(machine)
             result = driver.test_connection()
+            
+            # Ensure details dict exists
+            if 'details' not in result:
+                result['details'] = {}
+            
             return result
         except Exception as e:
+            import traceback
+            logger.error(f"Error testing connection: {str(e)}\n{traceback.format_exc()}")
             return {
                 'success': False,
-                'message': f'Error testing connection: {str(e)}'
+                'message': f'Error testing connection: {str(e)}',
+                'details': {
+                    'error': str(e)
+                }
             }
 

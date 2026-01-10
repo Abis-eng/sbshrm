@@ -2159,16 +2159,33 @@ def debug_attendance_matching(request, machine_id):
 
 @user_passes_test(is_admin)
 def test_machine_connection(request, machine_id):
-    """Test connection to a specific machine"""
+    """Test connection to a specific machine with detailed feedback"""
     from .attendance_service import AttendanceService
+    import json
     
     machine = get_object_or_404(AttendanceMachine, id=machine_id)
     result = AttendanceService.test_machine_connection(machine)
+    
+    # Store detailed result in session for display
+    request.session['connection_test_result'] = {
+        'machine_name': machine.name,
+        'machine_ip': machine.ip_address,
+        'machine_port': machine.port or 4370,
+        'success': result['success'],
+        'message': result['message'],
+        'details': result.get('details', {}),
+        'machine_info': result.get('machine_info', {}),
+        'troubleshooting': result.get('troubleshooting', [])
+    }
     
     if result['success']:
         messages.success(request, f'Connection test successful: {result["message"]}')
     else:
         messages.error(request, f'Connection test failed: {result["message"]}')
+        if result.get('troubleshooting'):
+            # Add troubleshooting tips as info messages
+            for tip in result['troubleshooting'][:3]:  # Show first 3 tips
+                messages.info(request, tip)
     
     return redirect('manage_attendance_machines')
 
@@ -2188,9 +2205,13 @@ def manage_attendance_machines(request):
     else:
         form = AttendanceMachineForm()
     
+    # Get connection test result from session if exists
+    connection_test_result = request.session.pop('connection_test_result', None)
+    
     return render(request, 'core/manage_attendance_machines.html', {
         'machines': machines,
         'form': form,
+        'connection_test_result': connection_test_result,
     })
 
 @user_passes_test(is_admin)
