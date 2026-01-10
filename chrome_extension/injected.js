@@ -67,3 +67,4 @@
   console.log('HRM Screen Capture Extension: Injected script loaded');
 })();
 
+

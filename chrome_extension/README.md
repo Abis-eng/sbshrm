@@ -64,3 +64,4 @@ This Chrome extension enables automatic screen capture for the HRM system withou
 - Screenshots are sent only to your company's HRM system
 - You can stop screen capture at any time by checking out
 
+
