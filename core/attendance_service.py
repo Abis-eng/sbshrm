@@ -181,6 +181,14 @@ class AttendanceService:
             machine.last_error = '; '.join(errors) if errors else ''
             machine.save()
             
+            # Process attendance logs to create/update attendance records
+            try:
+                processed_count = AttendanceService.process_attendance_logs()
+                logger.info(f"Processed {processed_count} attendance logs into attendance records after sync")
+            except Exception as e:
+                logger.error(f"Error processing attendance logs after sync: {str(e)}")
+                # Don't fail the sync if processing fails, just log it
+            
             message = f'Synced {synced_count} attendance records from {machine.name}'
             if errors:
                 message += f'. {len(errors)} errors occurred.'
@@ -263,37 +271,92 @@ class AttendanceService:
     @staticmethod
     def process_attendance_logs():
         """Process attendance logs and create/update attendance records"""
-        # Get unprocessed logs
+        # Get logs from last 30 days, ordered by employee and timestamp
         logs = AttendanceLog.objects.filter(
             timestamp__date__gte=timezone.now().date() - timedelta(days=30)
         ).order_by('employee', 'timestamp')
         
         processed_count = 0
+        updated_count = 0
+        
+        # Group logs by employee and date for efficient processing
+        from collections import defaultdict
+        logs_by_employee_date = defaultdict(list)
         
         for log in logs:
+            attendance_date = log.timestamp.date()
+            key = (log.employee.id, attendance_date)
+            logs_by_employee_date[key].append(log)
+        
+        # Process each employee-date combination
+        for (employee_id, attendance_date), day_logs in logs_by_employee_date.items():
             try:
+                employee = Employee.objects.get(id=employee_id)
+                
                 # Get or create attendance record for the date
-                attendance_date = log.timestamp.date()
                 attendance, created = Attendance.objects.get_or_create(
-                    employee=log.employee,
+                    employee=employee,
                     date=attendance_date,
                     defaults={'status': 'present'}
                 )
                 
-                # Update attendance record based on log type
-                if log.attendance_type == 'check_in' and not attendance.check_in:
-                    attendance.check_in = log.timestamp
-                elif log.attendance_type == 'check_out' and not attendance.check_out:
-                    attendance.check_out = log.timestamp
-                elif log.attendance_type == 'break_start' and not attendance.break_start:
-                    attendance.break_start = log.timestamp
-                elif log.attendance_type == 'break_end' and not attendance.break_end:
-                    attendance.break_end = log.timestamp
+                # Process logs in chronological order
+                # For check_in: use the earliest timestamp
+                # For check_out: use the latest timestamp
+                # For breaks: use the first start and last end
+                check_ins = [log for log in day_logs if log.attendance_type == 'check_in']
+                check_outs = [log for log in day_logs if log.attendance_type == 'check_out']
+                break_starts = [log for log in day_logs if log.attendance_type == 'break_start']
+                break_ends = [log for log in day_logs if log.attendance_type == 'break_end']
+                
+                updated = False
+                
+                # Update check_in: use earliest check-in (machine logs take precedence if they exist)
+                if check_ins:
+                    machine_check_ins = [log for log in check_ins if log.source == 'machine']
+                    if machine_check_ins:
+                        # Prefer machine check-ins
+                        earliest_check_in = min(machine_check_ins, key=lambda x: x.timestamp)
+                    else:
+                        # Use manual check-ins if no machine logs
+                        earliest_check_in = min(check_ins, key=lambda x: x.timestamp)
+                    
+                    if not attendance.check_in or attendance.check_in != earliest_check_in.timestamp:
+                        attendance.check_in = earliest_check_in.timestamp
+                        updated = True
+                
+                # Update check_out: use latest check-out (machine logs take precedence if they exist)
+                if check_outs:
+                    machine_check_outs = [log for log in check_outs if log.source == 'machine']
+                    if machine_check_outs:
+                        # Prefer machine check-outs
+                        latest_check_out = max(machine_check_outs, key=lambda x: x.timestamp)
+                    else:
+                        # Use manual check-outs if no machine logs
+                        latest_check_out = max(check_outs, key=lambda x: x.timestamp)
+                    
+                    if not attendance.check_out or attendance.check_out != latest_check_out.timestamp:
+                        attendance.check_out = latest_check_out.timestamp
+                        updated = True
+                
+                # Update break_start: use earliest break start
+                if break_starts:
+                    earliest_break_start = min(break_starts, key=lambda x: x.timestamp)
+                    if not attendance.break_start or attendance.break_start != earliest_break_start.timestamp:
+                        attendance.break_start = earliest_break_start.timestamp
+                        updated = True
+                
+                # Update break_end: use latest break end
+                if break_ends:
+                    latest_break_end = max(break_ends, key=lambda x: x.timestamp)
+                    if not attendance.break_end or attendance.break_end != latest_break_end.timestamp:
+                        attendance.break_end = latest_break_end.timestamp
+                        updated = True
                 
                 # Calculate hours
                 attendance.calculate_hours()
                 
-                # Check for late arrival
+                # Check for late arrival (only if check_in exists)
                 if attendance.check_in:
                     work_start_time = attendance.check_in.replace(
                         hour=9, minute=0, second=0, microsecond=0
@@ -302,15 +365,28 @@ class AttendanceService:
                         attendance.is_late = True
                         late_duration = attendance.check_in - work_start_time
                         attendance.late_minutes = int(late_duration.total_seconds() / 60)
+                    else:
+                        attendance.is_late = False
+                        attendance.late_minutes = 0
+                
+                # Update status based on check_in/check_out
+                if attendance.check_in:
+                    attendance.status = 'present'
+                else:
+                    attendance.status = 'absent'
                 
                 attendance.save()
-                processed_count += 1
+                processed_count += len(day_logs)
+                if updated or created:
+                    updated_count += 1
                 
             except Exception as e:
-                logger.error(f"Error processing attendance log {log.id}: {str(e)}")
+                logger.error(f"Error processing attendance logs for employee {employee_id} on {attendance_date}: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
                 continue
         
-        logger.info(f"Processed {processed_count} attendance logs")
+        logger.info(f"Processed {processed_count} attendance logs, updated {updated_count} attendance records")
         return processed_count
     
     @staticmethod
