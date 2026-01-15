@@ -131,7 +131,7 @@
                             <option value="">No task linked</option>
                             {% for task in tasks %}
                             <option value="{{ task.id }}" {% if request.POST.related_task == task.id|stringformat:"s" %}selected{% endif %}>
-                                {{ task.title }} - {{ task.project.name }} (Assigned to: {{ task.assigned_to.user.get_full_name|default:task.assigned_to.user.username }})
+                                {{ task.title }}{% if task.project %} - {{ task.project.name }}{% endif %}{% if task.assigned_to and task.assigned_to.user %} (Assigned to: {{ task.assigned_to.user.get_full_name|default:task.assigned_to.user.username }}){% endif %}
                             </option>
                             {% endfor %}
                         </select>
@@ -221,19 +221,24 @@
     
     // Drag and drop
     const uploadArea = document.querySelector('.file-upload-area');
-    uploadArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadArea.style.background = '#e8ebff';
-    });
-    uploadArea.addEventListener('dragleave', () => {
-        uploadArea.style.background = '#f8f9ff';
-    });
-    uploadArea.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadArea.style.background = '#f8f9ff';
-        const files = e.dataTransfer.files;
-        document.getElementById('attachments').files = files;
-        showFiles(document.getElementById('attachments'));
-    });
+    if (uploadArea) {
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.background = '#e8ebff';
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.background = '#f8f9ff';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.background = '#f8f9ff';
+            const files = e.dataTransfer.files;
+            const attachmentsInput = document.getElementById('attachments');
+            if (attachmentsInput) {
+                attachmentsInput.files = files;
+                showFiles(attachmentsInput);
+            }
+        });
+    }
 </script>
 {% endblock %}

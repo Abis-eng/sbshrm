@@ -278,7 +278,7 @@ def employee_list(request):
                 str(emp.phone) if emp.phone else 'N/A',
                 str(emp.department.name) if emp.department and emp.department.name else 'N/A',
                 str(emp.designation.name) if emp.designation and emp.designation.name else 'N/A',
-                f"${float(emp.salary):.2f}" if emp.salary else 'N/A',
+                f"₨{float(emp.salary):.2f}" if emp.salary else 'N/A',
                 emp.date_of_joining.strftime('%Y-%m-%d') if emp.date_of_joining else 'N/A',
                 'Active' if not emp.is_restricted else 'Restricted'
             ])
@@ -506,12 +506,21 @@ def add_employee(request):
             last_name=last_name,
             email=email if email else '',
         )
-        salary = request.POST.get('salary') or None
+        # Handle salary field - convert to Decimal if provided
+        salary = None
+        salary_str = request.POST.get('salary', '').strip()
+        if salary_str:
+            try:
+                from decimal import Decimal
+                salary = Decimal(salary_str)
+            except (ValueError, TypeError):
+                salary = None
+        
         employee = Employee.objects.create(
             user=user,
             department_id=department_id,
             designation_id=designation_id,
-            salary=salary if salary else None,
+            salary=salary,
             phone=phone,
             address=address,
             city=city,
@@ -974,34 +983,26 @@ def get_new_messages(request):
 
 @login_required
 def my_tickets(request):
+    """View user's own tickets"""
     from django.db.models import Q, Count
     
-    # Employees can only see tickets they created or are assigned to
-    # Admin can see all tickets when accessing all_tickets, but my_tickets shows their own
     if request.user.is_superuser:
-        base_query = Ticket.objects.all()
+        tickets = Ticket.objects.all()
     else:
-        base_query = Ticket.objects.filter(
+        tickets = Ticket.objects.filter(
             Q(created_by=request.user) | Q(assigned_to=request.user)
         )
     
-    # Filter by type: all, sent, received
     filter_type = request.GET.get('filter', 'all')
     if filter_type == 'sent':
-        tickets = base_query.filter(created_by=request.user)
+        tickets = tickets.filter(created_by=request.user)
     elif filter_type == 'received':
-        tickets = base_query.filter(assigned_to=request.user)
-    else:
-        if request.user.is_superuser:
-            tickets = base_query
-        else:
-            tickets = base_query.filter(Q(created_by=request.user) | Q(assigned_to=request.user))
+        tickets = tickets.filter(assigned_to=request.user)
     
     tickets = tickets.select_related('created_by', 'assigned_to').annotate(
         reply_count=Count('replies')
     ).order_by('-created_at')
     
-    # Filtering
     status_filter = request.GET.get('status', '')
     priority_filter = request.GET.get('priority', '')
     search_query = request.GET.get('search', '')
@@ -1017,7 +1018,6 @@ def my_tickets(request):
             Q(description__icontains=search_query)
         )
     
-    # Statistics - only for employee's own tickets
     if request.user.is_superuser:
         base_stats = Ticket.objects.all()
     else:
@@ -1168,7 +1168,7 @@ def manage_advances(request):
                     sender=request.user,
                     notification_type='system',
                     title='Advance request approved',
-                    message=f'Your advance request of ${adv.amount} has been approved for ${approved_amount:.2f}.',
+                    message=f'Your advance request of ₨{adv.amount} has been approved for ₨{approved_amount:.2f}.',
                     link=f'/my-advances/'
                 )
             else:
@@ -1177,7 +1177,7 @@ def manage_advances(request):
                     sender=request.user,
                     notification_type='system',
                     title='Advance request approved',
-                    message=f'Your advance request of ${adv.amount} has been approved.',
+                    message=f'Your advance request of ₨{adv.amount} has been approved.',
                     link=f'/my-advances/'
                 )
         elif action == 'reject':
@@ -1208,45 +1208,44 @@ def manage_advances(request):
 
 @login_required
 def submit_ticket(request):
-    from .models import TicketReply
+    """Submit a new ticket"""
     if request.method == 'POST':
-        title = request.POST.get('title')
-        subject = request.POST.get('subject', '')
-        description = request.POST.get('description')
+        title = request.POST.get('title', '').strip()
+        subject = request.POST.get('subject', '').strip()
+        description = request.POST.get('description', '').strip()
         priority = request.POST.get('priority', 'medium')
-        assigned_to_id = request.POST.get('assigned_to')
-        end_date_str = request.POST.get('end_date', '')
+        assigned_to_id = request.POST.get('assigned_to', '').strip()
+        end_date_str = request.POST.get('end_date', '').strip()
         
-        from datetime import datetime
+        if not title or not description or not assigned_to_id:
+            messages.error(request, 'Title, description, and recipient are required.')
+            return redirect('submit_ticket')
+        
+        try:
+            assigned_to = User.objects.get(id=assigned_to_id)
+        except (User.DoesNotExist, ValueError):
+            messages.error(request, 'Selected recipient not found.')
+            return redirect('submit_ticket')
+        
         end_date = None
         if end_date_str:
             try:
+                from datetime import datetime
                 end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
                 end_date = timezone.make_aware(end_date)
             except:
                 pass
         
-        # Get assigned user
-        assigned_to = None
-        if assigned_to_id:
-            try:
-                assigned_to = User.objects.get(id=assigned_to_id)
-            except User.DoesNotExist:
-                messages.error(request, 'Selected recipient not found.')
-                return redirect('submit_ticket')
-        
-        # Get related task if admin is creating ticket and selected a task
         related_task = None
         if request.user.is_superuser:
-            related_task_id = request.POST.get('related_task', '')
+            related_task_id = request.POST.get('related_task', '').strip()
             if related_task_id:
                 try:
                     from .models import Task
                     related_task = Task.objects.get(id=related_task_id)
-                except Task.DoesNotExist:
+                except:
                     pass
         
-        # Create ticket with assigned user
         ticket = Ticket.objects.create(
             title=title,
             subject=subject,
@@ -1256,23 +1255,24 @@ def submit_ticket(request):
             assigned_to=assigned_to,
             related_task=related_task,
             end_date=end_date,
-            status='new'  # New tickets start as 'new'
+            status='new'
         )
         
-        # Handle file attachments - use TicketFile model instead
         from .models import TicketFile
         if request.FILES.getlist('attachments'):
             for file in request.FILES.getlist('attachments'):
-                TicketFile.objects.create(
-                    ticket=ticket,
-                    file=file,
-                    file_name=file.name,
-                    file_size=file.size,
-                    uploaded_by=request.user
-                )
+                try:
+                    TicketFile.objects.create(
+                        ticket=ticket,
+                        file=file,
+                        file_name=file.name,
+                        file_size=file.size,
+                        uploaded_by=request.user
+                    )
+                except:
+                    pass
         
-        # Create notification for assigned user or all admins if not assigned
-        if assigned_to:
+        try:
             create_notification(
                 recipient=assigned_to,
                 sender=request.user,
@@ -1281,29 +1281,21 @@ def submit_ticket(request):
                 message=description[:200],
                 link=f'/ticket/{ticket.id}/'
             )
-            messages.success(request, f'Ticket {ticket.tk_id} created and sent to {assigned_to.get_full_name() or assigned_to.username}!')
+        except:
+            pass
+        
+        messages.success(request, f'Ticket {ticket.tk_id} created successfully!')
+        # Redirect to all tickets if admin, otherwise my tickets
+        if request.user.is_superuser:
+            return redirect('all_tickets')
         else:
-            # If no assignment, notify all admins
-            admin_users = User.objects.filter(is_superuser=True)
-            for admin in admin_users:
-                create_notification(
-                    recipient=admin,
-                    sender=request.user,
-                    notification_type='ticket',
-                    title=f'New ticket: {ticket.tk_id} - {title}',
-                    message=description[:200],
-                    link=f'/ticket/{ticket.id}/'
-                )
-            messages.success(request, f'Ticket {ticket.tk_id} created successfully! Admin will be notified.')
-        return redirect('ticket_detail', ticket_id=ticket.id)
+            return redirect('my_tickets')
     
-    # Get users for dropdown
     if request.user.is_superuser:
         employees = User.objects.filter(is_superuser=False, employee__isnull=False).select_related('employee')
         admins = []
-        # Get all tasks for admin to link to ticket
         from .models import Task
-        tasks = Task.objects.select_related('project', 'assigned_to', 'assigned_by').all().order_by('-created_at')
+        tasks = Task.objects.select_related('project', 'assigned_to').all().order_by('-created_at')[:100]
     else:
         employees = []
         admins = User.objects.filter(is_superuser=True)
@@ -1317,15 +1309,14 @@ def submit_ticket(request):
 
 @user_passes_test(is_admin)
 def all_tickets(request):
+    """View all tickets (admin only)"""
     from django.db.models import Q, Count
     from .report_utils import export_to_pdf, export_to_docx, export_to_excel, export_to_csv
     
-    export_format = request.GET.get('format', '')
-    tickets = Ticket.objects.select_related('created_by', 'assigned_to', 'related_task').annotate(
+    tickets = Ticket.objects.select_related('created_by', 'assigned_to').annotate(
         reply_count=Count('replies')
     ).order_by('-created_at')
     
-    # Filtering
     status_filter = request.GET.get('status', '')
     priority_filter = request.GET.get('priority', '')
     search_query = request.GET.get('search', '')
@@ -1342,9 +1333,9 @@ def all_tickets(request):
             Q(created_by__username__icontains=search_query)
         )
     
-    # Export if format is specified
+    export_format = request.GET.get('format', '')
     if export_format:
-        headers = ['Ticket ID', 'Title', 'Created By', 'Assigned To', 'Status', 'Priority', 'Progress %', 'Created Date', 'Due Date']
+        headers = ['Ticket ID', 'Title', 'Created By', 'Assigned To', 'Status', 'Priority', 'Created Date']
         data = []
         for ticket in tickets:
             data.append([
@@ -1354,9 +1345,7 @@ def all_tickets(request):
                 ticket.assigned_to.get_full_name() if ticket.assigned_to else 'Unassigned',
                 ticket.get_status_display(),
                 ticket.get_priority_display(),
-                f"{ticket.progress_percentage}%" if ticket.related_task else 'N/A',
                 ticket.created_at.strftime('%Y-%m-%d %H:%M'),
-                ticket.end_date.strftime('%Y-%m-%d') if ticket.end_date else 'N/A'
             ])
         filename = f"tickets_{timezone.now().strftime('%Y%m%d_%H%M%S')}"
         try:
@@ -1368,11 +1357,10 @@ def all_tickets(request):
                 return export_to_excel(data, 'Tickets Report', headers, filename)
             elif export_format == 'csv':
                 return export_to_csv(data, 'Tickets Report', headers, filename)
-        except Exception as e:
-            messages.error(request, f'Export error: {str(e)}')
+        except:
+            messages.error(request, 'Export error occurred.')
             return redirect('all_tickets')
     
-    # Statistics
     stats = {
         'total': Ticket.objects.count(),
         'new': Ticket.objects.filter(status='new').count(),
@@ -1392,192 +1380,144 @@ def all_tickets(request):
 
 @login_required
 def ticket_detail(request, ticket_id):
-    from .models import TicketReply
-    ticket = get_object_or_404(Ticket.objects.select_related('created_by', 'assigned_to', 'related_task', 'related_task__project', 'related_task__assigned_to', 'related_task__assigned_to__user'), id=ticket_id)
+    """View ticket details with comprehensive error handling"""
+    from django.http import HttpResponse
+    import logging
+    import traceback
+    logger = logging.getLogger(__name__)
     
-    # Check permissions - employees can only see their own tickets
-    if not request.user.is_superuser:
-        if ticket.created_by != request.user and ticket.assigned_to != request.user:
-            messages.error(request, 'You do not have permission to view this ticket.')
-            return redirect('my_tickets')
-    
-    replies = ticket.replies.select_related('created_by', 'reply_to').prefetch_related('files').order_by('created_at')
-    # Get files separately
-    from .models import TicketFile
-    files = TicketFile.objects.filter(ticket=ticket).select_related('uploaded_by')
-    employees = User.objects.filter(is_superuser=False, employee__isnull=False).select_related('employee')
-    
-    if request.method == 'POST':
-        action = request.POST.get('action')
+    try:
+        ticket = get_object_or_404(Ticket, id=ticket_id)
         
-        if action == 'reply':
-            message = request.POST.get('message', '').strip()
-            if message:
-                try:
-                    reply = TicketReply.objects.create(
-                        ticket=ticket,
-                        message=message,
-                        created_by=request.user,
-                        reply_to_id=request.POST.get('reply_to') or None
-                    )
-                    
-                    # Handle multiple file attachments
-                    from .models import TicketReplyFile
-                    if request.FILES.getlist('attachments'):
-                        for file in request.FILES.getlist('attachments'):
-                            try:
-                                TicketReplyFile.objects.create(
-                                    ticket_reply=reply,
-                                    file=file,
-                                    file_name=file.name,
-                                    file_size=file.size,
-                                    uploaded_by=request.user
-                                )
-                            except Exception as e:
-                                print(f"Error saving attachment: {e}")
-                    
-                    # Mark reply as read for replier
-                    reply.is_read = True
-                    reply.save()
-                    
-                    # Create notification
-                    if request.user.is_superuser:
-                        # Admin replied - notify ticket creator
-                        if ticket.created_by != request.user:
-                            Notification.objects.create(
-                                recipient=ticket.created_by,
-                                sender=request.user,
-                                notification_type='ticket',
-                                title=f'Reply on ticket {ticket.tk_id}',
-                                message=message[:200],
-                                link=f'/ticket/{ticket.id}/'
-                            )
-                    else:
-                        # Employee replied - notify assigned admin or all admins
-                        if ticket.assigned_to and ticket.assigned_to != request.user:
-                            Notification.objects.create(
-                                recipient=ticket.assigned_to,
-                                sender=request.user,
-                                notification_type='ticket',
-                                title=f'Reply on ticket {ticket.tk_id}',
-                                message=message[:200],
-                                link=f'/ticket/{ticket.id}/'
-                            )
-                        elif not ticket.assigned_to:
-                            # Notify all admins if no one is assigned
-                            for admin in User.objects.filter(is_superuser=True):
-                                if admin != request.user:
-                                    Notification.objects.create(
-                                        recipient=admin,
-                                        sender=request.user,
-                                        notification_type='ticket',
-                                        title=f'Reply on ticket {ticket.tk_id}',
-                                        message=message[:200],
-                                        link=f'/ticket/{ticket.id}/'
+        if not request.user.is_superuser:
+            if ticket.created_by != request.user and ticket.assigned_to != request.user:
+                messages.error(request, 'You do not have permission to view this ticket.')
+                return redirect('my_tickets')
+        
+        from .models import TicketReply, TicketFile
+        replies = []
+        files = []
+        employees = []
+        
+        try:
+            # Get all replies for this ticket - ensure they persist
+            replies = list(TicketReply.objects.filter(ticket=ticket).select_related('created_by', 'ticket').order_by('created_at'))
+        except Exception as e:
+            logger.warning(f"Error loading replies: {str(e)}")
+            replies = []
+        
+        try:
+            files = list(TicketFile.objects.filter(ticket=ticket).select_related('uploaded_by'))
+        except Exception as e:
+            logger.warning(f"Error loading files: {str(e)}")
+            files = []
+        
+        try:
+            employees = list(User.objects.filter(is_superuser=False, employee__isnull=False).select_related('employee'))
+        except Exception as e:
+            logger.warning(f"Error loading employees: {str(e)}")
+            employees = []
+        
+        if request.method == 'POST':
+            try:
+                action = request.POST.get('action')
+                
+                if action == 'reply':
+                    message = request.POST.get('message', '').strip()
+                    if message:
+                        reply = TicketReply.objects.create(
+                            ticket=ticket,
+                            message=message,
+                            created_by=request.user
+                        )
+                        from .models import TicketReplyFile
+                        if request.FILES.getlist('attachments'):
+                            for file in request.FILES.getlist('attachments'):
+                                try:
+                                    TicketReplyFile.objects.create(
+                                        ticket_reply=reply,
+                                        file=file,
+                                        file_name=file.name,
+                                        file_size=file.size,
+                                        uploaded_by=request.user
                                     )
-                    
-                    messages.success(request, 'Reply added successfully!')
-                except Exception as e:
-                    messages.error(request, f'Error adding reply: {str(e)}')
-                    print(f"Error creating reply: {e}")
-            else:
-                messages.error(request, 'Message cannot be empty.')
-        
-        elif action == 'update_status' and request.user.is_superuser:
-            ticket.status = request.POST.get('status')
-            ticket.save()
-            messages.success(request, 'Ticket status updated!')
-        
-        elif action == 'assign' and request.user.is_superuser:
-            assigned_user_id = request.POST.get('assigned_to')
-            if assigned_user_id:
-                ticket.assigned_to_id = assigned_user_id
-                ticket.save()
-                # Notify assigned user
-                assigned_user = User.objects.get(id=assigned_user_id)
-                create_notification(
-                    recipient=assigned_user,
-                    sender=request.user,
-                    notification_type='ticket',
-                    title=f'You have been assigned ticket {ticket.tk_id}',
-                    message=ticket.description[:200],
-                    link=f'/ticket/{ticket.id}/'
-                )
-                messages.success(request, f'Ticket assigned to {assigned_user.get_full_name() or assigned_user.username}!')
-        
-        elif action == 'update_priority' and request.user.is_superuser:
-            ticket.priority = request.POST.get('priority')
-            ticket.save()
-            messages.success(request, 'Ticket priority updated!')
-        
-        elif action == 'update_progress':
-            # Only allow employee assigned to ticket to update progress if ticket is related to task
-            if ticket.related_task and ticket.assigned_to == request.user:
-                # Check if progress is locked
-                if ticket.progress_locked:
-                    messages.error(request, 'Progress is locked at 100% and cannot be changed. Contact admin to unlock it.')
-                else:
-                    try:
-                        progress = int(request.POST.get('progress_percentage', 0))
-                        if 0 <= progress <= 100:
-                            old_progress = ticket.progress_percentage
-                            ticket.progress_percentage = progress
-                            
-                            # If reaching 100%, check if user wants to lock it
-                            lock_progress = request.POST.get('lock_progress', 'false') == 'true'
-                            if progress == 100 and lock_progress:
+                                except Exception as e:
+                                    logger.error(f"Error saving attachment {file.name}: {str(e)}")
+                        messages.success(request, 'Reply added successfully!')
+                    else:
+                        messages.error(request, 'Message cannot be empty.')
+                
+                elif action == 'update_status' and request.user.is_superuser:
+                    ticket.status = request.POST.get('status')
+                    ticket.save()
+                    messages.success(request, 'Ticket status updated!')
+                
+                elif action == 'assign' and request.user.is_superuser:
+                    assigned_user_id = request.POST.get('assigned_to')
+                    if assigned_user_id:
+                        ticket.assigned_to_id = assigned_user_id
+                        ticket.save()
+                        messages.success(request, 'Ticket assigned successfully!')
+                
+                elif action == 'update_priority' and request.user.is_superuser:
+                    ticket.priority = request.POST.get('priority')
+                    ticket.save()
+                    messages.success(request, 'Ticket priority updated!')
+                
+                elif action == 'update_progress':
+                    progress = request.POST.get('progress_percentage')
+                    if progress:
+                        try:
+                            ticket.progress_percentage = int(progress)
+                            if ticket.progress_percentage == 100 and request.POST.get('lock_progress') == 'true':
                                 ticket.progress_locked = True
-                                messages.success(request, 'Progress updated to 100% and locked! You will not be able to change it anymore.')
-                            elif progress == 100:
-                                # Reached 100% but didn't lock - keep unlocked
-                                ticket.progress_locked = False
-                                messages.success(request, 'Progress updated to 100%! You can lock it to prevent further changes.')
-                            else:
-                                # Not 100%, ensure it's unlocked
-                                ticket.progress_locked = False
-                                messages.success(request, f'Progress updated to {progress}%!')
-                            
                             ticket.save()
-                        else:
-                            messages.error(request, 'Progress must be between 0 and 100.')
-                    except ValueError:
-                        messages.error(request, 'Invalid progress value.')
-            else:
-                messages.error(request, 'You can only update progress for tickets related to tasks that are assigned to you.')
+                            messages.success(request, 'Progress updated successfully!')
+                        except (ValueError, TypeError):
+                            messages.error(request, 'Invalid progress value.')
+                
+                elif action == 'unlock_progress' and request.user.is_superuser:
+                    ticket.progress_locked = False
+                    ticket.save()
+                    messages.success(request, 'Progress unlocked!')
+                
+                return redirect('ticket_detail', ticket_id=ticket.id)
+            except Exception as e:
+                logger.error(f"Error processing POST request: {str(e)}\n{traceback.format_exc()}")
+                messages.error(request, f'An error occurred: {str(e)}')
+                return redirect('ticket_detail', ticket_id=ticket.id)
         
-        elif action == 'unlock_progress' and request.user.is_superuser:
-            # Admin can unlock progress
-            ticket.progress_locked = False
-            ticket.save()
-            messages.success(request, 'Progress unlocked. Employee can now update it again.')
+        try:
+            ticket.replies.filter(is_read=False).exclude(created_by=request.user).update(is_read=True)
+        except Exception as e:
+            logger.warning(f"Error updating read status: {str(e)}")
         
-        return redirect('ticket_detail', ticket_id=ticket.id)
-    
-    # Mark unread replies as read for current user
-    ticket.replies.filter(is_read=False).exclude(created_by=request.user).update(is_read=True)
-    
-    # Check if employee can update progress (only if ticket is related to task and assigned to them, and not locked)
-    can_update_progress = False
-    if ticket.related_task and ticket.assigned_to == request.user and not request.user.is_superuser:
-        can_update_progress = not ticket.progress_locked
-    
-    return render(request, 'core/ticket_detail.html', {
-        'ticket': ticket,
-        'replies': replies,
-        'files': files,
-        'employees': employees,
-        'can_update_progress': can_update_progress,
-    })
+        # Determine if user can update progress
+        can_update_progress = False
+        if ticket.related_task:
+            if request.user.is_superuser:
+                can_update_progress = True
+            elif ticket.assigned_to == request.user and not ticket.progress_locked:
+                can_update_progress = True
+        
+        return render(request, 'core/ticket_detail.html', {
+            'ticket': ticket,
+            'replies': replies,
+            'files': files,
+            'employees': employees,
+            'can_update_progress': can_update_progress,
+        })
+    except Exception as e:
+        logger.error(f"CRITICAL: Error in ticket_detail view: {str(e)}\n{traceback.format_exc()}")
+        return HttpResponse(f"<html><body><h1>Error Loading Ticket</h1><p>An unexpected error occurred: {str(e)}</p><p><a href='/my-tickets/'>Go back to tickets</a></p></body></html>", status=500)
 
 @user_passes_test(is_admin)
 def edit_ticket(request, ticket_id):
-    from .models import TicketReply
-    from datetime import datetime
+    """Edit ticket (admin only)"""
     ticket = get_object_or_404(Ticket, id=ticket_id)
     employees = User.objects.filter(is_superuser=False, employee__isnull=False).select_related('employee')
-    # Get all tasks for admin to link to ticket
     from .models import Task
-    tasks = Task.objects.select_related('project', 'assigned_to', 'assigned_to__user').all().order_by('-created_at')
+    tasks = Task.objects.select_related('project', 'assigned_to').all().order_by('-created_at')[:100]
     
     if request.method == 'POST':
         ticket.title = request.POST.get('title', ticket.title)
@@ -1591,34 +1531,19 @@ def edit_ticket(request, ticket_id):
         else:
             ticket.assigned_to = None
         
-        # Handle related task
         related_task_id = request.POST.get('related_task', '')
         if related_task_id:
             try:
-                from .models import Task
                 ticket.related_task = Task.objects.get(id=related_task_id)
-            except Task.DoesNotExist:
+            except:
                 ticket.related_task = None
         else:
             ticket.related_task = None
         
-        # Handle progress percentage
-        try:
-            progress = int(request.POST.get('progress_percentage', ticket.progress_percentage))
-            if 0 <= progress <= 100:
-                ticket.progress_percentage = progress
-        except (ValueError, TypeError):
-            pass
-        
-        # Handle progress locked (only if ticket is related to task)
-        if ticket.related_task:
-            ticket.progress_locked = request.POST.get('progress_locked') == 'on'
-        else:
-            ticket.progress_locked = False
-        
         end_date_str = request.POST.get('end_date', '')
         if end_date_str:
             try:
+                from datetime import datetime
                 end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
                 ticket.end_date = timezone.make_aware(end_date)
             except:
@@ -1628,17 +1553,19 @@ def edit_ticket(request, ticket_id):
         
         ticket.save()
         
-        # Handle file attachments - use TicketFile model
         from .models import TicketFile
         if request.FILES.getlist('attachments'):
             for file in request.FILES.getlist('attachments'):
-                TicketFile.objects.create(
-                    ticket=ticket,
-                    file=file,
-                    file_name=file.name,
-                    file_size=file.size,
-                    uploaded_by=request.user
-                )
+                try:
+                    TicketFile.objects.create(
+                        ticket=ticket,
+                        file=file,
+                        file_name=file.name,
+                        file_size=file.size,
+                        uploaded_by=request.user
+                    )
+                except:
+                    pass
         
         messages.success(request, f'Ticket {ticket.tk_id} updated successfully!')
         return redirect('ticket_detail', ticket_id=ticket.id)
@@ -1651,6 +1578,7 @@ def edit_ticket(request, ticket_id):
 
 @user_passes_test(is_admin)
 def update_ticket_status(request, ticket_id):
+    """Update ticket status (admin only)"""
     ticket = get_object_or_404(Ticket, id=ticket_id)
     if request.method == 'POST':
         ticket.status = request.POST.get('status')
@@ -1665,6 +1593,7 @@ def update_ticket_status(request, ticket_id):
 
 @login_required
 def delete_ticket(request, ticket_id):
+    """Delete ticket"""
     ticket = get_object_or_404(Ticket, id=ticket_id)
     if request.user.is_superuser or ticket.created_by == request.user:
         ticket_id_str = ticket.tk_id
@@ -2530,13 +2459,22 @@ def edit_employee(request, employee_id):
         employee.user.first_name = first_name
         employee.user.last_name = last_name
         employee.user.save()
-        salary = request.POST.get('salary') or None
+        # Handle salary field - convert to Decimal if provided
+        salary = None
+        salary_str = request.POST.get('salary', '').strip()
+        if salary_str:
+            try:
+                from decimal import Decimal
+                salary = Decimal(salary_str)
+            except (ValueError, TypeError):
+                salary = None
+        
         employee.phone = phone
         employee.address = address
         employee.city = request.POST.get('city', '').strip()
         employee.department_id = department_id
         employee.designation_id = designation_id
-        employee.salary = salary if salary else None
+        employee.salary = salary
         employee.date_of_joining = date_of_joining
         employee.machine_id = machine_id if machine_id else None
         employee.fingerprint_id = fingerprint_id if fingerprint_id else None
@@ -2743,8 +2681,14 @@ def add_client(request):
     if request.method == 'POST':
         form = ClientForm(request.POST, request.FILES)
         if form.is_valid():
-            form.save()
-            return redirect('client_list')
+            try:
+                form.save()
+                messages.success(request, 'Client added successfully!')
+                return redirect('client_list')
+            except Exception as e:
+                messages.error(request, f'Error adding client: {str(e)}')
+        else:
+            messages.error(request, 'Please correct the errors below.')
     else:
         form = ClientForm()
     return render(request, 'core/add_client.html', {'form': form})
@@ -2755,8 +2699,14 @@ def edit_client(request, client_id):
     if request.method == 'POST':
         form = ClientForm(request.POST, request.FILES, instance=client)
         if form.is_valid():
-            form.save()
-            return redirect('client_list')
+            try:
+                form.save()
+                messages.success(request, 'Client updated successfully!')
+                return redirect('client_list')
+            except Exception as e:
+                messages.error(request, f'Error updating client: {str(e)}')
+        else:
+            messages.error(request, 'Please correct the errors below.')
     else:
         form = ClientForm(instance=client)
     return render(request, 'core/edit_client.html', {'form': form, 'client': client})
@@ -3275,7 +3225,7 @@ def budget_expense_list(request):
                 str(expense.id),
                 str(expense.budget.name),
                 str(expense.title),
-                f"${float(expense.amount):.2f}" if expense.amount else '$0.00',
+                f"₨{float(expense.amount):.2f}" if expense.amount else '₨0.00',
                 str(expense.description)[:50] if expense.description else 'N/A',
                 expense.date.strftime('%Y-%m-%d') if expense.date else 'N/A',
                 expense.start_date.strftime('%Y-%m-%d') if expense.start_date else 'N/A',
@@ -3378,7 +3328,7 @@ def budget_revenue_list(request):
                 str(revenue.id),
                 str(revenue.budget.name),
                 str(revenue.title),
-                f"${float(revenue.amount):.2f}" if revenue.amount else '$0.00',
+                f"₨{float(revenue.amount):.2f}" if revenue.amount else '₨0.00',
                 str(revenue.description)[:50] if revenue.description else 'N/A',
                 revenue.date.strftime('%Y-%m-%d') if revenue.date else 'N/A',
                 revenue.start_date.strftime('%Y-%m-%d') if revenue.start_date else 'N/A',
@@ -3842,7 +3792,7 @@ def expenses(request):
                 expense.item_name,
                 expense.purchased_from,
                 expense.purchased_date.strftime('%Y-%m-%d') if expense.purchased_date else '',
-                f"${expense.amount}",
+                f"₨{expense.amount}",
                 expense.paid_by,
                 expense.get_status_display()
             ])
@@ -3888,7 +3838,7 @@ def estimates(request):
                 estimate.project.name if estimate.project else 'N/A',
                 estimate.estimate_date.strftime('%Y-%m-%d') if estimate.estimate_date else '',
                 estimate.get_status_display(),
-                f"${estimate.total_amount:.2f}",
+                f"₨{estimate.total_amount:.2f}",
                 f"{estimate.tax.name} ({estimate.tax.percentage}%)" if estimate.tax else 'N/A'
             ])
         
@@ -3934,7 +3884,7 @@ def invoice_list(request):
                 invoice.invoice_date.strftime('%Y-%m-%d') if invoice.invoice_date else '',
                 invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else '',
                 invoice.get_status_display(),
-                f"${invoice.total_amount:.2f}",
+                f"₨{invoice.total_amount:.2f}",
                 f"{invoice.tax.name} ({invoice.tax.percentage}%)" if invoice.tax else 'N/A'
             ])
         
@@ -5827,7 +5777,7 @@ def reports(request):
                 emp.phone or 'N/A',
                 emp.department.name if emp.department else 'N/A',
                 emp.designation.name if emp.designation else 'N/A',
-                f"${emp.salary:.2f}" if emp.salary else 'N/A',
+                f"PKR {emp.salary:.2f}" if emp.salary else 'N/A',
                 emp.date_of_joining.strftime('%Y-%m-%d') if emp.date_of_joining else 'N/A',
                 'Active' if not emp.is_restricted else 'Restricted'
             ])
@@ -6080,8 +6030,8 @@ def reports(request):
                 inv.invoice_date.strftime('%Y-%m-%d'),
                 inv.due_date.strftime('%Y-%m-%d'),
                 inv.get_status_display(),
-                f"${total:.2f}",
-                f"${tax_amount:.2f}" if tax_amount else 'N/A'
+                f"₨{total:.2f}",
+                f"₨{tax_amount:.2f}" if tax_amount else 'N/A'
             ])
     
     elif report_type == 'loans':
@@ -6100,9 +6050,9 @@ def reports(request):
             data.append([
                 loan.id,
                 loan.employee.user.get_full_name() or loan.employee.user.username,
-                f"${loan.principal_amount:.2f}",
-                f"${loan.monthly_installment:.2f}",
-                f"${loan.balance:.2f}",
+                f"₨{loan.principal_amount:.2f}",
+                f"₨{loan.monthly_installment:.2f}",
+                f"₨{loan.balance:.2f}",
                 loan.start_date.strftime('%Y-%m-%d'),
                 loan.end_date.strftime('%Y-%m-%d') if loan.end_date else 'N/A',
                 'Active' if loan.is_active else 'Inactive'
@@ -6126,7 +6076,7 @@ def reports(request):
             data.append([
                 adv.id,
                 adv.employee.user.get_full_name() or adv.employee.user.username,
-                f"${adv.amount:.2f}",
+                f"₨{adv.amount:.2f}",
                 adv.get_status_display(),
                 adv.requested_at.strftime('%Y-%m-%d'),
                 adv.reviewed_by.get_full_name() if adv.reviewed_by else 'Pending',

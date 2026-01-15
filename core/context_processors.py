@@ -29,13 +29,13 @@ def company_context(request):
             context['decimal_separator'] = loc_settings.decimal_separator
         else:
             # Default values if no settings exist
-            context['currency_symbol'] = '$'
-            context['currency_code'] = 'USD'
+            context['currency_symbol'] = '₨'
+            context['currency_code'] = 'PKR'
             context['thousand_separator'] = ','
             context['decimal_separator'] = '.'
     except:
-        context['currency_symbol'] = '$'
-        context['currency_code'] = 'USD'
+        context['currency_symbol'] = '₨'
+        context['currency_code'] = 'PKR'
         context['thousand_separator'] = ','
         context['decimal_separator'] = '.'
     

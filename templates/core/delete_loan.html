@@ -13,9 +13,9 @@
                 </p>
                 <div class="alert alert-info text-start mb-4">
                     <strong>Loan Details:</strong><br>
-                    Principal: {{ currency_symbol|default:"$" }}{{ loan.principal_amount|floatformat:2 }}<br>
-                    Balance: {{ currency_symbol|default:"$" }}{{ loan.balance|floatformat:2 }}<br>
-                    Monthly Installment: {{ currency_symbol|default:"$" }}{{ loan.monthly_installment|floatformat:2 }}
+                    Principal: {{ currency_symbol|default:"₨" }}{{ loan.principal_amount|floatformat:2 }}<br>
+                    Balance: {{ currency_symbol|default:"₨" }}{{ loan.balance|floatformat:2 }}<br>
+                    Monthly Installment: {{ currency_symbol|default:"₨" }}{{ loan.monthly_installment|floatformat:2 }}
                 </div>
                 <p class="text-muted small mb-4">This action cannot be undone.</p>
                 <form method="post" class="d-inline">

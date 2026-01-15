@@ -31,34 +31,9 @@
 
 {% block content %}
 <style>
-    body {
-        overflow: hidden !important;
-        position: relative !important;
-    }
-    .main-content {
-        height: calc(100vh - 120px) !important;
-        overflow-y: auto !important;
-    }
-    /* Force full page - hide everything */
-    .sidebar,
-    .row:not(.full-page-chat),
-    .ticket-header-card {
-        display: none !important;
-    }
-    .full-page-chat {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        z-index: 999999 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    html, body {
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: hidden !important;
+    .ticket-detail-container {
+        max-width: 1400px;
+        margin: 0 auto;
     }
     .ticket-header-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -201,10 +176,11 @@
     }
 </style>
 
+<div class="ticket-detail-container">
 <div class="row">
     <!-- Ticket Info Card -->
     <div class="col-12 mb-4">
-        <div class="ticket-header-card">
+        <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);">
             <div class="d-flex justify-content-between align-items-start flex-wrap">
                 <div class="flex-grow-1">
                     <h2 class="h4 mb-3">{{ ticket.title }}</h2>
@@ -251,7 +227,7 @@
                 {% endif %}
                 <div class="ticket-info-item">
                     <label>Replies</label>
-                    <div class="value">{{ replies.count }}</div>
+                    <div class="value">{{ replies|length }}</div>
                 </div>
             </div>
         </div>
@@ -455,90 +431,83 @@
     {% endif %}
 </div>
 
-<!-- Full Page Chat - Completely New Implementation -->
-<div class="full-page-chat" style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; margin: 0 !important; padding: 0 !important; z-index: 999999 !important; background: #f8f9fa !important; display: flex !important; flex-direction: column !important; overflow: hidden !important;">
-    <!-- Chat Header -->
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: white !important; padding: 1.5rem 2rem !important; flex-shrink: 0 !important; display: flex !important; justify-content: space-between !important; align-items: center !important; box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;">
-        <h2 style="margin: 0 !important; font-size: 1.5rem !important; font-weight: 600 !important;">
-            <i class="fas fa-comments me-2"></i>Conversation - {{ ticket.tk_id }}
-        </h2>
-        <a href="{% if request.user.is_superuser %}{% url 'all_tickets' %}{% else %}{% url 'my_tickets' %}{% endif %}" class="btn btn-light" style="color: #000 !important; padding: 0.5rem 1rem !important;">
-            <i class="fas fa-times me-1"></i>Close
-        </a>
-    </div>
-    
-    <!-- Chat Content Area -->
-    <div style="flex: 1 !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; padding: 2rem !important; min-height: 0 !important;">
-        <div style="background: #f8f9fa !important; border-radius: 15px !important; padding: 2rem !important; height: 100% !important; display: flex !important; flex-direction: column !important; box-shadow: 0 2px 15px rgba(0,0,0,0.08) !important;">
-            <div id="chatMessages" style="flex: 1 !important; overflow-y: auto !important; background: white !important; border-radius: 10px !important; padding: 2rem !important; margin-bottom: 1.5rem !important; min-height: 0 !important;">
-                        {% for reply in replies %}
-                        <div class="message-item">
-                            <div class="message-header">
-                                <div>
-                                    <span class="message-author">
-                                        <i class="fas fa-user me-1"></i>{{ reply.created_by.get_full_name|default:reply.created_by.username }}
-                                        {% if reply.created_by.is_superuser %}
-                                        <span class="badge bg-danger ms-2">Admin</span>
-                                        {% endif %}
-                                    </span>
-                                </div>
-                                <span class="message-time">{{ reply.created_at|date:"M d, Y H:i" }}</span>
+<!-- Chat Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card" style="border: none; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+            <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px 15px 0 0;">
+                <h5 class="mb-0"><i class="fas fa-comments me-2"></i>Conversation</h5>
+            </div>
+            <div class="card-body" style="padding: 2rem;">
+                <div id="chatMessages" style="max-height: 500px; overflow-y: auto; background: #f8f9fa; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">
+                    {% for reply in replies %}
+                    <div class="message-item">
+                        <div class="message-header">
+                            <div>
+                                <span class="message-author">
+                                    <i class="fas fa-user me-1"></i>{{ reply.created_by.get_full_name|default:reply.created_by.username }}
+                                    {% if reply.created_by.is_superuser %}
+                                    <span class="badge bg-danger ms-2">Admin</span>
+                                    {% endif %}
+                                </span>
                             </div>
-                            <div class="message-content {% if reply.created_by == request.user %}own-message{% endif %}">
-                                {{ reply.message }}
-                                {% if reply.attachment %}
-                                <div class="attachment-preview mt-2">
-                                    <a href="{{ reply.attachment.url }}" target="_blank" class="text-decoration-none">
-                                        <i class="fas fa-file me-2"></i>{{ reply.attachment.name|slice:"20:" }}
+                            <span class="message-time">{{ reply.created_at|date:"M d, Y H:i" }}</span>
+                        </div>
+                        <div class="message-content {% if reply.created_by == request.user %}own-message{% endif %}">
+                            {{ reply.message }}
+                            {% if reply.attachment %}
+                            <div class="attachment-preview mt-2">
+                                <a href="{{ reply.attachment.url }}" target="_blank" class="text-decoration-none">
+                                    <i class="fas fa-file me-2"></i>{{ reply.attachment.name|slice:"20:" }}
+                                </a>
+                            </div>
+                            {% endif %}
+                            {% if reply.files.all %}
+                            <div class="attachment-preview mt-2">
+                                <strong><i class="fas fa-paperclip me-1"></i>Attachments:</strong>
+                                {% for file in reply.files.all %}
+                                <div class="mt-1">
+                                    <a href="{{ file.file.url }}" target="_blank" class="text-decoration-none">
+                                        <i class="fas fa-file me-2"></i>{{ file.file_name }}
                                     </a>
                                 </div>
-                                {% endif %}
-                                {% if reply.files.all %}
-                                <div class="attachment-preview mt-2">
-                                    <strong><i class="fas fa-paperclip me-1"></i>Attachments:</strong>
-                                    {% for file in reply.files.all %}
-                                    <div class="mt-1">
-                                        <a href="{{ file.file.url }}" target="_blank" class="text-decoration-none">
-                                            <i class="fas fa-file me-2"></i>{{ file.file_name }}
-                                        </a>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
+                                {% endfor %}
                             </div>
+                            {% endif %}
                         </div>
-                        {% empty %}
-                        <div class="text-center text-muted py-5">
-                            <i class="fas fa-comments fa-3x mb-3"></i>
-                            <p>No replies yet. Start the conversation!</p>
-                        </div>
-                        {% endfor %}
                     </div>
-                    
-                    <!-- Reply Form -->
-                    <form method="post" enctype="multipart/form-data" class="reply-form" id="replyForm">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="reply">
-                        <div class="mb-3">
-                            <textarea name="message" id="replyMessage" class="form-control" rows="6" placeholder="Type your reply here..." required style="font-size: 1.15rem !important; padding: 1.3rem !important; line-height: 1.8 !important; min-height: 150px !important;"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="attachments" class="btn btn-sm btn-outline-secondary mb-0">
-                                <i class="fas fa-paperclip me-1"></i>Attach Files
-                            </label>
-                            <input type="file" name="attachments" id="attachments" class="d-none" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xlsx,.xls">
-                            <div id="filePreview" class="mt-2"></div>
-                        </div>
-                        <div class="d-flex justify-content-end">
-                            <button type="submit" class="btn btn-primary" id="submitReply">
-                                <i class="fas fa-paper-plane me-2"></i>Send Reply
-                            </button>
-                        </div>
-                    </form>
+                    {% empty %}
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-comments fa-3x mb-3"></i>
+                        <p>No replies yet. Start the conversation!</p>
+                    </div>
+                    {% endfor %}
                 </div>
+                
+                <!-- Reply Form -->
+                <form method="post" enctype="multipart/form-data" class="reply-form" id="replyForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reply">
+                    <div class="mb-3">
+                        <textarea name="message" id="replyMessage" class="form-control" rows="6" placeholder="Type your reply here..." required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="attachments" class="btn btn-sm btn-outline-secondary mb-0">
+                            <i class="fas fa-paperclip me-1"></i>Attach Files
+                        </label>
+                        <input type="file" name="attachments" id="attachments" class="d-none" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xlsx,.xls">
+                        <div id="filePreview" class="mt-2"></div>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary" id="submitReply">
+                            <i class="fas fa-paper-plane me-2"></i>Send Reply
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <script>

@@ -6,12 +6,32 @@ from django.utils.html import format_html
 from django.utils import timezone
 
 class ClientForm(forms.ModelForm):
+    company = forms.ModelChoiceField(
+        queryset=Company.objects.filter(is_active=True).order_by('name'),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        label='Company',
+        help_text='Select the company this client belongs to (optional)',
+        empty_label='-- Select Company (Optional) --'
+    )
+    
     class Meta:
         model = Client
         fields = ['name', 'email', 'phone', 'address', 'company', 'description', 'profile_picture']
         widgets = {
             'profile_picture': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ensure company queryset is always available
+        if 'company' in self.fields:
+            self.fields['company'].queryset = Company.objects.filter(is_active=True).order_by('name')
 
 class UserAdminForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput, required=False)

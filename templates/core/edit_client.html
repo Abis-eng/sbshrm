@@ -184,7 +184,13 @@
                             </div>
                             <div class="col-md-6 form-group-spacing">
                                 <label for="id_company" class="form-label">Company</label>
-                                <input type="text" class="form-control" id="id_company" name="company" value="{{ form.company.value|default:client.company }}" placeholder="Company name (optional)">
+                                {{ form.company }}
+                                {% if form.company.help_text %}
+                                <small class="text-muted">{{ form.company.help_text }}</small>
+                                {% endif %}
+                                {% if form.company.errors %}
+                                <div class="text-danger small">{{ form.company.errors }}</div>
+                                {% endif %}
                             </div>
                             <div class="col-md-6 form-group-spacing">
                                 <label for="id_email" class="form-label">Email</label>
