@@ -278,7 +278,7 @@ def employee_list(request):
                 str(emp.phone) if emp.phone else 'N/A',
                 str(emp.department.name) if emp.department and emp.department.name else 'N/A',
                 str(emp.designation.name) if emp.designation and emp.designation.name else 'N/A',
-                f"₨{float(emp.salary):.2f}" if emp.salary else 'N/A',
+                f"Rs{float(emp.salary):.2f}" if emp.salary else 'N/A',
                 emp.date_of_joining.strftime('%Y-%m-%d') if emp.date_of_joining else 'N/A',
                 'Active' if not emp.is_restricted else 'Restricted'
             ])
@@ -525,10 +525,10 @@ def add_employee(request):
             address=address,
             city=city,
             date_of_joining=date_of_joining,
-            machine_id=machine_id if machine_id else None,
-            fingerprint_id=fingerprint_id if fingerprint_id else None,
-            face_id=face_id if face_id else None,
-            card_id=card_id if card_id else None,
+            machine_id=machine_id.strip() if machine_id and machine_id.strip() else None,
+            fingerprint_id=fingerprint_id.strip() if fingerprint_id and fingerprint_id.strip() else None,
+            face_id=face_id.strip() if face_id and face_id.strip() else None,
+            card_id=card_id.strip() if card_id and card_id.strip() else None,
             profile_picture=profile_picture,
         )
         
@@ -1168,7 +1168,7 @@ def manage_advances(request):
                     sender=request.user,
                     notification_type='system',
                     title='Advance request approved',
-                    message=f'Your advance request of ₨{adv.amount} has been approved for ₨{approved_amount:.2f}.',
+                    message=f'Your advance request of Rs{adv.amount} has been approved for Rs{approved_amount:.2f}.',
                     link=f'/my-advances/'
                 )
             else:
@@ -1177,7 +1177,7 @@ def manage_advances(request):
                     sender=request.user,
                     notification_type='system',
                     title='Advance request approved',
-                    message=f'Your advance request of ₨{adv.amount} has been approved.',
+                    message=f'Your advance request of Rs{adv.amount} has been approved.',
                     link=f'/my-advances/'
                 )
         elif action == 'reject':
@@ -1868,6 +1868,48 @@ def all_attendance(request):
     })
 
 @user_passes_test(is_admin)
+def reprocess_attendance_logs(request):
+    """Manually reprocess attendance logs into attendance records"""
+    from .attendance_service import AttendanceService
+    from .models import AttendanceLog, Attendance
+    import traceback
+    
+    try:
+        # Count logs before processing
+        total_logs = AttendanceLog.objects.count()
+        recent_logs = AttendanceLog.objects.filter(
+            timestamp__date__gte=timezone.now().date() - timedelta(days=30)
+        ).count()
+        
+        # Process logs
+        processed_count = AttendanceService.process_attendance_logs()
+        
+        # Count attendance records after processing
+        total_attendance = Attendance.objects.count()
+        recent_attendance = Attendance.objects.filter(
+            date__gte=timezone.now().date() - timedelta(days=30)
+        ).count()
+        
+        if processed_count > 0:
+            messages.success(
+                request, 
+                f'Successfully processed {processed_count} attendance logs! '
+                f'Total logs: {total_logs} (last 30 days: {recent_logs}), '
+                f'Total attendance records: {total_attendance} (last 30 days: {recent_attendance})'
+            )
+        else:
+            messages.info(
+                request, 
+                f'No attendance logs to process. Total logs: {total_logs} (last 30 days: {recent_logs})'
+            )
+    except Exception as e:
+        error_msg = f"Error processing attendance logs: {str(e)}"
+        logger.error(f"{error_msg}\n{traceback.format_exc()}")
+        messages.error(request, f'Error processing attendance logs: {str(e)}')
+    
+    return redirect('all_attendance')
+
+@user_passes_test(is_admin)
 def attendance_logs(request):
     """View attendance logs with filtering"""
     form = AttendanceFilterForm(request.GET)
@@ -1957,8 +1999,14 @@ def sync_attendance_machine(request, machine_id=None):
             processed_count = AttendanceService.process_attendance_logs()
             if processed_count > 0:
                 logger.info(f"Processed {processed_count} attendance logs into attendance records")
+                messages.info(request, f'Processed {processed_count} attendance logs into attendance records.')
+            else:
+                messages.info(request, 'No attendance logs to process.')
         except Exception as e:
-            logger.error(f"Error processing attendance logs: {str(e)}")
+            import traceback
+            error_msg = f"Error processing attendance logs: {str(e)}"
+            logger.error(f"{error_msg}\n{traceback.format_exc()}")
+            messages.error(request, f'Error processing attendance logs: {str(e)}')
             # Don't fail the sync if processing fails, just log it
         
     except Exception as e:
@@ -2123,6 +2171,22 @@ def manage_attendance_machines(request):
     """Manage attendance machines"""
     machines = AttendanceMachine.objects.all().order_by('name', 'location')
     
+    # Check if machine with IP 192.168.18.80 exists
+    target_ip = "192.168.18.80"
+    machine_with_ip = AttendanceMachine.objects.filter(ip_address=target_ip).first()
+    machine_check_info = None
+    if machine_with_ip:
+        machine_check_info = {
+            'exists': True,
+            'machine': machine_with_ip,
+            'message': f'Machine with IP {target_ip} already exists: "{machine_with_ip.name}"'
+        }
+    else:
+        machine_check_info = {
+            'exists': False,
+            'message': f'No machine found with IP {target_ip}. You can add it below.'
+        }
+    
     if request.method == 'POST':
         form = AttendanceMachineForm(request.POST)
         if form.is_valid():
@@ -2141,6 +2205,7 @@ def manage_attendance_machines(request):
         'machines': machines,
         'form': form,
         'connection_test_result': connection_test_result,
+        'machine_check_info': machine_check_info,
     })
 
 @user_passes_test(is_admin)
@@ -2476,10 +2541,11 @@ def edit_employee(request, employee_id):
         employee.designation_id = designation_id
         employee.salary = salary
         employee.date_of_joining = date_of_joining
-        employee.machine_id = machine_id if machine_id else None
-        employee.fingerprint_id = fingerprint_id if fingerprint_id else None
-        employee.face_id = face_id if face_id else None
-        employee.card_id = card_id if card_id else None
+        # Strip whitespace from machine IDs
+        employee.machine_id = machine_id.strip() if machine_id and machine_id.strip() else None
+        employee.fingerprint_id = fingerprint_id.strip() if fingerprint_id and fingerprint_id.strip() else None
+        employee.face_id = face_id.strip() if face_id and face_id.strip() else None
+        employee.card_id = card_id.strip() if card_id and card_id.strip() else None
         if profile_picture:
             employee.profile_picture = profile_picture
         employee.save()
@@ -3225,7 +3291,7 @@ def budget_expense_list(request):
                 str(expense.id),
                 str(expense.budget.name),
                 str(expense.title),
-                f"₨{float(expense.amount):.2f}" if expense.amount else '₨0.00',
+                f"Rs{float(expense.amount):.2f}" if expense.amount else 'Rs0.00',
                 str(expense.description)[:50] if expense.description else 'N/A',
                 expense.date.strftime('%Y-%m-%d') if expense.date else 'N/A',
                 expense.start_date.strftime('%Y-%m-%d') if expense.start_date else 'N/A',
@@ -3328,7 +3394,7 @@ def budget_revenue_list(request):
                 str(revenue.id),
                 str(revenue.budget.name),
                 str(revenue.title),
-                f"₨{float(revenue.amount):.2f}" if revenue.amount else '₨0.00',
+                f"Rs{float(revenue.amount):.2f}" if revenue.amount else 'Rs0.00',
                 str(revenue.description)[:50] if revenue.description else 'N/A',
                 revenue.date.strftime('%Y-%m-%d') if revenue.date else 'N/A',
                 revenue.start_date.strftime('%Y-%m-%d') if revenue.start_date else 'N/A',
@@ -3792,7 +3858,7 @@ def expenses(request):
                 expense.item_name,
                 expense.purchased_from,
                 expense.purchased_date.strftime('%Y-%m-%d') if expense.purchased_date else '',
-                f"₨{expense.amount}",
+                f"Rs{expense.amount}",
                 expense.paid_by,
                 expense.get_status_display()
             ])
@@ -3838,7 +3904,7 @@ def estimates(request):
                 estimate.project.name if estimate.project else 'N/A',
                 estimate.estimate_date.strftime('%Y-%m-%d') if estimate.estimate_date else '',
                 estimate.get_status_display(),
-                f"₨{estimate.total_amount:.2f}",
+                f"Rs{estimate.total_amount:.2f}",
                 f"{estimate.tax.name} ({estimate.tax.percentage}%)" if estimate.tax else 'N/A'
             ])
         
@@ -3884,7 +3950,7 @@ def invoice_list(request):
                 invoice.invoice_date.strftime('%Y-%m-%d') if invoice.invoice_date else '',
                 invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else '',
                 invoice.get_status_display(),
-                f"₨{invoice.total_amount:.2f}",
+                f"Rs{invoice.total_amount:.2f}",
                 f"{invoice.tax.name} ({invoice.tax.percentage}%)" if invoice.tax else 'N/A'
             ])
         
@@ -5777,7 +5843,7 @@ def reports(request):
                 emp.phone or 'N/A',
                 emp.department.name if emp.department else 'N/A',
                 emp.designation.name if emp.designation else 'N/A',
-                f"PKR {emp.salary:.2f}" if emp.salary else 'N/A',
+                f"Rs{emp.salary:.2f}" if emp.salary else 'N/A',
                 emp.date_of_joining.strftime('%Y-%m-%d') if emp.date_of_joining else 'N/A',
                 'Active' if not emp.is_restricted else 'Restricted'
             ])
@@ -6030,8 +6096,8 @@ def reports(request):
                 inv.invoice_date.strftime('%Y-%m-%d'),
                 inv.due_date.strftime('%Y-%m-%d'),
                 inv.get_status_display(),
-                f"₨{total:.2f}",
-                f"₨{tax_amount:.2f}" if tax_amount else 'N/A'
+                f"Rs{total:.2f}",
+                f"Rs{tax_amount:.2f}" if tax_amount else 'N/A'
             ])
     
     elif report_type == 'loans':
@@ -6050,9 +6116,9 @@ def reports(request):
             data.append([
                 loan.id,
                 loan.employee.user.get_full_name() or loan.employee.user.username,
-                f"₨{loan.principal_amount:.2f}",
-                f"₨{loan.monthly_installment:.2f}",
-                f"₨{loan.balance:.2f}",
+                f"Rs{loan.principal_amount:.2f}",
+                f"Rs{loan.monthly_installment:.2f}",
+                f"Rs{loan.balance:.2f}",
                 loan.start_date.strftime('%Y-%m-%d'),
                 loan.end_date.strftime('%Y-%m-%d') if loan.end_date else 'N/A',
                 'Active' if loan.is_active else 'Inactive'
@@ -6076,7 +6142,7 @@ def reports(request):
             data.append([
                 adv.id,
                 adv.employee.user.get_full_name() or adv.employee.user.username,
-                f"₨{adv.amount:.2f}",
+                f"Rs{adv.amount:.2f}",
                 adv.get_status_display(),
                 adv.requested_at.strftime('%Y-%m-%d'),
                 adv.reviewed_by.get_full_name() if adv.reviewed_by else 'Pending',

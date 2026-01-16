@@ -259,7 +259,7 @@
                 <div class="stats-icon primary" style="background: #8b5cf6;">
                     <i class="fas fa-dollar-sign"></i>
                 </div>
-                <div class="stats-value">{{ currency_symbol|default:"₨" }}{{ total_principal|floatformat:2 }}</div>
+                <div class="stats-value">{{ currency_symbol|default:"Rs" }}{{ total_principal|floatformat:2 }}</div>
                 <div class="stats-label">Total Principal</div>
             </div>
         </div>
@@ -352,7 +352,7 @@
                         </p>
                     </div>
                     <div class="text-end">
-                        <div class="loan-amount">{{ currency_symbol|default:"₨" }}{{ loan.principal_amount|floatformat:2 }}</div>
+                        <div class="loan-amount">{{ currency_symbol|default:"Rs" }}{{ loan.principal_amount|floatformat:2 }}</div>
                         <span class="status-badge status-{% if loan.is_active %}active{% else %}closed{% endif %} mb-2">
                             {% if loan.is_active %}Active{% else %}Closed{% endif %}
                         </span>
@@ -372,15 +372,15 @@
                 <div class="loan-info">
                     <div class="info-item">
                         <i class="fas fa-dollar-sign"></i>
-                        <span><strong>Principal:</strong> {{ currency_symbol|default:"₨" }}{{ loan.principal_amount|floatformat:2 }}</span>
+                        <span><strong>Principal:</strong> {{ currency_symbol|default:"Rs" }}{{ loan.principal_amount|floatformat:2 }}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-calendar"></i>
-                        <span><strong>Monthly Installment:</strong> {{ currency_symbol|default:"₨" }}{{ loan.monthly_installment|floatformat:2 }}</span>
+                        <span><strong>Monthly Installment:</strong> {{ currency_symbol|default:"Rs" }}{{ loan.monthly_installment|floatformat:2 }}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-wallet"></i>
-                        <span><strong>Balance:</strong> {{ currency_symbol|default:"₨" }}{{ loan.balance|floatformat:2 }}</span>
+                        <span><strong>Balance:</strong> {{ currency_symbol|default:"Rs" }}{{ loan.balance|floatformat:2 }}</span>
                     </div>
                     <div class="info-item">
                         <i class="fas fa-calendar-alt"></i>

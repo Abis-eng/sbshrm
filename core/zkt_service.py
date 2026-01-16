@@ -22,7 +22,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 class ZKTService:
-    def __init__(self, ip_address="192.168.18.1", port=4370, timeout=5):
+    def __init__(self, ip_address="192.168.18.80", port=4370, timeout=5):
         self.ip_address = ip_address
         self.port = port
         self.timeout = timeout
@@ -118,12 +118,71 @@ class ZKTService:
         synced_count = 0
         for record in attendance_data:
             try:
-                # Find employee by machine ID
-                employee = Employee.objects.filter(machine_id=str(record.user_id)).first()
+                # Find employee by machine ID - use improved matching logic
+                user_id_raw = record.user_id
+                user_id = str(user_id_raw).strip()  # Convert to string and strip whitespace
+                
+                logger.debug(f"Processing attendance record - Machine user ID: '{user_id}' (type: {type(user_id_raw)}, raw: {repr(user_id_raw)})")
+                
+                employee = None
+                
+                # First, try exact match
+                employee = Employee.objects.filter(machine_id=user_id).first()
+                if employee:
+                    logger.info(f"Matched via machine_id (exact): '{user_id}' -> {employee.user.username}")
+                
+                # Try with stripped machine_id from database (handles whitespace issues)
+                if not employee:
+                    all_employees = Employee.objects.exclude(machine_id__isnull=True).exclude(machine_id='')
+                    for emp in all_employees:
+                        if emp.machine_id and str(emp.machine_id).strip() == user_id:
+                            employee = emp
+                            logger.info(f"Matched via machine_id (stripped): '{user_id}' -> {employee.user.username}")
+                            break
+                
+                # Try other ID fields
+                if not employee:
+                    employee = Employee.objects.filter(fingerprint_id=user_id).first()
+                    if employee:
+                        logger.info(f"Matched via fingerprint_id: '{user_id}' -> {employee.user.username}")
                 
                 if not employee:
-                    logger.warning(f"Employee not found for machine ID: {record.user_id}")
+                    employee = Employee.objects.filter(face_id=user_id).first()
+                    if employee:
+                        logger.info(f"Matched via face_id: '{user_id}' -> {employee.user.username}")
+                
+                if not employee:
+                    employee = Employee.objects.filter(card_id=user_id).first()
+                    if employee:
+                        logger.info(f"Matched via card_id: '{user_id}' -> {employee.user.username}")
+                
+                # Try matching by employee database ID
+                if not employee:
+                    try:
+                        employee_db_id = int(user_id)
+                        employee = Employee.objects.filter(id=employee_db_id).first()
+                        if employee:
+                            logger.info(f"Matched via employee.id: '{user_id}' -> {employee.user.username}")
+                    except (ValueError, TypeError):
+                        pass
+                
+                # Try matching by user ID
+                if not employee:
+                    try:
+                        user_db_id = int(user_id)
+                        employee = Employee.objects.filter(user_id=user_db_id).first()
+                        if employee:
+                            logger.info(f"Matched via user.id: '{user_id}' -> {employee.user.username}")
+                    except (ValueError, TypeError):
+                        pass
+                
+                if not employee:
+                    # Log all available machine_ids for debugging
+                    available_ids = list(Employee.objects.exclude(machine_id__isnull=True).exclude(machine_id='').values_list('machine_id', flat=True))
+                    logger.warning(f"Employee not found for machine ID: '{user_id}' (raw: {repr(user_id_raw)}). Available machine_ids: {available_ids}")
                     continue
+                
+                logger.info(f"✓ Matched machine user ID '{user_id}' to employee: {employee.user.username} (Employee ID: {employee.id}, User ID: {employee.user.id}, Machine ID in DB: '{employee.machine_id}')")
                 
                 # Check if attendance log already exists
                 existing_log = AttendanceLog.objects.filter(

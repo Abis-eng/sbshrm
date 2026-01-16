@@ -437,77 +437,77 @@
         <div class="card" style="border: none; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
             <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px 15px 0 0;">
                 <h5 class="mb-0"><i class="fas fa-comments me-2"></i>Conversation</h5>
-            </div>
+    </div>
             <div class="card-body" style="padding: 2rem;">
                 <div id="chatMessages" style="max-height: 500px; overflow-y: auto; background: #f8f9fa; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">
-                    {% for reply in replies %}
-                    <div class="message-item">
-                        <div class="message-header">
-                            <div>
-                                <span class="message-author">
-                                    <i class="fas fa-user me-1"></i>{{ reply.created_by.get_full_name|default:reply.created_by.username }}
-                                    {% if reply.created_by.is_superuser %}
-                                    <span class="badge bg-danger ms-2">Admin</span>
-                                    {% endif %}
-                                </span>
+                        {% for reply in replies %}
+                        <div class="message-item">
+                            <div class="message-header">
+                                <div>
+                                    <span class="message-author">
+                                        <i class="fas fa-user me-1"></i>{{ reply.created_by.get_full_name|default:reply.created_by.username }}
+                                        {% if reply.created_by.is_superuser %}
+                                        <span class="badge bg-danger ms-2">Admin</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                <span class="message-time">{{ reply.created_at|date:"M d, Y H:i" }}</span>
                             </div>
-                            <span class="message-time">{{ reply.created_at|date:"M d, Y H:i" }}</span>
-                        </div>
-                        <div class="message-content {% if reply.created_by == request.user %}own-message{% endif %}">
-                            {{ reply.message }}
-                            {% if reply.attachment %}
-                            <div class="attachment-preview mt-2">
-                                <a href="{{ reply.attachment.url }}" target="_blank" class="text-decoration-none">
-                                    <i class="fas fa-file me-2"></i>{{ reply.attachment.name|slice:"20:" }}
-                                </a>
-                            </div>
-                            {% endif %}
-                            {% if reply.files.all %}
-                            <div class="attachment-preview mt-2">
-                                <strong><i class="fas fa-paperclip me-1"></i>Attachments:</strong>
-                                {% for file in reply.files.all %}
-                                <div class="mt-1">
-                                    <a href="{{ file.file.url }}" target="_blank" class="text-decoration-none">
-                                        <i class="fas fa-file me-2"></i>{{ file.file_name }}
+                            <div class="message-content {% if reply.created_by == request.user %}own-message{% endif %}">
+                                {{ reply.message }}
+                                {% if reply.attachment %}
+                                <div class="attachment-preview mt-2">
+                                    <a href="{{ reply.attachment.url }}" target="_blank" class="text-decoration-none">
+                                        <i class="fas fa-file me-2"></i>{{ reply.attachment.name|slice:"20:" }}
                                     </a>
                                 </div>
-                                {% endfor %}
+                                {% endif %}
+                                {% if reply.files.all %}
+                                <div class="attachment-preview mt-2">
+                                    <strong><i class="fas fa-paperclip me-1"></i>Attachments:</strong>
+                                    {% for file in reply.files.all %}
+                                    <div class="mt-1">
+                                        <a href="{{ file.file.url }}" target="_blank" class="text-decoration-none">
+                                            <i class="fas fa-file me-2"></i>{{ file.file_name }}
+                                        </a>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
                             </div>
-                            {% endif %}
                         </div>
+                        {% empty %}
+                        <div class="text-center text-muted py-5">
+                            <i class="fas fa-comments fa-3x mb-3"></i>
+                            <p>No replies yet. Start the conversation!</p>
+                        </div>
+                        {% endfor %}
                     </div>
-                    {% empty %}
-                    <div class="text-center text-muted py-5">
-                        <i class="fas fa-comments fa-3x mb-3"></i>
-                        <p>No replies yet. Start the conversation!</p>
-                    </div>
-                    {% endfor %}
-                </div>
-                
-                <!-- Reply Form -->
-                <form method="post" enctype="multipart/form-data" class="reply-form" id="replyForm">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="reply">
-                    <div class="mb-3">
+                    
+                    <!-- Reply Form -->
+                    <form method="post" enctype="multipart/form-data" class="reply-form" id="replyForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reply">
+                        <div class="mb-3">
                         <textarea name="message" id="replyMessage" class="form-control" rows="6" placeholder="Type your reply here..." required></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="attachments" class="btn btn-sm btn-outline-secondary mb-0">
-                            <i class="fas fa-paperclip me-1"></i>Attach Files
-                        </label>
-                        <input type="file" name="attachments" id="attachments" class="d-none" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xlsx,.xls">
-                        <div id="filePreview" class="mt-2"></div>
-                    </div>
-                    <div class="d-flex justify-content-end">
-                        <button type="submit" class="btn btn-primary" id="submitReply">
-                            <i class="fas fa-paper-plane me-2"></i>Send Reply
-                        </button>
-                    </div>
-                </form>
+                        </div>
+                        <div class="mb-3">
+                            <label for="attachments" class="btn btn-sm btn-outline-secondary mb-0">
+                                <i class="fas fa-paperclip me-1"></i>Attach Files
+                            </label>
+                            <input type="file" name="attachments" id="attachments" class="d-none" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt,.xlsx,.xls">
+                            <div id="filePreview" class="mt-2"></div>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary" id="submitReply">
+                                <i class="fas fa-paper-plane me-2"></i>Send Reply
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
 </div>
 
 <script>

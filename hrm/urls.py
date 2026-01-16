@@ -46,6 +46,7 @@ urlpatterns = [
     path('my-attendance/', views.my_attendance, name='my_attendance'),  # employee
     path('all-attendance/', views.all_attendance, name='all_attendance'),  # admin
     path('attendance-logs/', views.attendance_logs, name='attendance_logs'),  # admin
+    path('reprocess-attendance-logs/', views.reprocess_attendance_logs, name='reprocess_attendance_logs'),  # admin
     # Screenshot monitoring
     path('api/check-clock-status/', views.check_clock_status, name='check_clock_status'),  # employee API
     path('api/upload-screenshot/', views.upload_screenshot, name='upload_screenshot'),  # employee API

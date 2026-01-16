@@ -35,7 +35,12 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h4 class="header-title">Attendance Records</h4>
                     <div>
-                        <a href="{% url 'attendance_logs' %}" class="btn btn-info btn-sm">View Logs</a>
+                        <a href="{% url 'attendance_logs' %}" class="btn btn-info btn-sm">
+                            <i class="fas fa-list me-1"></i> View Logs
+                        </a>
+                        <a href="{% url 'reprocess_attendance_logs' %}" class="btn btn-warning btn-sm" onclick="return confirm('This will reprocess all attendance logs from the last 30 days. Continue?');">
+                            <i class="fas fa-sync-alt me-1"></i> Reprocess Logs
+                        </a>
                         <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#syncModal">
                             <i class="mdi mdi-sync"></i> Sync Machines
                         </button>

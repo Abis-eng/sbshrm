@@ -18,6 +18,31 @@
         </div>
     </div>
 
+    {% if machine_check_info %}
+    <div class="row">
+        <div class="col-12">
+            {% if machine_check_info.exists %}
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Machine Found:</strong> {{ machine_check_info.message }}
+                <br>
+                <small>Machine Name: <strong>{{ machine_check_info.machine.name }}</strong> | 
+                       Location: <strong>{{ machine_check_info.machine.location|default:"Not set" }}</strong> | 
+                       Status: <strong>{% if machine_check_info.machine.is_active %}Active{% else %}Inactive{% endif %}</strong>
+                </small>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% else %}
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Machine Not Found:</strong> {{ machine_check_info.message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
     <div class="row">
         <div class="col-md-4">
             <div class="card">

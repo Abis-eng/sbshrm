@@ -181,7 +181,7 @@
                     <div class="col-md-3">
                         <div class="amount-display">
                             <div class="small opacity-90 mb-1">Requested Amount</div>
-                            <div class="amount-value">${{ adv.amount|floatformat:2 }}</div>
+                            <div class="amount-value">{{ currency_symbol|default:"Rs" }}{{ adv.amount|floatformat:2 }}</div>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -204,9 +204,9 @@
                                 {% for item in advances_with_monthly %}
                                     {% if item.advance.id == adv.id %}
                                         {% if item.monthly_payment %}
-                                            ${{ item.monthly_payment|floatformat:2 }}
+                                            {{ currency_symbol|default:"Rs" }}{{ item.monthly_payment|floatformat:2 }}
                                         {% else %}
-                                            ${{ adv.amount|floatformat:2 }}
+                                            {{ currency_symbol|default:"Rs" }}{{ adv.amount|floatformat:2 }}
                                         {% endif %}
                                     {% endif %}
                                 {% endfor %}
@@ -237,14 +237,14 @@
                         <div class="col-md-2">
                             <label class="form-label small fw-bold">Approved Amount</label>
                             <div class="input-group">
-                                <span class="input-group-text" style="border-radius: 10px 0 0 10px;">{{ currency_symbol|default:"₨" }}</span>
+                                <span class="input-group-text" style="border-radius: 10px 0 0 10px;">{{ currency_symbol|default:"Rs" }}</span>
                                 <input type="number" name="approved_amount" id="approved_amount_{{ adv.id }}" 
                                        class="form-control approved-amount-input" 
                                        value="{{ adv.amount }}" step="0.01" min="0"
                                        placeholder="{{ adv.amount }}" 
                                        style="border-radius: 0 10px 10px 0; border: 2px solid #e9ecef;">
                             </div>
-                            <small class="text-muted">Requested: ${{ adv.amount }}</small>
+                            <small class="text-muted">Requested: {{ currency_symbol|default:"Rs" }}{{ adv.amount }}</small>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold">Installments</label>
@@ -257,7 +257,7 @@
                             <label class="form-label small fw-bold">Monthly Payment</label>
                             <div class="form-control monthly-display" id="monthly_{{ adv.id }}" 
                                  style="border-radius: 10px; border: 2px solid #e9ecef; background: #f8f9fa; font-weight: 600; text-align: center;">
-                                $0.00
+                                {{ currency_symbol|default:"Rs" }}0.00
                             </div>
                         </div>
                         <div class="col-md-2">
@@ -337,7 +337,7 @@
                     const installments = parseInt(installmentsInput.value) || 1;
                     if (amount > 0 && installments > 0) {
                         const monthly = amount / installments;
-                        monthlyDisplay.textContent = '₨' + monthly.toFixed(2);
+                        monthlyDisplay.textContent = 'Rs' + monthly.toFixed(2);
                     } else {
                         monthlyDisplay.textContent = '₨0.00';
                     }

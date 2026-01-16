@@ -222,23 +222,23 @@
     // Drag and drop
     const uploadArea = document.querySelector('.file-upload-area');
     if (uploadArea) {
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.background = '#e8ebff';
-        });
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.style.background = '#f8f9ff';
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.background = '#f8f9ff';
-            const files = e.dataTransfer.files;
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.style.background = '#e8ebff';
+    });
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.style.background = '#f8f9ff';
+    });
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.style.background = '#f8f9ff';
+        const files = e.dataTransfer.files;
             const attachmentsInput = document.getElementById('attachments');
             if (attachmentsInput) {
                 attachmentsInput.files = files;
                 showFiles(attachmentsInput);
             }
-        });
+    });
     }
 </script>
 {% endblock %}

@@ -386,6 +386,42 @@ class EmployeeMachineForm(ModelForm):
             'face_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter Face ID'}),
             'card_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter Card ID'}),
         }
+    
+    def clean_machine_id(self):
+        """Strip whitespace from machine_id"""
+        machine_id = self.cleaned_data.get('machine_id')
+        if machine_id:
+            machine_id = machine_id.strip()
+            if not machine_id:  # If after stripping it's empty, return None
+                return None
+        return machine_id
+    
+    def clean_fingerprint_id(self):
+        """Strip whitespace from fingerprint_id"""
+        fingerprint_id = self.cleaned_data.get('fingerprint_id')
+        if fingerprint_id:
+            fingerprint_id = fingerprint_id.strip()
+            if not fingerprint_id:
+                return None
+        return fingerprint_id
+    
+    def clean_face_id(self):
+        """Strip whitespace from face_id"""
+        face_id = self.cleaned_data.get('face_id')
+        if face_id:
+            face_id = face_id.strip()
+            if not face_id:
+                return None
+        return face_id
+    
+    def clean_card_id(self):
+        """Strip whitespace from card_id"""
+        card_id = self.cleaned_data.get('card_id')
+        if card_id:
+            card_id = card_id.strip()
+            if not card_id:
+                return None
+        return card_id
 
 class ManualAttendanceForm(forms.Form):
     """Form for manual attendance entry - Direct attendance record creation"""
