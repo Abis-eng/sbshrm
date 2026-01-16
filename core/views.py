@@ -1872,6 +1872,7 @@ def reprocess_attendance_logs(request):
     """Manually reprocess attendance logs into attendance records"""
     from .attendance_service import AttendanceService
     from .models import AttendanceLog, Attendance
+    from django.db.models import Count
     import traceback
     
     try:
@@ -1879,6 +1880,17 @@ def reprocess_attendance_logs(request):
         total_logs = AttendanceLog.objects.count()
         recent_logs = AttendanceLog.objects.filter(
             timestamp__date__gte=timezone.now().date() - timedelta(days=30)
+        ).count()
+        
+        # Check log types for debugging
+        log_types = AttendanceLog.objects.filter(
+            timestamp__date__gte=timezone.now().date() - timedelta(days=30)
+        ).values('attendance_type').annotate(count=Count('id'))
+        log_types_info = ', '.join([f"{lt['attendance_type']}: {lt['count']}" for lt in log_types])
+        
+        # Count attendance records before processing
+        attendance_before = Attendance.objects.filter(
+            date__gte=timezone.now().date() - timedelta(days=30)
         ).count()
         
         # Process logs
@@ -1894,13 +1906,14 @@ def reprocess_attendance_logs(request):
             messages.success(
                 request, 
                 f'Successfully processed {processed_count} attendance logs! '
-                f'Total logs: {total_logs} (last 30 days: {recent_logs}), '
-                f'Total attendance records: {total_attendance} (last 30 days: {recent_attendance})'
+                f'Log types found: {log_types_info}. '
+                f'Attendance records: {attendance_before} → {recent_attendance} (last 30 days)'
             )
         else:
-            messages.info(
+            messages.warning(
                 request, 
-                f'No attendance logs to process. Total logs: {total_logs} (last 30 days: {recent_logs})'
+                f'No attendance logs to process. Total logs: {total_logs} (last 30 days: {recent_logs}). '
+                f'If logs exist, check their attendance_type values.'
             )
     except Exception as e:
         error_msg = f"Error processing attendance logs: {str(e)}"

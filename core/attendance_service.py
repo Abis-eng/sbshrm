@@ -291,7 +291,7 @@ class AttendanceService:
         # Process each employee-date combination
         for (employee_id, attendance_date), day_logs in logs_by_employee_date.items():
             try:
-                employee = Employee.objects.get(id=employee_id)
+                employee = Employee.objects.select_related('user').get(id=employee_id)
                 
                 # Get or create attendance record for the date
                 attendance, created = Attendance.objects.get_or_create(
@@ -309,6 +309,10 @@ class AttendanceService:
                 break_starts = [log for log in day_logs if log.attendance_type == 'break_start']
                 break_ends = [log for log in day_logs if log.attendance_type == 'break_end']
                 
+                # Log what types we found for debugging
+                log_types = [log.attendance_type for log in day_logs]
+                logger.debug(f"Processing {len(day_logs)} logs for {employee.user.username} on {attendance_date}. Types: {set(log_types)}")
+                
                 updated = False
                 
                 # Update check_in: use earliest check-in (machine logs take precedence if they exist)
@@ -324,6 +328,7 @@ class AttendanceService:
                     if not attendance.check_in or attendance.check_in != earliest_check_in.timestamp:
                         attendance.check_in = earliest_check_in.timestamp
                         updated = True
+                        logger.debug(f"Set check_in for {employee.user.username} on {attendance_date}: {earliest_check_in.timestamp}")
                 
                 # Update check_out: use latest check-out (machine logs take precedence if they exist)
                 if check_outs:
@@ -338,6 +343,23 @@ class AttendanceService:
                     if not attendance.check_out or attendance.check_out != latest_check_out.timestamp:
                         attendance.check_out = latest_check_out.timestamp
                         updated = True
+                        logger.debug(f"Set check_out for {employee.user.username} on {attendance_date}: {latest_check_out.timestamp}")
+                
+                # If we have logs but no check_in/check_out, use earliest/latest log timestamps
+                if day_logs and not attendance.check_in:
+                    # Use the earliest log as check_in if no check_in exists
+                    earliest_log = min(day_logs, key=lambda x: x.timestamp)
+                    attendance.check_in = earliest_log.timestamp
+                    updated = True
+                    logger.info(f"No check_in found, using earliest log as check_in for {employee.user.username} on {attendance_date}: {earliest_log.timestamp} (type: {earliest_log.attendance_type})")
+                
+                if day_logs and not attendance.check_out and len(day_logs) > 1:
+                    # Use the latest log as check_out if no check_out exists and we have multiple logs
+                    latest_log = max(day_logs, key=lambda x: x.timestamp)
+                    if latest_log.timestamp != attendance.check_in:
+                        attendance.check_out = latest_log.timestamp
+                        updated = True
+                        logger.info(f"No check_out found, using latest log as check_out for {employee.user.username} on {attendance_date}: {latest_log.timestamp} (type: {latest_log.attendance_type})")
                 
                 # Update break_start: use earliest break start
                 if break_starts:
@@ -369,16 +391,17 @@ class AttendanceService:
                         attendance.is_late = False
                         attendance.late_minutes = 0
                 
-                # Update status based on check_in/check_out
-                if attendance.check_in:
+                # Update status - if we have any logs for this day, mark as present
+                if day_logs:
                     attendance.status = 'present'
-                else:
+                elif not attendance.check_in:
                     attendance.status = 'absent'
                 
                 attendance.save()
                 processed_count += len(day_logs)
                 if updated or created:
                     updated_count += 1
+                    logger.info(f"✓ {'Created' if created else 'Updated'} attendance for {employee.user.username} on {attendance_date} (check_in: {attendance.check_in}, check_out: {attendance.check_out})")
                 
             except Exception as e:
                 logger.error(f"Error processing attendance logs for employee {employee_id} on {attendance_date}: {str(e)}")
@@ -386,7 +409,7 @@ class AttendanceService:
                 logger.error(traceback.format_exc())
                 continue
         
-        logger.info(f"Processed {processed_count} attendance logs, updated {updated_count} attendance records")
+        logger.info(f"Processed {processed_count} attendance logs, {'created/updated' if updated_count > 0 else 'processed'} {updated_count} attendance records")
         return processed_count
     
     @staticmethod
