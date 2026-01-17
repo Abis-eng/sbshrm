@@ -89,9 +89,7 @@
                                     {% if match.employee %}
                                         {{ match.employee.user.username }}<br>
                                         <small class="text-muted">
-                                            Employee ID: {{ match.employee.id }}, 
-                                            User ID: {{ match.employee.user.id }}, 
-                                            Machine ID: <code>{{ match.employee.machine_id|default:"-" }}</code>
+                                            Machine ID: <code>{{ match.employee.machine_id|default:"Not set" }}</code>
                                         </small>
                                     {% else %}
                                         <span class="text-danger">Not found</span>
@@ -118,21 +116,23 @@
                             <tr>
                                 <th>Employee</th>
                                 <th>Machine ID</th>
-                                <th>Employee ID</th>
-                                <th>User ID</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for emp in debug_info.employees %}
                             <tr>
                                 <td>{{ emp.user.username }}</td>
-                                <td><code>{{ emp.machine_id }}</code></td>
-                                <td>{{ emp.id }}</td>
-                                <td>{{ emp.user.id }}</td>
+                                <td>
+                                    {% if emp.machine_id %}
+                                        <code class="text-success">{{ emp.machine_id }}</code>
+                                    {% else %}
+                                        <span class="text-danger">Not set</span>
+                                    {% endif %}
+                                </td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="4" class="text-center text-muted">No employees with machine IDs</td>
+                                <td colspan="2" class="text-center text-muted">No employees with machine IDs</td>
                             </tr>
                             {% endfor %}
                         </tbody>
