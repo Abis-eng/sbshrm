@@ -482,24 +482,99 @@
                                 }
                                 
                                 function selectMachineUserId(userId) {
-                                    document.getElementById('machine_id').value = userId;
-                                    document.getElementById('current_machine_id_display').textContent = userId;
+                                    const machineIdInput = document.getElementById('machine_id');
+                                    const displayElement = document.getElementById('current_machine_id_display');
+                                    
+                                    // Set the value
+                                    machineIdInput.value = userId;
+                                    
+                                    // Update display
+                                    displayElement.textContent = userId;
+                                    
+                                    // Trigger change event to ensure form recognizes the change
+                                    const changeEvent = new Event('change', { bubbles: true });
+                                    machineIdInput.dispatchEvent(changeEvent);
+                                    
+                                    // Trigger input event as well
+                                    const inputEvent = new Event('input', { bubbles: true });
+                                    machineIdInput.dispatchEvent(inputEvent);
+                                    
+                                    // Visual feedback - highlight the input briefly
+                                    machineIdInput.style.borderColor = '#28a745';
+                                    machineIdInput.style.backgroundColor = '#d4edda';
+                                    setTimeout(() => {
+                                        machineIdInput.style.borderColor = '';
+                                        machineIdInput.style.backgroundColor = '';
+                                    }, 2000);
+                                    
+                                    // Highlight the selected button
+                                    const buttons = document.querySelectorAll('#usersListContainer button');
+                                    buttons.forEach(btn => {
+                                        if (btn.textContent.includes(userId)) {
+                                            btn.classList.remove('btn-outline-secondary');
+                                            btn.classList.add('btn-success');
+                                            btn.innerHTML = `<i class="fas fa-check me-1"></i><strong>${userId}</strong> - ${btn.getAttribute('title')}`;
+                                        } else {
+                                            btn.classList.remove('btn-success');
+                                            btn.classList.add('btn-outline-secondary');
+                                        }
+                                    });
+                                    
                                     console.log('Selected Machine User ID:', userId);
+                                    console.log('Input field value:', machineIdInput.value);
+                                    
+                                    // Show success message
+                                    const successMsg = document.createElement('div');
+                                    successMsg.className = 'alert alert-success alert-dismissible fade show mt-2';
+                                    successMsg.innerHTML = `
+                                        <strong>Selected:</strong> User ID ${userId} has been set. Click "Save Changes" to save.
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    `;
+                                    const existingAlert = machineIdInput.parentElement.parentElement.querySelector('.alert');
+                                    if (existingAlert) {
+                                        existingAlert.remove();
+                                    }
+                                    machineIdInput.parentElement.parentElement.appendChild(successMsg);
                                 }
                             </script>
                             <script>
-                                // Debug: Log the machine_id value before form submission
+                                // Debug: Log the machine_id value before form submission and ensure it's sent
                                 document.addEventListener('DOMContentLoaded', function() {
                                     var form = document.querySelector('form');
                                     if (form) {
                                         form.addEventListener('submit', function(e) {
                                             var machineIdInput = document.getElementById('machine_id');
                                             if (machineIdInput) {
-                                                console.log('Form submitting with machine_id:', machineIdInput.value);
-                                                // Ensure the value is sent as-is
-                                                machineIdInput.setAttribute('value', machineIdInput.value);
+                                                var value = machineIdInput.value.trim();
+                                                console.log('Form submitting with machine_id:', value);
+                                                console.log('Input field type:', machineIdInput.type);
+                                                console.log('Input field name:', machineIdInput.name);
+                                                
+                                                // Ensure the value is set correctly
+                                                machineIdInput.value = value;
+                                                machineIdInput.setAttribute('value', value);
+                                                
+                                                // Double-check before submit
+                                                if (!value) {
+                                                    console.warn('WARNING: Machine ID is empty!');
+                                                } else {
+                                                    console.log('✓ Machine ID is set to:', value);
+                                                }
+                                            } else {
+                                                console.error('ERROR: machine_id input field not found!');
                                             }
                                         });
+                                        
+                                        // Also check on input change
+                                        var machineIdInput = document.getElementById('machine_id');
+                                        if (machineIdInput) {
+                                            machineIdInput.addEventListener('change', function() {
+                                                console.log('Machine ID changed event fired. Value:', this.value);
+                                            });
+                                            machineIdInput.addEventListener('input', function() {
+                                                console.log('Machine ID input event fired. Value:', this.value);
+                                            });
+                                        }
                                     }
                                 });
                             </script>
