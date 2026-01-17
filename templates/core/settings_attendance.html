@@ -1,0 +1,291 @@
+{% extends 'core/base.html' %}
+{% load crispy_forms_tags %}
+{% block page_title %}Attendance Settings{% endblock %}
+{% block content %}
+<style>
+    body {
+        background: #f8f9fa;
+    }
+    .settings-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    .settings-sidebar {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem 0;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        border: 1px solid #f0f0f0;
+        position: sticky;
+        top: 20px;
+        height: fit-content;
+    }
+    .settings-sidebar-header {
+        padding: 0 1.5rem 1rem;
+        border-bottom: 1px solid #e9ecef;
+        margin-bottom: 0.5rem;
+    }
+    .settings-sidebar-header h5 {
+        color: #495057;
+        font-weight: 600;
+        font-size: 1rem;
+        margin: 0;
+    }
+    .settings-sidebar .list-group-item {
+        border: none;
+        background: transparent;
+        color: #495057;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.2s;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+    .settings-sidebar .list-group-item:hover {
+        color: #3b82f6;
+        background: #f8f9ff;
+    }
+    .settings-sidebar .list-group-item.active {
+        background: #f0f7ff;
+        color: #3b82f6;
+        font-weight: 600;
+        border-left: 3px solid #3b82f6;
+    }
+    .settings-sidebar .list-group-item i {
+        width: 20px;
+        text-align: center;
+        font-size: 0.9rem;
+        margin-right: 0.5rem;
+    }
+    .settings-card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        border: 1px solid #f0f0f0;
+        overflow: hidden;
+    }
+    .settings-card-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: #fff;
+        padding: 1.5rem 2rem;
+        border: none;
+    }
+    .settings-card-header h4 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.25rem;
+    }
+    .settings-card-body {
+        padding: 2rem;
+    }
+    .form-section {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .form-section:last-of-type {
+        border-bottom: none;
+    }
+    .form-section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+    .form-section-title i {
+        margin-right: 0.5rem;
+        color: #3b82f6;
+    }
+</style>
+
+<div class="container-fluid py-5">
+    <div class="settings-container">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-lg-3 col-md-4 mb-4">
+                <div class="settings-sidebar">
+                    <div class="settings-sidebar-header">
+                        <h5><i class="fas fa-cog me-2"></i>Settings Menu</h5>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        <a href="{% url 'settings_main' %}" class="list-group-item list-group-item-action {% if active_section == 'company' %}active{% endif %}">
+                            <i class="fas fa-building"></i> Company Settings
+                        </a>
+                        <a href="{% url 'settings_localization' %}" class="list-group-item list-group-item-action {% if active_section == 'localization' %}active{% endif %}">
+                            <i class="fas fa-globe"></i> Localization
+                        </a>
+                        <a href="{% url 'settings_invoice' %}" class="list-group-item list-group-item-action {% if active_section == 'invoice' %}active{% endif %}">
+                            <i class="fas fa-file-invoice"></i> Invoice Settings
+                        </a>
+                        <a href="{% url 'settings_salary' %}" class="list-group-item list-group-item-action {% if active_section == 'salary' %}active{% endif %}">
+                            <i class="fas fa-money-check-alt"></i> Salary Settings
+                        </a>
+                        <a href="{% url 'settings_theme' %}" class="list-group-item list-group-item-action {% if active_section == 'theme' %}active{% endif %}">
+                            <i class="fas fa-paint-brush"></i> Theme Settings
+                        </a>
+                        <a href="{% url 'settings_attendance' %}" class="list-group-item list-group-item-action {% if active_section == 'attendance' %}active{% endif %}">
+                            <i class="fas fa-clock"></i> Attendance Settings
+                        </a>
+                        <a href="{% url 'manage_shifts' %}" class="list-group-item list-group-item-action {% if active_section == 'shifts' %}active{% endif %}">
+                            <i class="fas fa-calendar-alt"></i> Manage Shifts
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-9 col-md-8">
+                <div class="settings-card">
+                    <div class="settings-card-header">
+                        <h4><i class="fas fa-clock me-2"></i>Attendance Settings</h4>
+                        <div class="subtitle">Configure deductions for late arrival, absent days, and overtime calculations</div>
+                    </div>
+                    <div class="settings-card-body">
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            <!-- Late Arrival Settings -->
+                            <div class="form-section">
+                                <div class="form-section-title">
+                                    <i class="fas fa-exclamation-triangle"></i> Late Arrival Settings
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <div class="form-check form-switch">
+                                            {{ form.late_deduction_enabled }}
+                                            <label class="form-check-label" for="{{ form.late_deduction_enabled.id_for_label }}">
+                                                Enable Late Arrival Deductions
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Deduction Type</label>
+                                        {{ form.late_deduction_type }}
+                                        <small class="text-muted">Fixed: Deduct fixed amount | Per Minute: Deduct per minute late | Percentage: Deduct % of daily salary</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Deduction Amount</label>
+                                        {{ form.late_deduction_amount }}
+                                        <small class="text-muted">Amount in Rs (per minute if per_minute, fixed if fixed, percentage if percentage)</small>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Grace Period (Minutes)</label>
+                                        {{ form.late_grace_minutes }}
+                                        <small class="text-muted">No deduction if employee arrives within this time</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Absent Day Settings -->
+                            <div class="form-section">
+                                <div class="form-section-title">
+                                    <i class="fas fa-calendar-times"></i> Absent Day Settings
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <div class="form-check form-switch">
+                                            {{ form.absent_deduction_enabled }}
+                                            <label class="form-check-label" for="{{ form.absent_deduction_enabled.id_for_label }}">
+                                                Enable Absent Day Deductions
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Deduction Type</label>
+                                        {{ form.absent_deduction_type }}
+                                        <small class="text-muted">Fixed: Deduct fixed amount | Percentage: Deduct % of daily salary</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Deduction Amount</label>
+                                        {{ form.absent_deduction_amount }}
+                                        <small class="text-muted">Amount in Rs (if fixed) or Percentage (if percentage)</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Overtime Settings -->
+                            <div class="form-section">
+                                <div class="form-section-title">
+                                    <i class="fas fa-hourglass-half"></i> Overtime Settings
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-12">
+                                        <div class="form-check form-switch">
+                                            {{ form.overtime_enabled }}
+                                            <label class="form-check-label" for="{{ form.overtime_enabled.id_for_label }}">
+                                                Enable Overtime Calculations
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Overtime Rate Type</label>
+                                        {{ form.overtime_rate_type }}
+                                        <small class="text-muted">Fixed: Pay fixed rate per hour | Percentage: Pay % of hourly salary</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Overtime Rate Amount</label>
+                                        {{ form.overtime_rate_amount }}
+                                        <small class="text-muted">Rate in Rs per hour (if fixed) or Percentage (if percentage)</small>
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Standard Work Hours Per Day</label>
+                                        {{ form.standard_work_hours_per_day }}
+                                        <small class="text-muted">Hours worked beyond this count as overtime</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Minimum Overtime Hours</label>
+                                        {{ form.overtime_minimum_hours }}
+                                        <small class="text-muted">Minimum hours to count as overtime (e.g., 0.5 = 30 minutes)</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Half Day Settings -->
+                            <div class="form-section">
+                                <div class="form-section-title">
+                                    <i class="fas fa-clock"></i> Half Day Settings
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Half Day Hours Threshold</label>
+                                        {{ form.half_day_hours_threshold }}
+                                        <small class="text-muted">Hours worked below this is considered half day</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2">
+                                <a href="{% url 'settings_main' %}" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i>Save Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

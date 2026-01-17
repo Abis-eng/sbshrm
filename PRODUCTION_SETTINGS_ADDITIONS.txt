@@ -1,0 +1,63 @@
+# ADD THESE TO PRODUCTION settings.py
+
+# ============================================
+# 1. ADD MISSING CONTEXT PROCESSOR
+# ============================================
+# In TEMPLATES section, update context_processors to:
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+                'core.views.theme_settings_context',
+                'core.context_processors.company_context',  # <-- ADD THIS LINE
+            ],
+        },
+    },
+]
+
+# ============================================
+# 2. ADD MISSING MIDDLEWARE (if using company isolation)
+# ============================================
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.middleware.CompanyIsolationMiddleware',  # <-- ADD THIS LINE (if needed)
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+# ============================================
+# 3. ADD ZKT SDK PATH CONFIGURATION
+# ============================================
+# Add this at the end of settings.py (after STATIC/MEDIA settings)
+# Adjust the path based on where ZKT SDK is installed on your Linux server
+ZKT_SDK_PATH = '/opt/zkt_sdk'  # or '/usr/local/zkt_sdk' or wherever SDK is installed
+
+# OR set it as environment variable:
+# export ZKT_SDK_PATH=/opt/zkt_sdk
+
+# ============================================
+# 4. VERIFY THESE ARE CORRECT (already correct in your production)
+# ============================================
+TIME_ZONE = 'Asia/Karachi'  # ✅ Already correct
+USE_TZ = True  # ✅ Already correct
+STATIC_URL = '/static/'  # ✅ Already correct
+
+# ============================================
+# 5. NETWORK ACCESS CHECK
+# ============================================
+# Make sure production server can access biometric machine:
+# - IP: 192.168.18.80
+# - Port: 4370
+# - Test with: telnet 192.168.18.80 4370
+# - Or: nc -zv 192.168.18.80 4370
+

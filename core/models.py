@@ -166,6 +166,8 @@ class Employee(models.Model):
     can_view_leaves = models.BooleanField(default=True)
     # New fields for ZKT machine integration
     machine_id = models.CharField(max_length=50, blank=True, null=True, help_text="Employee ID registered in the ZKT machine")
+    # Shift assignment
+    shift = models.ForeignKey('Shift', on_delete=models.SET_NULL, null=True, blank=True, related_name='employees', help_text="Assigned work shift")
     fingerprint_id = models.CharField(max_length=50, blank=True, null=True, help_text="Fingerprint ID in the ZKT machine")
     face_id = models.CharField(max_length=50, blank=True, null=True, help_text="Face ID in the ZKT machine")
     card_id = models.CharField(max_length=50, blank=True, null=True, help_text="Card ID in the ZKT machine")
@@ -441,6 +443,11 @@ class Attendance(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='present')
     is_late = models.BooleanField(default=False)
     late_minutes = models.IntegerField(default=0)
+    # Deductions and overtime (calculated based on AttendanceSettings)
+    late_deduction = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Late arrival deduction amount")
+    absent_deduction = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Absent day deduction amount")
+    overtime_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="Overtime hours worked")
+    overtime_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Overtime payment amount")
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -463,6 +470,56 @@ class Attendance(models.Model):
             self.total_break_hours = round(break_duration.total_seconds() / 3600, 2)
         
         self.save()
+    
+    def calculate_deductions_and_overtime(self):
+        """Calculate late deduction, absent deduction, and overtime based on settings"""
+        from .models import AttendanceSettings
+        try:
+            settings = AttendanceSettings.get_settings()
+            if not settings:
+                return 0, 0, 0  # No settings, no deductions/overtime
+            
+            late_deduction = 0
+            absent_deduction = 0
+            overtime_amount = 0
+            
+            # Calculate late deduction
+            if self.is_late and self.late_minutes > 0:
+                if settings.late_deduction_type == 'fixed':
+                    late_deduction = settings.late_deduction_amount
+                elif settings.late_deduction_type == 'per_minute':
+                    late_deduction = (self.late_minutes * settings.late_deduction_amount)
+                elif settings.late_deduction_type == 'percentage':
+                    if self.employee.salary:
+                        daily_salary = self.employee.salary / 30  # Approximate daily salary
+                        late_deduction = (daily_salary * settings.late_deduction_amount) / 100
+            
+            # Calculate absent deduction
+            if self.status == 'absent':
+                if settings.absent_deduction_type == 'fixed':
+                    absent_deduction = settings.absent_deduction_amount
+                elif settings.absent_deduction_type == 'percentage':
+                    if self.employee.salary:
+                        daily_salary = self.employee.salary / 30
+                        absent_deduction = (daily_salary * settings.absent_deduction_amount) / 100
+            
+            # Calculate overtime
+            if self.total_work_hours and settings.standard_work_hours_per_day:
+                overtime_hours = max(0, float(self.total_work_hours) - float(settings.standard_work_hours_per_day))
+                if overtime_hours > 0:
+                    if settings.overtime_rate_type == 'fixed':
+                        overtime_amount = overtime_hours * settings.overtime_rate_amount
+                    elif settings.overtime_rate_type == 'percentage':
+                        if self.employee.salary:
+                            hourly_salary = (self.employee.salary / 30) / settings.standard_work_hours_per_day
+                            overtime_amount = overtime_hours * hourly_salary * (settings.overtime_rate_amount / 100)
+            
+            return late_deduction, absent_deduction, overtime_amount
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error calculating deductions/overtime: {str(e)}")
+            return 0, 0, 0
 
 class EmployeeScreenshot(models.Model):
     """Model to store employee screenshots captured during work hours"""
@@ -1498,3 +1555,87 @@ class DashboardLayout(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - {self.dashboard_type} Dashboard"
+
+class Shift(models.Model):
+    """Shift model for managing work shifts"""
+    name = models.CharField(max_length=100, help_text="Shift name (e.g., Morning Shift, Night Shift)")
+    start_time = models.TimeField(help_text="Shift start time (e.g., 10:00 AM)")
+    end_time = models.TimeField(help_text="Shift end time (e.g., 6:00 PM)")
+    break_duration_minutes = models.IntegerField(default=60, help_text="Break duration in minutes")
+    is_active = models.BooleanField(default=True)
+    description = models.TextField(blank=True, help_text="Optional shift description")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['start_time']
+        verbose_name = 'Shift'
+        verbose_name_plural = 'Shifts'
+    
+    def __str__(self):
+        return f"{self.name} ({self.start_time.strftime('%I:%M %p')} - {self.end_time.strftime('%I:%M %p')})"
+    
+    def get_duration_hours(self):
+        """Calculate shift duration in hours"""
+        from datetime import datetime, timedelta
+        start = datetime.combine(datetime.today(), self.start_time)
+        end = datetime.combine(datetime.today(), self.end_time)
+        if end < start:
+            end += timedelta(days=1)  # Handle overnight shifts
+        duration = end - start
+        return duration.total_seconds() / 3600
+
+class AttendanceSettings(models.Model):
+    """Settings for attendance deductions and overtime calculations"""
+    DEDUCTION_TYPE_CHOICES = [
+        ('fixed', 'Fixed Amount'),
+        ('per_minute', 'Per Minute'),
+        ('percentage', 'Percentage of Daily Salary'),
+    ]
+    
+    OVERTIME_RATE_TYPE_CHOICES = [
+        ('fixed', 'Fixed Rate per Hour'),
+        ('percentage', 'Percentage of Hourly Salary'),
+    ]
+    
+    # Late arrival settings
+    late_deduction_enabled = models.BooleanField(default=True, help_text="Enable late arrival deductions")
+    late_deduction_type = models.CharField(max_length=20, choices=DEDUCTION_TYPE_CHOICES, default='per_minute', help_text="How to calculate late deduction")
+    late_deduction_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Deduction amount (Rs per minute if per_minute, Rs if fixed, % if percentage)")
+    late_grace_minutes = models.IntegerField(default=0, help_text="Grace period in minutes (no deduction if late within this time)")
+    
+    # Absent settings
+    absent_deduction_enabled = models.BooleanField(default=True, help_text="Enable absent day deductions")
+    absent_deduction_type = models.CharField(max_length=20, choices=DEDUCTION_TYPE_CHOICES, default='percentage', help_text="How to calculate absent deduction")
+    absent_deduction_amount = models.DecimalField(max_digits=10, decimal_places=2, default=100, help_text="Deduction amount (Rs if fixed, % of daily salary if percentage)")
+    
+    # Overtime settings
+    overtime_enabled = models.BooleanField(default=True, help_text="Enable overtime calculations")
+    overtime_rate_type = models.CharField(max_length=20, choices=OVERTIME_RATE_TYPE_CHOICES, default='percentage', help_text="How to calculate overtime")
+    overtime_rate_amount = models.DecimalField(max_digits=10, decimal_places=2, default=150, help_text="Overtime rate (Rs per hour if fixed, % of hourly salary if percentage)")
+    standard_work_hours_per_day = models.DecimalField(max_digits=5, decimal_places=2, default=8.0, help_text="Standard work hours per day (overtime calculated after this)")
+    overtime_minimum_hours = models.DecimalField(max_digits=5, decimal_places=2, default=0.5, help_text="Minimum hours to count as overtime (e.g., 0.5 = 30 minutes)")
+    
+    # Half day settings
+    half_day_hours_threshold = models.DecimalField(max_digits=5, decimal_places=2, default=4.0, help_text="Hours worked below this is considered half day")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Attendance Settings'
+        verbose_name_plural = 'Attendance Settings'
+    
+    def __str__(self):
+        return "Attendance Settings"
+    
+    def save(self, *args, **kwargs):
+        # Ensure only one settings instance exists
+        self.pk = 1
+        super().save(*args, **kwargs)
+    
+    @classmethod
+    def get_settings(cls):
+        """Get or create attendance settings (singleton pattern)"""
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj

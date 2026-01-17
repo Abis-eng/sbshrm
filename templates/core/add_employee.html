@@ -255,6 +255,16 @@
                                 <label for="date_of_joining" class="form-label">Date of Joining</label>
                                 <input type="date" class="form-control" id="date_of_joining" name="date_of_joining">
                             </div>
+                            <div class="col-md-6 form-group-spacing">
+                                <label for="shift" class="form-label">Work Shift</label>
+                                <select class="form-select" id="shift" name="shift">
+                                    <option value="">No Shift Assigned</option>
+                                    {% for shift in shifts %}
+                                    <option value="{{ shift.id }}">{{ shift.name }} ({{ shift.start_time|date:"g:i A" }} - {{ shift.end_time|date:"g:i A" }})</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted">Select the work shift for this employee</small>
+                            </div>
                         </div>
                     </div>
                     

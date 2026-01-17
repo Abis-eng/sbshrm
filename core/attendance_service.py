@@ -360,18 +360,53 @@ class AttendanceService:
                 # Calculate hours
                 attendance.calculate_hours()
                 
-                # Check for late arrival (work hours: 10 AM to 6 PM)
+                # Check for late arrival - use shift time if employee has shift, otherwise use default 10 AM
                 if attendance.check_in:
-                    work_start_time = attendance.check_in.replace(
-                        hour=10, minute=0, second=0, microsecond=0
-                    )  # Work starts at 10 AM
+                    # Get shift start time or default to 10 AM
+                    if employee.shift and employee.shift.start_time:
+                        shift_start = employee.shift.start_time
+                        work_start_time = attendance.check_in.replace(
+                            hour=shift_start.hour, 
+                            minute=shift_start.minute, 
+                            second=0, 
+                            microsecond=0
+                        )
+                    else:
+                        # Default to 10 AM if no shift assigned
+                        work_start_time = attendance.check_in.replace(
+                            hour=10, minute=0, second=0, microsecond=0
+                        )
+                    
                     if attendance.check_in > work_start_time:
-                        attendance.is_late = True
                         late_duration = attendance.check_in - work_start_time
-                        attendance.late_minutes = int(late_duration.total_seconds() / 60)
+                        late_minutes = int(late_duration.total_seconds() / 60)
+                        
+                        # Check grace period from settings
+                        from .models import AttendanceSettings
+                        settings = AttendanceSettings.get_settings()
+                        if late_minutes > settings.late_grace_minutes:
+                            attendance.is_late = True
+                            attendance.late_minutes = late_minutes
+                        else:
+                            attendance.is_late = False
+                            attendance.late_minutes = 0
                     else:
                         attendance.is_late = False
                         attendance.late_minutes = 0
+                
+                # Calculate deductions and overtime
+                late_ded, absent_ded, overtime_amt = attendance.calculate_deductions_and_overtime()
+                attendance.late_deduction = late_ded
+                attendance.absent_deduction = absent_ded
+                attendance.overtime_amount = overtime_amt
+                
+                # Calculate overtime hours
+                if attendance.total_work_hours and settings.standard_work_hours_per_day:
+                    overtime_hours = max(0, float(attendance.total_work_hours) - float(settings.standard_work_hours_per_day))
+                    if overtime_hours >= float(settings.overtime_minimum_hours):
+                        attendance.overtime_hours = round(overtime_hours, 2)
+                    else:
+                        attendance.overtime_hours = 0
                 
                 # Update status - if we have any logs for this day, mark as present
                 if day_logs:

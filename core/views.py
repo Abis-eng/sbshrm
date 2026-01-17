@@ -532,6 +532,7 @@ def add_employee(request):
             fingerprint_id=fingerprint_id if fingerprint_id else None,
             face_id=face_id if face_id else None,
             card_id=card_id if card_id else None,
+            shift_id=shift_id if shift_id else None,
             profile_picture=profile_picture,
         )
         
@@ -556,11 +557,14 @@ def add_employee(request):
         })
     # Get all existing cities for autocomplete
     existing_cities = Employee.objects.exclude(city__isnull=True).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
+    from .models import Shift
+    shifts = Shift.objects.filter(is_active=True).order_by('start_time')
     return render(request, 'core/add_employee.html', {
         'departments': departments, 
         'designations': designations, 
         'error': error,
-        'existing_cities': existing_cities
+        'existing_cities': existing_cities,
+        'shifts': shifts
     })
 
 class DepartmentForm(ModelForm):
@@ -2662,6 +2666,7 @@ def edit_employee(request, employee_id):
         fingerprint_id = request.POST.get('fingerprint_id', '').strip()
         face_id = request.POST.get('face_id', '').strip()
         card_id = request.POST.get('card_id', '').strip()
+        shift_id = request.POST.get('shift')
         profile_picture = request.FILES.get('profile_picture')
         
         # Debug: Log the received machine_id value
@@ -2697,6 +2702,7 @@ def edit_employee(request, employee_id):
         employee.fingerprint_id = fingerprint_id if fingerprint_id else None
         employee.face_id = face_id if face_id else None
         employee.card_id = card_id if card_id else None
+        employee.shift_id = shift_id if shift_id else None
         
         # Debug: Log what we're about to save
         logger.info(f"Edit employee {employee_id}: Saving machine_id as: '{employee.machine_id}'")
@@ -2706,13 +2712,16 @@ def edit_employee(request, employee_id):
         return redirect('employee_list')
     # Get all existing cities for autocomplete
     existing_cities = Employee.objects.exclude(city__isnull=True).exclude(city='').values_list('city', flat=True).distinct().order_by('city')
+    from .models import Shift
+    shifts = Shift.objects.filter(is_active=True).order_by('start_time')
     return render(request, 'core/edit_employee.html', {
         'employee': employee,
         'departments': departments,
         'designations': designations,
         'error': error,
         'existing_cities': existing_cities,
-        'active_machines': active_machines
+        'active_machines': active_machines,
+        'shifts': shifts
     })
 
 @user_passes_test(is_admin)
@@ -3947,6 +3956,77 @@ def settings_theme(request):
     else:
         form = ThemeSettingsForm(instance=settings_obj)
     return render(request, 'core/settings_theme.html', {'form': form, 'active_section': 'theme', 'settings_obj': settings_obj})
+
+@user_passes_test(is_admin)
+def settings_attendance(request):
+    """Attendance settings page for deductions and overtime"""
+    from .forms import AttendanceSettingsForm
+    from .models import AttendanceSettings
+    settings_obj = AttendanceSettings.get_settings()
+    if request.method == 'POST':
+        form = AttendanceSettingsForm(request.POST, instance=settings_obj)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Attendance settings updated!')
+            return redirect('settings_attendance')
+    else:
+        form = AttendanceSettingsForm(instance=settings_obj)
+    return render(request, 'core/settings_attendance.html', {'form': form, 'active_section': 'attendance', 'settings_obj': settings_obj})
+
+@user_passes_test(is_admin)
+def manage_shifts(request):
+    """Manage shifts - list, create, edit, delete"""
+    from .forms import ShiftForm
+    from .models import Shift
+    shifts = Shift.objects.all().order_by('start_time')
+    return render(request, 'core/manage_shifts.html', {'shifts': shifts, 'active_section': 'shifts'})
+
+@user_passes_test(is_admin)
+def add_shift(request):
+    """Add a new shift"""
+    from .forms import ShiftForm
+    from .models import Shift
+    if request.method == 'POST':
+        form = ShiftForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Shift created successfully!')
+            return redirect('manage_shifts')
+    else:
+        form = ShiftForm()
+    return render(request, 'core/shift_form.html', {'form': form, 'title': 'Add Shift'})
+
+@user_passes_test(is_admin)
+def edit_shift(request, shift_id):
+    """Edit an existing shift"""
+    from .forms import ShiftForm
+    from .models import Shift
+    shift = get_object_or_404(Shift, id=shift_id)
+    if request.method == 'POST':
+        form = ShiftForm(request.POST, instance=shift)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Shift updated successfully!')
+            return redirect('manage_shifts')
+    else:
+        form = ShiftForm(instance=shift)
+    return render(request, 'core/shift_form.html', {'form': form, 'shift': shift, 'title': 'Edit Shift'})
+
+@user_passes_test(is_admin)
+def delete_shift(request, shift_id):
+    """Delete a shift"""
+    from .models import Shift
+    shift = get_object_or_404(Shift, id=shift_id)
+    if request.method == 'POST':
+        # Check if any employees are assigned to this shift
+        employee_count = shift.employees.count()
+        if employee_count > 0:
+            messages.error(request, f'Cannot delete shift. {employee_count} employee(s) are assigned to this shift.')
+            return redirect('manage_shifts')
+        shift.delete()
+        messages.success(request, 'Shift deleted successfully!')
+        return redirect('manage_shifts')
+    return render(request, 'core/confirm_delete_shift.html', {'shift': shift})
 
 def theme_settings_context(request):
     from .models import ThemeSettings

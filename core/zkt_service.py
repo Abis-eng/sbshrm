@@ -6,9 +6,42 @@ from django.conf import settings
 import logging
 
 # Add ZKT SDK path to system path
-sdk_path = r"C:\Users\SBS\Desktop\sdk"
-if os.path.exists(sdk_path):
-    sys.path.append(sdk_path)
+# Try to get SDK path from settings or environment variable first
+try:
+    sdk_path = getattr(settings, 'ZKT_SDK_PATH', None)
+except:
+    sdk_path = None
+
+# If not in settings, try environment variable
+if not sdk_path:
+    sdk_path = os.environ.get('ZKT_SDK_PATH', None)
+
+# If still not found, try common paths (Windows and Linux)
+if not sdk_path:
+    # Windows path (for local development)
+    windows_path = r"C:\Users\SBS\Desktop\sdk"
+    if os.path.exists(windows_path):
+        sdk_path = windows_path
+    else:
+        # Try common Linux paths
+        possible_paths = [
+            '/opt/zkt_sdk',
+            '/usr/local/zkt_sdk',
+            '/var/www/zkt_sdk',
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), 'zkt_sdk'),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'zkt_sdk'),
+        ]
+        for path in possible_paths:
+            if os.path.exists(path):
+                sdk_path = path
+                break
+
+# Add to Python path if found
+if sdk_path and os.path.exists(sdk_path):
+    sys.path.insert(0, sdk_path)  # Use insert(0) to prioritize this path
+    logger.info(f"ZKT SDK path added: {sdk_path}")
+else:
+    logger.warning(f"ZKT SDK path not found. Tried: {sdk_path or 'None'}. Attendance syncing may not work.")
 
 try:
     from zk import ZK

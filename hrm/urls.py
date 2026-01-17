@@ -101,6 +101,14 @@ urlpatterns = [
     path('my-advances/', views.my_advances, name='my_advances'),
     # Reports
     path('reports/', views.reports, name='reports'),
+    # Settings
+    path('settings/', views.settings_main, name='settings_main'),
+    path('settings/attendance/', views.settings_attendance, name='settings_attendance'),
+    # Shifts
+    path('manage-shifts/', views.manage_shifts, name='manage_shifts'),
+    path('add-shift/', views.add_shift, name='add_shift'),
+    path('edit-shift/<int:shift_id>/', views.edit_shift, name='edit_shift'),
+    path('delete-shift/<int:shift_id>/', views.delete_shift, name='delete_shift'),
     path('core/', include('core.urls')),
 ]
 if settings.DEBUG:

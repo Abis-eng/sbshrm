@@ -1024,3 +1024,49 @@ class MonthlyPayrollForm(forms.Form):
             ).distinct().order_by('name')
         else:
             self.fields['department'].queryset = Department.objects.all().order_by('name')
+
+class ShiftForm(ModelForm):
+    """Form for creating and editing shifts"""
+    class Meta:
+        from .models import Shift
+        model = Shift
+        fields = ['name', 'start_time', 'end_time', 'break_duration_minutes', 'is_active', 'description']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Morning Shift, Night Shift'}),
+            'start_time': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+            'end_time': forms.TimeInput(attrs={'class': 'form-control', 'type': 'time'}),
+            'break_duration_minutes': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'max': 480}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+        help_texts = {
+            'break_duration_minutes': 'Break duration in minutes (e.g., 60 for 1 hour)',
+        }
+
+class AttendanceSettingsForm(ModelForm):
+    """Form for attendance settings (deductions and overtime)"""
+    class Meta:
+        from .models import AttendanceSettings
+        model = AttendanceSettings
+        fields = [
+            'late_deduction_enabled', 'late_deduction_type', 'late_deduction_amount', 'late_grace_minutes',
+            'absent_deduction_enabled', 'absent_deduction_type', 'absent_deduction_amount',
+            'overtime_enabled', 'overtime_rate_type', 'overtime_rate_amount', 
+            'standard_work_hours_per_day', 'overtime_minimum_hours',
+            'half_day_hours_threshold'
+        ]
+        widgets = {
+            'late_deduction_enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'late_deduction_type': forms.Select(attrs={'class': 'form-select'}),
+            'late_deduction_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'late_grace_minutes': forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'max': '60'}),
+            'absent_deduction_enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'absent_deduction_type': forms.Select(attrs={'class': 'form-select'}),
+            'absent_deduction_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'overtime_enabled': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'overtime_rate_type': forms.Select(attrs={'class': 'form-select'}),
+            'overtime_rate_amount': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'min': '0'}),
+            'standard_work_hours_per_day': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'min': '1', 'max': '24'}),
+            'overtime_minimum_hours': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'min': '0', 'max': '8'}),
+            'half_day_hours_threshold': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.1', 'min': '1', 'max': '8'}),
+        }
