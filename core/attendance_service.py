@@ -63,74 +63,40 @@ class AttendanceService:
             for record in attendance_data:
                 try:
                     # Find employee by machine user ID
-                    # Try multiple matching strategies:
-                    # 1. machine_id, fingerprint_id, face_id, card_id fields
-                    # 2. Employee database ID
-                    # 3. User ID
+                    # IMPORTANT: ONLY match by machine_id field - no other matching strategies
                     employee = None
                     user_id_raw = record['user_id']
                     user_id = str(user_id_raw).strip()  # Convert to string and strip whitespace
                     
                     logger.debug(f"Processing attendance record - Machine user ID: '{user_id}' (type: {type(user_id_raw)}, raw: {repr(user_id_raw)})")
                     
-                    # First, try the dedicated machine ID fields (exact match, case-sensitive)
+                    # ONLY match by machine_id field - exact match first
                     employee = Employee.objects.filter(machine_id=user_id).first()
                     if employee:
-                        logger.info(f"Matched via machine_id field: '{user_id}' -> {employee.user.username}")
+                        logger.info(f"✓ Matched via machine_id (exact): '{user_id}' -> {employee.user.username} (Employee ID: {employee.id}, Machine ID in DB: '{employee.machine_id}')")
                     
-                    # Try with stripped machine_id from database
+                    # Try with stripped machine_id from database (handles whitespace issues)
                     if not employee:
                         # Get all employees and check manually (handles whitespace issues)
                         all_employees = Employee.objects.exclude(machine_id__isnull=True).exclude(machine_id='')
                         for emp in all_employees:
                             if emp.machine_id and str(emp.machine_id).strip() == user_id:
                                 employee = emp
-                                logger.info(f"Matched via machine_id (stripped): '{user_id}' -> {employee.user.username}")
+                                logger.info(f"✓ Matched via machine_id (stripped): '{user_id}' -> {employee.user.username} (Employee ID: {employee.id}, Machine ID in DB: '{employee.machine_id}')")
                                 break
                     
-                    if not employee:
-                        employee = Employee.objects.filter(fingerprint_id=user_id).first()
-                        if employee:
-                            logger.info(f"Matched via fingerprint_id: '{user_id}' -> {employee.user.username}")
-                    
-                    if not employee:
-                        employee = Employee.objects.filter(face_id=user_id).first()
-                        if employee:
-                            logger.info(f"Matched via face_id: '{user_id}' -> {employee.user.username}")
-                    
-                    if not employee:
-                        employee = Employee.objects.filter(card_id=user_id).first()
-                        if employee:
-                            logger.info(f"Matched via card_id: '{user_id}' -> {employee.user.username}")
-                    
-                    # If not found, try matching by employee database ID
-                    if not employee:
-                        try:
-                            employee_db_id = int(user_id)
-                            employee = Employee.objects.filter(id=employee_db_id).first()
-                            if employee:
-                                logger.info(f"Matched via employee.id: '{user_id}' -> {employee.user.username}")
-                        except (ValueError, TypeError):
-                            pass
-                    
-                    # If still not found, try matching by user ID
-                    if not employee:
-                        try:
-                            user_db_id = int(user_id)
-                            employee = Employee.objects.filter(user_id=user_db_id).first()
-                            if employee:
-                                logger.info(f"Matched via user.id: '{user_id}' -> {employee.user.username}")
-                        except (ValueError, TypeError):
-                            pass
+                    # NO OTHER MATCHING - Only machine_id is used
                     
                     if not employee:
                         # Log all available machine_ids for debugging
                         available_ids = list(Employee.objects.exclude(machine_id__isnull=True).exclude(machine_id='').values_list('machine_id', flat=True))
-                        logger.warning(f"Employee not found for machine user ID: '{user_id}' in {machine.name}. Available machine_ids: {available_ids}")
-                        errors.append(f"Employee not found for user ID: '{user_id}'")
+                        logger.warning(
+                            f"❌ Employee NOT FOUND for machine user ID: '{user_id}' in {machine.name}. "
+                            f"Available machine_ids in database: {available_ids}. "
+                            f"Please ensure the employee's Machine ID field is set to '{user_id}'."
+                        )
+                        errors.append(f"Employee not found for machine user ID: '{user_id}'. Set Machine ID to '{user_id}' in employee record.")
                         continue
-                    
-                    logger.info(f"✓ Matched machine user ID '{user_id}' to employee: {employee.user.username} (Employee ID: {employee.id}, User ID: {employee.user.id}, Machine ID in DB: '{employee.machine_id}')")
                     
                     # Check if attendance log already exists
                     timestamp = record['timestamp']
