@@ -242,7 +242,13 @@ class AttendanceService:
     
     @staticmethod
     def _determine_attendance_type(employee, timestamp):
-        """Determine attendance type based on time patterns"""
+        """
+        Determine attendance type based on sequential marking:
+        1st mark = check_in
+        2nd mark = break_start
+        3rd mark = break_end
+        4th mark = check_out
+        """
         # Get today's attendance logs for this employee
         today_start = timestamp.replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = today_start + timedelta(days=1)
@@ -253,20 +259,22 @@ class AttendanceService:
             timestamp__lt=today_end
         ).order_by('timestamp')
         
-        # If no logs today, this is likely a check-in
-        if not today_logs.exists():
-            return 'check_in'
+        # Count how many logs exist today
+        log_count = today_logs.count()
         
-        # Get the last log
-        last_log = today_logs.last()
-        
-        # Simple logic: alternate between check-in and check-out
-        if last_log.attendance_type == 'check_in':
-            return 'check_out'
-        elif last_log.attendance_type == 'check_out':
+        # Sequential logic:
+        # 1st mark = check_in
+        # 2nd mark = break_start
+        # 3rd mark = break_end
+        # 4th mark = check_out
+        if log_count == 0:
             return 'check_in'
+        elif log_count == 1:
+            return 'break_start'
+        elif log_count == 2:
+            return 'break_end'
         else:
-            return 'check_in'
+            return 'check_out'
     
     @staticmethod
     def process_attendance_logs():
@@ -378,11 +386,11 @@ class AttendanceService:
                 # Calculate hours
                 attendance.calculate_hours()
                 
-                # Check for late arrival (only if check_in exists)
+                # Check for late arrival (work hours: 10 AM to 6 PM)
                 if attendance.check_in:
                     work_start_time = attendance.check_in.replace(
-                        hour=9, minute=0, second=0, microsecond=0
-                    )  # Assuming 9 AM start time
+                        hour=10, minute=0, second=0, microsecond=0
+                    )  # Work starts at 10 AM
                     if attendance.check_in > work_start_time:
                         attendance.is_late = True
                         late_duration = attendance.check_in - work_start_time

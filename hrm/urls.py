@@ -55,6 +55,7 @@ urlpatterns = [
     path('sync-zkt-machine/', views.sync_zkt_machine, name='sync_zkt_machine'),  # admin (legacy - redirects to new sync)
     path('sync-attendance-machine/', views.sync_attendance_machine, name='sync_attendance_machine'),  # admin - sync all machines
     path('sync-attendance-machine/<int:machine_id>/', views.sync_attendance_machine, name='sync_attendance_machine'),  # admin - sync specific machine
+    path('auto-sync-attendance/', views.auto_sync_attendance, name='auto_sync_attendance'),  # admin - auto sync (respects sync intervals)
     path('manage-attendance-machines/', views.manage_attendance_machines, name='manage_attendance_machines'),  # admin
     path('edit-attendance-machine/<int:machine_id>/', views.edit_attendance_machine, name='edit_attendance_machine'),  # admin
     path('delete-attendance-machine/<int:machine_id>/', views.delete_attendance_machine, name='delete_attendance_machine'),  # admin

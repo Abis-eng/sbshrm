@@ -270,7 +270,11 @@
                         <div class="row">
                             <div class="col-md-6 form-group-spacing">
                                 <label for="machine_id" class="form-label">Machine ID</label>
-                                <input type="text" class="form-control" id="machine_id" name="machine_id" placeholder="Enter Machine User ID (e.g., 1, 2, 3)">
+                                <input type="text" class="form-control" id="machine_id" name="machine_id" 
+                                       placeholder="Enter Machine User ID (e.g., 1, 2, 3)"
+                                       autocomplete="off"
+                                       onchange="console.log('Machine ID changed to:', this.value);"
+                                       oninput="console.log('Machine ID input:', this.value);">
                                 <small class="text-muted">
                                     <strong>Important:</strong> This must match the User ID in your biometric machine. This is the primary field used to match attendance records.
                                 </small>

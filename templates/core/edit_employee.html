@@ -402,25 +402,44 @@
                             <label for="machine_id" class="form-label">Machine ID <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="machine_id" name="machine_id" 
                                    value="{{ employee.machine_id|default:'' }}" 
-                                   placeholder="Enter Machine User ID (e.g., 1, 2, 3)">
+                                   placeholder="Enter Machine User ID (e.g., 1, 2, 3)"
+                                   autocomplete="off"
+                                   onchange="console.log('Machine ID changed to:', this.value);"
+                                   oninput="console.log('Machine ID input:', this.value);">
                             <div class="mt-3">
                                 <small class="text-muted d-block mb-2">
-                                    <strong>Current Value:</strong> <code>{{ employee.machine_id|default:"Not set" }}</code>
+                                    <strong>Current Value:</strong> <code id="current_machine_id_display">{{ employee.machine_id|default:"Not set" }}</code>
                                 </small>
                                 <small class="text-muted d-block mb-3">
                                     <strong>Important:</strong> This must match the User ID registered in your biometric machine. This is the primary field used to match attendance records.
                                 </small>
                                 <div class="d-flex flex-wrap gap-2">
                                     <button type="button" class="btn btn-quick-fill" 
-                                            onclick="document.getElementById('machine_id').value='{{ employee.id }}'">
+                                            onclick="var val = '{{ employee.id }}'; document.getElementById('machine_id').value = val; document.getElementById('current_machine_id_display').textContent = val; console.log('Quick-fill: Employee ID', val);">
                                         <i class="fas fa-bolt me-1"></i>Use Employee ID ({{ employee.id }})
                                     </button>
                                     <button type="button" class="btn btn-quick-fill" 
-                                            onclick="document.getElementById('machine_id').value='{{ employee.user.id }}'">
+                                            onclick="var val = '{{ employee.user.id }}'; document.getElementById('machine_id').value = val; document.getElementById('current_machine_id_display').textContent = val; console.log('Quick-fill: User ID', val);">
                                         <i class="fas fa-bolt me-1"></i>Use User ID ({{ employee.user.id }})
                                     </button>
                                 </div>
                             </div>
+                            <script>
+                                // Debug: Log the machine_id value before form submission
+                                document.addEventListener('DOMContentLoaded', function() {
+                                    var form = document.querySelector('form');
+                                    if (form) {
+                                        form.addEventListener('submit', function(e) {
+                                            var machineIdInput = document.getElementById('machine_id');
+                                            if (machineIdInput) {
+                                                console.log('Form submitting with machine_id:', machineIdInput.value);
+                                                // Ensure the value is sent as-is
+                                                machineIdInput.setAttribute('value', machineIdInput.value);
+                                            }
+                                        });
+                                    }
+                                });
+                            </script>
                         </div>
                     </div>
                     <div class="col-md-6">

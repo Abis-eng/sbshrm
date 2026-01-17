@@ -400,11 +400,14 @@ def add_employee(request):
         date_of_joining = request.POST.get('date_of_joining')
         if not date_of_joining:
             date_of_joining = None
-        machine_id = request.POST.get('machine_id')
-        fingerprint_id = request.POST.get('fingerprint_id')
-        face_id = request.POST.get('face_id')
-        card_id = request.POST.get('card_id')
+        machine_id = request.POST.get('machine_id', '').strip()
+        fingerprint_id = request.POST.get('fingerprint_id', '').strip()
+        face_id = request.POST.get('face_id', '').strip()
+        card_id = request.POST.get('card_id', '').strip()
         profile_picture = request.FILES.get('profile_picture')
+        
+        # Debug: Log the received machine_id value
+        logger.info(f"Add employee: Received machine_id from POST: '{machine_id}' (type: {type(machine_id)})")
         
         # Check if username exists and if it's associated with an active employee
         existing_user = User.objects.filter(username=username).first()
@@ -525,10 +528,10 @@ def add_employee(request):
             address=address,
             city=city,
             date_of_joining=date_of_joining,
-            machine_id=machine_id.strip() if machine_id and machine_id.strip() else None,
-            fingerprint_id=fingerprint_id.strip() if fingerprint_id and fingerprint_id.strip() else None,
-            face_id=face_id.strip() if face_id and face_id.strip() else None,
-            card_id=card_id.strip() if card_id and card_id.strip() else None,
+            machine_id=machine_id if machine_id else None,
+            fingerprint_id=fingerprint_id if fingerprint_id else None,
+            face_id=face_id if face_id else None,
+            card_id=card_id if card_id else None,
             profile_picture=profile_picture,
         )
         
@@ -2180,6 +2183,72 @@ def test_machine_connection(request, machine_id):
     return redirect('manage_attendance_machines')
 
 @user_passes_test(is_admin)
+def auto_sync_attendance(request):
+    """Auto-sync attendance from all active machines (can be called periodically)"""
+    from .attendance_service import AttendanceService
+    from .models import AttendanceMachine
+    from datetime import timedelta
+    
+    # Get date range (today only for automatic sync)
+    end_date = timezone.now().date()
+    start_date = end_date
+    
+    machines = AttendanceMachine.objects.filter(is_active=True)
+    
+    if not machines.exists():
+        messages.warning(request, 'No active machines found to sync.')
+        return redirect('all_attendance')
+    
+    total_synced = 0
+    success_count = 0
+    skipped_count = 0
+    error_count = 0
+    
+    for machine in machines:
+        # Check if machine needs syncing based on sync_interval
+        if machine.last_sync:
+            # Calculate next sync time
+            next_sync_time = machine.last_sync + timedelta(minutes=machine.sync_interval)
+            if timezone.now() < next_sync_time:
+                time_until_sync = next_sync_time - timezone.now()
+                minutes_until = int(time_until_sync.total_seconds() / 60)
+                skipped_count += 1
+                continue
+        
+        try:
+            # Sync the machine
+            result = AttendanceService.sync_machine_attendance(machine, start_date, end_date)
+            
+            if result['success']:
+                synced_count = result.get('synced_count', 0)
+                total_synced += synced_count
+                success_count += 1
+            else:
+                error_count += 1
+        except Exception as e:
+            error_count += 1
+            logger.error(f"Error syncing machine {machine.name}: {str(e)}", exc_info=True)
+    
+    # Process attendance logs after all syncing is done
+    try:
+        processed_count = AttendanceService.process_attendance_logs()
+        messages.success(
+            request,
+            f'Auto-sync completed! Synced {total_synced} records from {success_count} machine(s). '
+            f'Processed {processed_count} attendance logs. '
+            f'Skipped {skipped_count} machine(s) (not due yet). '
+            f'Errors: {error_count}'
+        )
+    except Exception as e:
+        logger.error(f"Error processing attendance logs: {str(e)}", exc_info=True)
+        messages.warning(
+            request,
+            f'Synced {total_synced} records but error processing logs: {str(e)}'
+        )
+    
+    return redirect('all_attendance')
+
+@user_passes_test(is_admin)
 def manage_attendance_machines(request):
     """Manage attendance machines"""
     machines = AttendanceMachine.objects.all().order_by('name', 'location')
@@ -2256,11 +2325,29 @@ def manage_employee_machine_ids(request):
     if request.method == 'POST':
         employee_id = request.POST.get('employee_id')
         employee = get_object_or_404(Employee, id=employee_id)
+        
+        # Get machine_id directly from POST to debug
+        machine_id_raw = request.POST.get('machine_id', '')
+        logger.info(f"Manage machine IDs: Received machine_id from POST for employee {employee_id}: '{machine_id_raw}' (type: {type(machine_id_raw)})")
+        
         form = EmployeeMachineForm(request.POST, instance=employee)
         if form.is_valid():
+            # Log what the form cleaned data contains
+            cleaned_machine_id = form.cleaned_data.get('machine_id')
+            logger.info(f"Manage machine IDs: Form cleaned machine_id for employee {employee_id}: '{cleaned_machine_id}' (type: {type(cleaned_machine_id)})")
+            
             form.save()
-            messages.success(request, f'Machine IDs updated for {employee.user.get_full_name() or employee.user.username}!')
+            
+            # Refresh employee to verify what was saved
+            employee.refresh_from_db()
+            logger.info(f"Manage machine IDs: Saved machine_id for employee {employee_id}: '{employee.machine_id}' (type: {type(employee.machine_id)})")
+            
+            messages.success(request, f'Machine IDs updated for {employee.user.get_full_name() or employee.user.username}! Machine ID saved as: "{employee.machine_id}"')
             return redirect('manage_employee_machine_ids')
+        else:
+            # Log form errors
+            logger.error(f"Manage machine IDs: Form errors for employee {employee_id}: {form.errors}")
+            messages.error(request, f'Please correct the errors: {form.errors}')
     else:
         form = EmployeeMachineForm()
     
@@ -2525,11 +2612,14 @@ def edit_employee(request, employee_id):
         department_id = request.POST.get('department')
         designation_id = request.POST.get('designation')
         date_of_joining = request.POST.get('date_of_joining')
-        machine_id = request.POST.get('machine_id')
-        fingerprint_id = request.POST.get('fingerprint_id')
-        face_id = request.POST.get('face_id')
-        card_id = request.POST.get('card_id')
+        machine_id = request.POST.get('machine_id', '').strip()
+        fingerprint_id = request.POST.get('fingerprint_id', '').strip()
+        face_id = request.POST.get('face_id', '').strip()
+        card_id = request.POST.get('card_id', '').strip()
         profile_picture = request.FILES.get('profile_picture')
+        
+        # Debug: Log the received machine_id value
+        logger.info(f"Edit employee {employee_id}: Received machine_id from POST: '{machine_id}' (type: {type(machine_id)})")
         
         if not date_of_joining:
             date_of_joining = None
@@ -2554,11 +2644,16 @@ def edit_employee(request, employee_id):
         employee.designation_id = designation_id
         employee.salary = salary
         employee.date_of_joining = date_of_joining
-        # Strip whitespace from machine IDs
-        employee.machine_id = machine_id.strip() if machine_id and machine_id.strip() else None
-        employee.fingerprint_id = fingerprint_id.strip() if fingerprint_id and fingerprint_id.strip() else None
-        employee.face_id = face_id.strip() if face_id and face_id.strip() else None
-        employee.card_id = card_id.strip() if card_id and card_id.strip() else None
+        
+        # Handle machine IDs - ensure we save exactly what was entered (as string)
+        # Only set to None if empty string, otherwise save the exact value
+        employee.machine_id = machine_id if machine_id else None
+        employee.fingerprint_id = fingerprint_id if fingerprint_id else None
+        employee.face_id = face_id if face_id else None
+        employee.card_id = card_id if card_id else None
+        
+        # Debug: Log what we're about to save
+        logger.info(f"Edit employee {employee_id}: Saving machine_id as: '{employee.machine_id}'")
         if profile_picture:
             employee.profile_picture = profile_picture
         employee.save()

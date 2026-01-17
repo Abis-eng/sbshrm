@@ -388,13 +388,16 @@ class EmployeeMachineForm(ModelForm):
         }
     
     def clean_machine_id(self):
-        """Strip whitespace from machine_id"""
+        """Strip whitespace from machine_id and ensure it's saved as string"""
         machine_id = self.cleaned_data.get('machine_id')
         if machine_id:
-            machine_id = machine_id.strip()
+            # Convert to string and strip whitespace
+            machine_id = str(machine_id).strip()
             if not machine_id:  # If after stripping it's empty, return None
                 return None
-        return machine_id
+            # Return as string (not int) to preserve leading zeros and exact format
+            return machine_id
+        return None
     
     def clean_fingerprint_id(self):
         """Strip whitespace from fingerprint_id"""
