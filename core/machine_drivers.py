@@ -213,15 +213,35 @@ class ZKTDriver(MachineDriver):
                     if record_date > end_date:
                         continue
                 
+                # Get the actual user ID from the machine
+                # ZKT machines use 'uid' as the actual machine user ID
+                # 'user_id' might be a different field
+                machine_user_id = None
+                if hasattr(record, 'uid') and record.uid:
+                    machine_user_id = str(record.uid)
+                elif hasattr(record, 'user_id') and record.user_id:
+                    machine_user_id = str(record.user_id)
+                else:
+                    # Fallback: try to get from raw_data if available
+                    if hasattr(record, 'raw_data') and isinstance(record.raw_data, dict):
+                        machine_user_id = str(record.raw_data.get('uid', record.raw_data.get('user_id', '')))
+                
+                if not machine_user_id:
+                    logger.warning(f"Could not extract user_id from attendance record: {record}")
+                    continue
+                
                 results.append({
-                    'user_id': str(record.user_id),
+                    'user_id': machine_user_id,  # Use the actual machine user ID (uid)
                     'timestamp': record.timestamp,
                     'status': record.status if hasattr(record, 'status') else 'check_in',
                     'raw_data': {
                         'punch': record.punch if hasattr(record, 'punch') else None,
                         'uid': record.uid if hasattr(record, 'uid') else None,
+                        'original_user_id': record.user_id if hasattr(record, 'user_id') else None,
                     }
                 })
+                
+                logger.debug(f"Extracted machine user ID: '{machine_user_id}' from record (uid: {getattr(record, 'uid', 'N/A')}, user_id: {getattr(record, 'user_id', 'N/A')})")
             
             return results
         except Exception as e:

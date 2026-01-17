@@ -65,10 +65,18 @@ class AttendanceService:
                     # Find employee by machine user ID
                     # IMPORTANT: ONLY match by machine_id field - no other matching strategies
                     employee = None
-                    user_id_raw = record['user_id']
-                    user_id = str(user_id_raw).strip()  # Convert to string and strip whitespace
+                    user_id_raw = record.get('user_id', '')
+                    user_id = str(user_id_raw).strip() if user_id_raw else ''  # Convert to string and strip whitespace
                     
-                    logger.debug(f"Processing attendance record - Machine user ID: '{user_id}' (type: {type(user_id_raw)}, raw: {repr(user_id_raw)})")
+                    # Log detailed information for debugging
+                    logger.info(f"Processing attendance record - Machine user ID: '{user_id}' (type: {type(user_id_raw)}, raw: {repr(user_id_raw)})")
+                    if 'raw_data' in record:
+                        logger.debug(f"Raw data from machine: {record.get('raw_data', {})}")
+                    
+                    if not user_id:
+                        logger.warning(f"Skipping attendance record with empty user_id: {record}")
+                        errors.append("Empty user_id in attendance record")
+                        continue
                     
                     # ONLY match by machine_id field - exact match first
                     employee = Employee.objects.filter(machine_id=user_id).first()

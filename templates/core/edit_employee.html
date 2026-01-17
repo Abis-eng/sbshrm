@@ -387,12 +387,6 @@
                     <div class="d-flex align-items-start">
                         <i class="fas fa-info-circle me-2 mt-1"></i>
                         <div>
-                            <strong class="d-block mb-2">Reference IDs for Matching:</strong>
-                            <div class="mb-2">
-                                <span class="reference-badge">Employee ID: {{ employee.id }}</span>
-                                <span class="reference-badge">User ID: {{ employee.user.id }}</span>
-                            </div>
-                            <small class="d-block">If your biometric machine user ID matches either of these values, use the quick-fill buttons below.</small>
                         </div>
                     </div>
                 </div>
@@ -418,7 +412,7 @@
                                     <strong>Current Value:</strong> <code id="current_machine_id_display">{{ employee.machine_id|default:"Not set" }}</code>
                                 </small>
                                 <small class="text-muted d-block mb-3">
-                                    <strong>Important:</strong> This MUST match the User ID registered in your biometric machine. The system will ONLY match attendance by this field.
+                                    <strong>Important:</strong> This MUST match the User ID registered in your biometric machine. The system will ONLY match attendance by this field. Do NOT use Employee ID or User ID - only use the Machine User ID from the biometric device.
                                 </small>
                                 {% if active_machines %}
                                 <div class="mb-3">

@@ -120,10 +120,24 @@ class ZKTService:
             try:
                 # Find employee by machine ID
                 # IMPORTANT: ONLY match by machine_id field - no other matching strategies
-                user_id_raw = record.user_id
+                # ZKT machines: use 'uid' as the actual machine user ID, not 'user_id'
+                user_id_raw = None
+                if hasattr(record, 'uid') and record.uid:
+                    user_id_raw = record.uid  # Use uid (actual machine user ID)
+                elif hasattr(record, 'user_id') and record.user_id:
+                    user_id_raw = record.user_id
+                else:
+                    logger.warning(f"Attendance record has no uid or user_id: {record}")
+                    continue
+                
                 user_id = str(user_id_raw).strip()  # Convert to string and strip whitespace
                 
-                logger.debug(f"Processing attendance record - Machine user ID: '{user_id}' (type: {type(user_id_raw)}, raw: {repr(user_id_raw)})")
+                # Log detailed information for debugging
+                logger.info(f"Processing attendance record - Machine user ID: '{user_id}' (uid: {getattr(record, 'uid', 'N/A')}, user_id: {getattr(record, 'user_id', 'N/A')}, type: {type(user_id_raw)}, raw: {repr(user_id_raw)})")
+                
+                if not user_id:
+                    logger.warning(f"Skipping attendance record with empty user_id")
+                    continue
                 
                 employee = None
                 
