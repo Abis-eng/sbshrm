@@ -171,9 +171,10 @@ class ZKTService:
                     employee=employee,
                     attendance_type=attendance_type,
                     source='machine',
+                    machine=machine,
                     timestamp=record.timestamp,
                     machine_timestamp=record.timestamp,
-                    machine_id=str(record.user_id),
+                    machine_user_id=str(user_id),  # Store the actual user_id from the machine
                     location=machine.location
                 )
                 

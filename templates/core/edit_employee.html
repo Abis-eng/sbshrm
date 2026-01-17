@@ -399,31 +399,94 @@
                 <div class="row g-4">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="machine_id" class="form-label">Machine ID <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="machine_id" name="machine_id" 
-                                   value="{{ employee.machine_id|default:'' }}" 
-                                   placeholder="Enter Machine User ID (e.g., 1, 2, 3)"
-                                   autocomplete="off"
-                                   onchange="console.log('Machine ID changed to:', this.value);"
-                                   oninput="console.log('Machine ID input:', this.value);">
+                            <label for="machine_id" class="form-label">Machine ID (Biometric Machine User ID) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="machine_id" name="machine_id" 
+                                       value="{{ employee.machine_id|default:'' }}" 
+                                       placeholder="Enter Machine User ID (e.g., 1, 2, 3)"
+                                       autocomplete="off"
+                                       onchange="console.log('Machine ID changed to:', this.value);"
+                                       oninput="console.log('Machine ID input:', this.value);">
+                                {% if active_machines %}
+                                <button type="button" class="btn btn-outline-primary" id="loadMachineUsersBtn" onclick="loadMachineUsers()">
+                                    <i class="fas fa-sync-alt me-1"></i>Load from Machine
+                                </button>
+                                {% endif %}
+                            </div>
                             <div class="mt-3">
                                 <small class="text-muted d-block mb-2">
                                     <strong>Current Value:</strong> <code id="current_machine_id_display">{{ employee.machine_id|default:"Not set" }}</code>
                                 </small>
                                 <small class="text-muted d-block mb-3">
-                                    <strong>Important:</strong> This must match the User ID registered in your biometric machine. This is the primary field used to match attendance records.
+                                    <strong>Important:</strong> This MUST match the User ID registered in your biometric machine. The system will ONLY match attendance by this field.
                                 </small>
-                                <div class="d-flex flex-wrap gap-2">
-                                    <button type="button" class="btn btn-quick-fill" 
-                                            onclick="var val = '{{ employee.id }}'; document.getElementById('machine_id').value = val; document.getElementById('current_machine_id_display').textContent = val; console.log('Quick-fill: Employee ID', val);">
-                                        <i class="fas fa-bolt me-1"></i>Use Employee ID ({{ employee.id }})
-                                    </button>
-                                    <button type="button" class="btn btn-quick-fill" 
-                                            onclick="var val = '{{ employee.user.id }}'; document.getElementById('machine_id').value = val; document.getElementById('current_machine_id_display').textContent = val; console.log('Quick-fill: User ID', val);">
-                                        <i class="fas fa-bolt me-1"></i>Use User ID ({{ employee.user.id }})
-                                    </button>
+                                {% if active_machines %}
+                                <div class="mb-3">
+                                    <label class="form-label small">Select Machine to Load User IDs:</label>
+                                    <select class="form-select form-select-sm" id="machine_selector" onchange="loadMachineUsers()">
+                                        <option value="">-- Select Machine --</option>
+                                        {% for machine in active_machines %}
+                                        <option value="{{ machine.id }}">{{ machine.name }} ({{ machine.ip_address|default:"N/A" }})</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
+                                <div id="machineUsersList" class="mb-3" style="display: none;">
+                                    <label class="form-label small">Available User IDs from Machine:</label>
+                                    <div id="usersListContainer" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                        <p class="text-muted small mb-0">Select a machine above to load users</p>
+                                    </div>
+                                </div>
+                                {% endif %}
                             </div>
+                            <script>
+                                function loadMachineUsers() {
+                                    const machineId = document.getElementById('machine_selector').value;
+                                    const btn = document.getElementById('loadMachineUsersBtn');
+                                    const container = document.getElementById('usersListContainer');
+                                    const listDiv = document.getElementById('machineUsersList');
+                                    
+                                    if (!machineId) {
+                                        listDiv.style.display = 'none';
+                                        return;
+                                    }
+                                    
+                                    btn.disabled = true;
+                                    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...';
+                                    container.innerHTML = '<p class="text-muted small mb-0"><i class="fas fa-spinner fa-spin me-1"></i>Loading users from machine...</p>';
+                                    listDiv.style.display = 'block';
+                                    
+                                    fetch(`/api/get-machine-users/${machineId}/`)
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            btn.disabled = false;
+                                            btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Load from Machine';
+                                            
+                                            if (data.success && data.users.length > 0) {
+                                                let html = '<div class="d-flex flex-wrap gap-2">';
+                                                data.users.forEach(user => {
+                                                    html += `<button type="button" class="btn btn-sm btn-outline-secondary" onclick="selectMachineUserId('${user.user_id}')" title="${user.name}">
+                                                        <strong>${user.user_id}</strong> - ${user.name}
+                                                    </button>`;
+                                                });
+                                                html += '</div>';
+                                                container.innerHTML = html;
+                                            } else {
+                                                container.innerHTML = `<p class="text-danger small mb-0">${data.error || 'No users found or connection failed'}</p>`;
+                                            }
+                                        })
+                                        .catch(error => {
+                                            btn.disabled = false;
+                                            btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Load from Machine';
+                                            container.innerHTML = `<p class="text-danger small mb-0">Error: ${error.message}</p>`;
+                                        });
+                                }
+                                
+                                function selectMachineUserId(userId) {
+                                    document.getElementById('machine_id').value = userId;
+                                    document.getElementById('current_machine_id_display').textContent = userId;
+                                    console.log('Selected Machine User ID:', userId);
+                                }
+                            </script>
                             <script>
                                 // Debug: Log the machine_id value before form submission
                                 document.addEventListener('DOMContentLoaded', function() {

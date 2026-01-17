@@ -30,6 +30,7 @@ urlpatterns = [
     path('employee/<int:employee_id>/', views.view_employee_profile, name='view_employee_profile'),  # admin
     path('add-employee/', views.add_employee, name='add_employee'),  # admin only
     path('edit-employee/<int:employee_id>/', views.edit_employee, name='edit_employee'),  # admin
+    path('api/get-machine-users/<int:machine_id>/', views.get_machine_users, name='get_machine_users'),  # admin - get users from machine
     path('delete-employee/<int:employee_id>/', views.delete_employee, name='delete_employee'),  # admin
     path('logout/', views.logout_view, name='logout'),
     path('users/', views.user_list, name='user_list'),  # admin only

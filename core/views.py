@@ -2599,11 +2599,57 @@ def manage_leaves(request):
     return render(request, 'core/manage_leaves.html', {'leaves': leaves})
 
 @user_passes_test(is_admin)
+def get_machine_users(request, machine_id):
+    """Get list of users from a biometric machine to help match machine IDs"""
+    from .models import AttendanceMachine
+    from .machine_drivers import get_machine_driver
+    
+    try:
+        machine = get_object_or_404(AttendanceMachine, id=machine_id)
+        driver = get_machine_driver(machine)
+        
+        if not driver.connect():
+            return JsonResponse({
+                'success': False,
+                'error': f'Failed to connect to {machine.name}',
+                'users': []
+            })
+        
+        users = driver.get_users()
+        driver.disconnect()
+        
+        # Format users for display
+        user_list = []
+        for user in users:
+            user_list.append({
+                'user_id': str(user.get('user_id', '')),
+                'name': user.get('name', 'Unknown'),
+                'privilege': user.get('privilege', 0)
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'machine_name': machine.name,
+            'users': user_list
+        })
+    except Exception as e:
+        logger.error(f"Error getting machine users: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'users': []
+        })
+
+@user_passes_test(is_admin)
 def edit_employee(request, employee_id):
     employee = Employee.objects.select_related('user').get(id=employee_id)
     departments = Department.objects.all()
     designations = Designation.objects.all()
     error = None
+    
+    # Get list of active machines for user ID selection
+    from .models import AttendanceMachine
+    active_machines = AttendanceMachine.objects.filter(is_active=True).order_by('name')
     if request.method == 'POST':
         first_name = request.POST.get('first_name')
         last_name = request.POST.get('last_name')
@@ -2665,7 +2711,8 @@ def edit_employee(request, employee_id):
         'departments': departments,
         'designations': designations,
         'error': error,
-        'existing_cities': existing_cities
+        'existing_cities': existing_cities,
+        'active_machines': active_machines
     })
 
 @user_passes_test(is_admin)
